@@ -2642,8 +2642,14 @@ async function animateHandReflow(deadIndices, callback) {
 
   await Promise.all(newCardPromises);
 
-  // Re-enable floating animation
-  allNewEls.forEach(el=>el.classList.add('hc-floating'));
+  // Restore all cards — clear every inline override so CSS takes over
+  allNewEls.forEach(el=>{
+    el.style.opacity = '';
+    el.style.pointerEvents = '';
+    el.style.transition = '';
+    el.style.visibility = '';
+    el.classList.add('hc-floating');
+  });
 
   window._reflowAnimating = false;
   if(callback)callback();
