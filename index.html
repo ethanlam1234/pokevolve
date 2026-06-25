@@ -202,7 +202,7 @@ body {
   width:clamp(110px,9.2vw,148px); flex:0 0 auto; margin:0 -12px;
   aspect-ratio:2/3; position:relative;
   cursor:pointer; pointer-events:all;
-  transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(var(--dy,0px));
+  transform: rotate(calc(var(--tilt,0deg) + var(--motion-tilt,0deg))) translateX(var(--dx,0px)) translateY(var(--dy,0px));
   transform-origin: 50% 110%;
   transition:transform 0.18s ease, box-shadow 0.18s, z-index 0s, margin-left 320ms cubic-bezier(0.4,0,0.15,1);
   border-radius:8px; overflow:hidden;
@@ -2193,6 +2193,7 @@ function sortHand(mode) {
 function makeHcEl(card, i, isHidden) {
   const el = document.createElement('div');
   el.className = 'hc';
+  el._card = card; // store reference for FLIP animation matching
   const tilt = getTilt(card.id || (card.name + i));
   el.style.setProperty('--tilt', tilt + 'deg');
   el.style.setProperty('--dx', '0px');
@@ -2212,7 +2213,9 @@ function makeHcEl(card, i, isHidden) {
   const floatDelay = -(i * 0.55);
   el.style.setProperty('--float-dur',   floatDur.toFixed(2) + 's');
   el.style.setProperty('--float-delay', floatDelay.toFixed(2) + 's');
-  el.classList.add('hc-floating');
+  // hc-floating added after FLIP animation by animateHandReflow
+  // (for renderHand path, add immediately)
+  el._addFloatAfterFlip = true; // flag: animateHandReflow will add it
   return el;
 }
 
@@ -2235,6 +2238,8 @@ function renderHand(animateLast) {
       const tilt = parseFloat(el.style.getPropertyValue('--tilt')) || 0;
       requestAnimationFrame(() => dealFromDeckToHand(el, card, 'ours', tilt, i));
     }
+    el.classList.add('hc-floating');
+    el._addFloatAfterFlip = false;
     hc.appendChild(el);
   });
   updateActionBar();
@@ -2485,83 +2490,160 @@ async function animateHandReflow(deadIndices, callback) {
   // Approach: renderHand(false) gives us clean sorted elements at final positions.
   // FLIP: snapshot current positions, render, compute deltas, animate.
 
-  // Snapshot alive card positions NOW (before DOM rebuild)
-  const aliveCxs = aliveEls.map(el=>{const r=el.getBoundingClientRect();return r.left+r.width/2;});
-  // Map each alive card to a cx by matching card objects
-  // We use the art src as a proxy for card identity
-  const artSrcToCx = new Map();
-  aliveEls.forEach((el,j)=>{
-    const src = el.querySelector('.hc-art')?.src||'';
-    if(src) artSrcToCx.set(src, aliveCxs[j]);
+  // Snapshot alive card positions by card object reference (reliable)
+  const cardToCx = new Map();
+  aliveEls.forEach(el=>{
+    if(el._card) {
+      const r=el.getBoundingClientRect();
+      cardToCx.set(el._card, r.left+r.width/2);
+    }
   });
 
   // ── Step 5: rebuild DOM in sorted order ───────────────────────
   hc.innerHTML='';
-  window._reflowAnimating = true; // keep guard up
+  window._reflowAnimating = true;
   const allNewEls = G.hand.map((card,i)=>{
     const el = makeHcEl(card,i,false);
+    // Do NOT add hc-floating yet — would start animation before FLIP offsets are set
+    el._addFloatAfterFlip = false;
     hc.appendChild(el);
     return el;
   });
+
+  // Force layout so final positions are computed
   void hc.getBoundingClientRect();
 
-  // ── Step 6: for each element in new DOM, set --dx so it appears ─
-  // at the position it came FROM (old position for existing cards,
-  // deck position for new cards)
+  // ── Step 6: Deck position (source of new cards) ───────────────
   const deckEl = document.getElementById('deck-ours');
   const deckRect = deckEl?.getBoundingClientRect();
   const deckCx = deckRect ? deckRect.left+deckRect.width/2 : window.innerWidth-80;
   const deckCy = deckRect ? deckRect.top+deckRect.height/2 : window.innerHeight*0.6;
 
-  // Read final positions from live DOM (after rebuild)
-  void hc.getBoundingClientRect();
-  allNewEls.forEach((el,i)=>{
-    const card = G.hand[i];
-    const r = el.getBoundingClientRect();
-    const newCx = r.left + r.width/2;
-    const newCy = r.top  + r.height/2;
-    const artSrc = el.querySelector('.hc-art')?.src||'';
-    const isNewCard = newCards.includes(card);
-    if(isNewCard) {
-      // New card: starts at deck position, slides to hand
-      el.style.setProperty('--dx',(deckCx-newCx)+'px');
-      el.style.setProperty('--dy',(deckCy-newCy)+'px');
-    } else {
-      // Existing card: starts at its old position
-      const oldCx = artSrcToCx.get(artSrc) ?? newCx;
-      el.style.setProperty('--dx',(oldCx-newCx)+'px');
-      el.style.setProperty('--dy','0px');
-    }
+  // Separate existing vs new card elements
+  const existingEls = allNewEls.filter((_,i)=>!newCards.includes(G.hand[i]));
+  const newEls      = allNewEls.filter((_,i)=> newCards.includes(G.hand[i]));
+
+  // ── PHASE 1: existing cards slide to sorted positions (300ms) ──
+  // New card elements stay invisible during this phase
+  newEls.forEach(el=>{
+    el.style.opacity='0';
+    el.style.pointerEvents='none';
+  });
+
+  // Read final positions and compute FLIP offsets for existing cards
+  const existingFinals = existingEls.map(el=>{
+    const r=el.getBoundingClientRect();
+    return {cx:r.left+r.width/2, cy:r.top+r.height/2};
+  });
+
+  existingEls.forEach((el,i)=>{
+    const card=G.hand[allNewEls.indexOf(el)];
+    const fromCx = cardToCx.get(card) ?? existingFinals[i].cx;
+    const delta = fromCx - existingFinals[i].cx; // positive = came from right
+    // Tilt: moving right → lean right (+), moving left → lean left (-)
+    // Add small random variance (±1.5deg)
+    const rng = (Math.random()-0.5)*3;
+    const tiltDeg = (delta > 0 ? 4 : delta < 0 ? -4 : 0) + rng;
+    el.style.setProperty('--dx', delta+'px');
+    el.style.setProperty('--dy', '0px');
+    el.style.setProperty('--slide-tilt', tiltDeg+'deg');
     el.style.transition='none';
-    el.style.opacity='1';
   });
   void hc.getBoundingClientRect();
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
 
-  // ── Step 7: slide everything to final positions simultaneously ──
-  const t0=performance.now();
-  const SLIDE=380;
-  const dx0=allNewEls.map(el=>parseFloat(el.style.getPropertyValue('--dx')||'0'));
-  const dy0=allNewEls.map(el=>parseFloat(el.style.getPropertyValue('--dy')||'0'));
-  const ease=t=>t<0.5?2*t*t:-1+(4-2*t)*t;
+  // Animate existing cards to final positions with motion tilt
+  const P1_DUR=300, ease=t=>t<0.5?2*t*t:-1+(4-2*t)*t;
+  const p1dx=existingEls.map(el=>parseFloat(el.style.getPropertyValue('--dx')||'0'));
+  const p1tilt=existingEls.map(el=>parseFloat(el.style.getPropertyValue('--slide-tilt')||'0'));
+
   await new Promise(resolve=>{
+    const t0=performance.now();
     function frame(now){
-      const t=Math.min(1,(now-t0)/SLIDE),e=ease(t);
-      allNewEls.forEach((el,i)=>{
-        el.style.setProperty('--dx',(dx0[i]*(1-e))+'px');
-        el.style.setProperty('--dy',(dy0[i]*(1-e))+'px');
+      const t=Math.min(1,(now-t0)/P1_DUR), e=ease(t);
+      // Tilt peaks at t=0.5 then unwinds back to base tilt
+      const tiltFactor = Math.sin(t*Math.PI);
+      existingEls.forEach((el,i)=>{
+        el.style.setProperty('--dx',(p1dx[i]*(1-e))+'px');
+        // Add motion tilt on top of card's base --tilt via inline override
+        const baseTilt=parseFloat(el.style.getPropertyValue('--tilt')||'0');
+        el.style.setProperty('--tilt',(baseTilt + p1tilt[i]*tiltFactor-p1tilt[i]*tiltFactor).toFixed(2)+'deg');
+      });
+      // Actually animate tilt via a separate var to not corrupt --tilt permanently
+      existingEls.forEach((el,i)=>{
+        el.style.setProperty('--motion-tilt',(p1tilt[i]*tiltFactor).toFixed(2)+'deg');
       });
       if(t<1)requestAnimationFrame(frame);
       else{
-        allNewEls.forEach(el=>{
+        existingEls.forEach(el=>{
           el.style.setProperty('--dx','0px');
-          el.style.setProperty('--dy','0px');
+          el.style.setProperty('--motion-tilt','0deg');
         });
         resolve();
       }
     }
     requestAnimationFrame(frame);
   });
+
+  // ── PHASE 2: brief pause (100ms) ──────────────────────────────
+  await new Promise(r=>setTimeout(r,100));
+
+  // ── PHASE 3: new cards slide in from deck, staggered ──────────
+  const P3_DUR=320, STAGGER=80;
+
+  // Read final positions of new card elements
+  newEls.forEach(el=>{
+    el.style.opacity='1';
+    el.style.transition='none';
+  });
+  void hc.getBoundingClientRect();
+
+  const newFinals = newEls.map(el=>{
+    const r=el.getBoundingClientRect();
+    return {cx:r.left+r.width/2, cy:r.top+r.height/2};
+  });
+
+  // Set initial positions (at deck) for all new cards
+  newEls.forEach((el,i)=>{
+    el.style.setProperty('--dx',(deckCx-newFinals[i].cx)+'px');
+    el.style.setProperty('--dy',(deckCy-newFinals[i].cy)+'px');
+    el.style.setProperty('--motion-tilt','0deg');
+  });
+  void hc.getBoundingClientRect();
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+
+  // Animate each new card with stagger
+  const newCardPromises = newEls.map((el,i)=>new Promise(resolve=>{
+    const startDx=parseFloat(el.style.getPropertyValue('--dx')||'0');
+    const startDy=parseFloat(el.style.getPropertyValue('--dy')||'0');
+    // Tilt: moving left (negative dx) = lean right slightly (like thrown card)
+    const rng=(Math.random()-0.5)*4;
+    const motionTilt = (startDx < 0 ? 5 : -5) + rng; // lean into direction of travel
+
+    setTimeout(()=>{
+      const t0=performance.now();
+      function frame(now){
+        const t=Math.min(1,(now-t0)/P3_DUR), e=ease(t);
+        const tiltFactor=Math.sin(t*Math.PI);
+        el.style.setProperty('--dx',(startDx*(1-e))+'px');
+        el.style.setProperty('--dy',(startDy*(1-e))+'px');
+        el.style.setProperty('--motion-tilt',(motionTilt*tiltFactor).toFixed(2)+'deg');
+        if(t<1)requestAnimationFrame(frame);
+        else{
+          el.style.setProperty('--dx','0px');
+          el.style.setProperty('--dy','0px');
+          el.style.setProperty('--motion-tilt','0deg');
+          resolve();
+        }
+      }
+      requestAnimationFrame(frame);
+    }, i*STAGGER);
+  }));
+
+  await Promise.all(newCardPromises);
+
+  // Re-enable floating animation
+  allNewEls.forEach(el=>el.classList.add('hc-floating'));
 
   window._reflowAnimating = false;
   if(callback)callback();
