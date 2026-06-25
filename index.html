@@ -157,6 +157,24 @@ body {
 .hc.hc-new-card {
   animation: hcSlideInRight 0.28s cubic-bezier(0.15,1.1,0.35,1) both;
 }
+/* hc-collapsing removed — gap close uses JS rAF animation */
+
+
+/* ── HAND CARD 3D FLOAT ANIMATION ── */
+@keyframes hcFloat {
+  0%   { transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(0px)  rotateX(0deg)    scale(1.000); }
+  30%  { transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(-2px) rotateX(1.2deg)  scale(1.005); }
+  60%  { transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(-3px) rotateX(1.8deg)  scale(1.008); }
+  80%  { transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(-1px) rotateX(0.8deg)  scale(1.003); }
+  100% { transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(0px)  rotateX(0deg)    scale(1.000); }
+}
+.hc.hc-floating {
+  animation: hcFloat var(--float-dur, 3.2s) var(--float-delay, 0s) ease-in-out infinite;
+  /* Don't let the float override hover/selected states */
+}
+.hc.hc-floating:hover {
+  animation-play-state: paused;
+}
 
 @keyframes discardFly {
   0%   { transform:rotate(var(--tilt,0deg)) translateY(0) rotateY(0deg) rotateZ(0deg) scale(1); opacity:1; }
@@ -178,7 +196,7 @@ body {
   position:fixed; bottom:clamp(160px,18vh,220px); left:0; right:0;
   display:flex; flex-direction:row; justify-content:center; align-items:flex-end;
   padding-bottom:0; pointer-events:none; z-index:100; overflow:visible;
-  perspective:1200px; transform-style:preserve-3d;
+  perspective:900px;
 }
 .hc {
   width:clamp(110px,9.2vw,148px); flex:0 0 auto; margin:0 -12px;
@@ -186,15 +204,16 @@ body {
   cursor:pointer; pointer-events:all;
   transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px));
   transform-origin: 50% 110%;
-  transition:transform 0.18s ease, box-shadow 0.18s, z-index 0s;
+  transition:transform 0.18s ease, box-shadow 0.18s, z-index 0s, margin-left 320ms cubic-bezier(0.4,0,0.15,1);
   border-radius:8px; overflow:hidden;
   background:#0a0a18;
   border:2px solid transparent; box-shadow:0 4px 14px rgba(0,0,0,0.8);
   user-select:none;
 }
 .hc:hover {
-  transform: rotate(var(--tilt,0deg)) translateY(-28px) scale(1.1) !important;
-  z-index:20 !important; box-shadow:0 14px 28px rgba(0,0,0,0.95);
+  transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(-6px) scale(1.03) rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)) !important;
+  z-index:20 !important; box-shadow:0 10px 22px rgba(0,0,0,0.9);
+  transition:transform 0.08s ease, box-shadow 0.1s !important;
 }
 .hc-select-ring {
   position:absolute; inset:0; border-radius:8px; pointer-events:none;
@@ -370,7 +389,7 @@ body {
 #item-popover.visible { opacity:1; }
 /* ── OWNED ITEMS panel (top-right) ── */
 #owned-items-panel {
-  position:fixed; top:10px; right:10px; z-index:111;
+  position:fixed; top:18px; right:18px; z-index:111;
   display:none; flex-direction:column; gap:5px; align-items:flex-end;
   max-width:clamp(160px,16vw,220px); pointer-events:all;
   font-family:'PokemonClassic',monospace;
@@ -410,9 +429,11 @@ body {
 #route-screen { }
 #route-pokemon-row {
   display:flex; gap:clamp(10px,2vw,24px); justify-content:center; flex-wrap:wrap;
+  align-items:center;
   max-width:min(95vw,1000px);
   margin-top:clamp(20px,3vh,40px);
-  padding-top:clamp(16px,2vh,28px);
+  padding:clamp(20px,3vh,40px) 0;
+  overflow:visible;
 }
 .route-poke-card {
   width:clamp(110px,11vw,155px); aspect-ratio:2/3;
@@ -423,13 +444,15 @@ body {
   animation:shopItemIn 0.4s var(--sd,0s) cubic-bezier(0.15,1.1,0.35,1) both;
 }
 .route-poke-card:hover:not(.selected):not(.taken) {
-  transform:translateY(-12px) scale(1.06);
+  transform: scale(1.06);
   border-color:rgba(255,210,80,0.8);
-  box-shadow:0 12px 28px rgba(0,0,0,0.9),0 0 16px rgba(255,200,60,0.3);
+  box-shadow:0 8px 24px rgba(0,0,0,0.9),0 0 16px rgba(255,200,60,0.3);
 }
 .route-poke-card.selected {
   border-color:#00ddff; box-shadow:0 0 0 2px #00ddff,0 0 20px rgba(0,200,255,0.5);
-  transform:translateY(-16px) scale(1.08);
+  transform: scale(1.12);
+  transform-origin: 50% 20%;
+  z-index: 10;
 }
 .route-poke-card.taken { opacity:0.35; pointer-events:none; filter:saturate(0.2); }
 .route-poke-card .rpc-img {
@@ -490,12 +513,12 @@ body {
 .dc-xp-bar { position:absolute; bottom:0; left:0; right:0; height:4px; background:rgba(255,200,0,0.15); }
 .dc-xp-fill { height:100%; background:linear-gradient(90deg,#ffcc00,#ffee44); transition:width 0.4s; }
 .between-skip {
-  margin-top:0; background:rgba(20,24,48,0.8); border:1px solid rgba(60,80,140,0.5);
-  border-radius:6px; color:#556677; font-family:'PokemonClassic',monospace;
-  font-size:clamp(9px,0.9vw,13px); padding:7px 20px; cursor:pointer;
+  margin-top:0; background:rgba(20,30,60,0.85); border:1px solid rgba(60,90,180,0.5);
+  border-radius:6px; color:#7799bb; font-family:'PokemonClassic',monospace;
+  font-size:clamp(9px,0.9vw,13px); padding:7px 18px; cursor:pointer;
   transition:all 0.15s; letter-spacing:1px;
 }
-.between-skip:hover { color:#99aacc; border-color:#667799; }
+.between-skip:hover { color:#aaccff; border-color:rgba(100,140,255,0.7); }
 
 
 #route-btn-row {
@@ -545,8 +568,20 @@ body {
   background:#0a0a18;
   border:2px solid #2a3a6a;
   box-shadow:0 4px 16px rgba(0,0,0,0.9), inset 0 0 0 1px rgba(80,110,200,0.2);
-  transition:box-shadow 0.2s;
+  transition:box-shadow 0.2s, transform 0.08s ease;
+  transform-style:preserve-3d;
 }
+/* 3D tilt on hover (via JS --tilt3d vars) */
+.dpc-top:hover {
+  transform: rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)) translateY(-6px) scale(1.04);
+  box-shadow:0 12px 28px rgba(0,0,0,0.95);
+  animation: none !important;
+}
+/* Float animation on the top card */
+.dpc-top {
+  animation: hcFloat var(--float-dur,3.2s) var(--float-delay,0s) ease-in-out infinite;
+}
+.dpc-top:hover { animation:none; }
 .dpc-card img {
   position:absolute; top:0; bottom:0; left:50%;
   transform:translateX(-50%);
@@ -586,9 +621,10 @@ body {
 #dds-header {
   display:flex; align-items:center; gap:16px;
   width:100%; max-width:1100px; flex-shrink:0;
-  padding:clamp(28px,4vh,52px) clamp(16px,3vw,40px) 14px;
+  padding:clamp(28px,4vh,52px) clamp(16px,3vw,40px) 18px;
   background:transparent;
   z-index:2;
+  border-bottom:2px solid rgba(255,255,255,0.18);
 }
 #dds-back-btn {
   font-family:'PokemonClassic',monospace; font-size:clamp(9px,0.9vw,13px);
@@ -619,7 +655,7 @@ body {
   align-items:flex-start;
   flex:1; overflow-y:auto;
   padding:clamp(16px,2vh,24px) clamp(16px,3vw,40px) clamp(20px,3vh,40px);
-  width:100%;
+  width:100%; max-width:1100px;
 }
 #dds-info {
   flex-shrink:0; width:clamp(200px,22vw,300px);
@@ -638,11 +674,13 @@ body {
 #dds-subtitle { font-size:clamp(9px,0.95vw,13px); color:#667788; line-height:1.6; }
 /* Cards grid */
 #dds-cards {
-  flex:1; display:flex; flex-wrap:wrap; gap:8px;
+  flex:1; display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap:10px;
   align-content:flex-start;
 }
 .dds-card-slot {
-  width:clamp(70px,7vw,100px); aspect-ratio:2/3;
+  width:100%; aspect-ratio:2/3;
   animation:shopItemIn 0.3s var(--sd,0s) both;
 }
 
@@ -687,8 +725,8 @@ body {
 .card-visual {
   flex:0 0 auto; position:relative; cursor:pointer;
   border-radius:8px; overflow:hidden;
-  background:#0a0a18; border:2px solid rgba(50,70,140,0.5);
-  box-shadow:0 4px 14px rgba(0,0,0,0.8);
+  background:#0a0a18; border:2px solid rgba(60,80,120,0.35);
+  box-shadow:0 2px 8px rgba(0,0,0,0.5);
   transition:transform 0.18s ease, border-color 0.18s, box-shadow 0.18s;
   user-select:none;
 }
@@ -699,7 +737,7 @@ body {
   object-fit:contain; image-rendering:pixelated;
   background:transparent; display:block; z-index:1;
 }
-.card-visual:hover { transform:translateY(-10px) scale(1.06); border-color:rgba(255,210,80,0.6); box-shadow:0 12px 26px rgba(0,0,0,0.95); z-index:10; }
+.card-visual:hover { transform:translateY(-10px) scale(1.06) rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)); border-color:rgba(255,210,80,0.6); box-shadow:0 12px 26px rgba(0,0,0,0.95); z-index:10; transition:transform 0.08s ease, border-color 0.15s !important; }
 .card-visual.cv-selected { border-color:#ffdd00 !important; box-shadow:0 0 0 2px #ffdd00,0 0 18px rgba(255,210,0,0.5) !important; transform:translateY(-12px) scale(1.07) !important; }
 
 /* ── DECK VIEWER SCREEN ── */
@@ -714,11 +752,11 @@ body {
 #deck-viewer.open { display:flex; }
 #dv-header {
   display:flex; align-items:center; gap:16px;
-  flex-shrink:0; width:100%;
-  padding:clamp(28px,4vh,52px) clamp(16px,3vw,40px) 14px;
-  background:rgba(4,5,16,0.96);
-  backdrop-filter:blur(4px);
+  flex-shrink:0; width:100%; max-width:1100px;
+  padding:clamp(28px,4vh,52px) clamp(16px,3vw,40px) 18px;
+  background:transparent;
   z-index:2;
+  border-bottom:2px solid rgba(255,255,255,0.18);
 }
 #dv-title { font-size:clamp(14px,1.8vw,24px); color:#ffdd66; letter-spacing:3px; flex:1; }
 #dv-count { font-size:clamp(10px,1.1vw,15px); color:#7799bb; letter-spacing:1px; }
@@ -740,18 +778,19 @@ body {
 #dv-close:hover { color:#ff8888; border-color:rgba(220,60,60,0.8); }
 /* deck viewer type sizes inherit global */
 #dv-grid-wrap {
-  flex:1; overflow-y:auto; width:100%;
+  flex:1; overflow-y:auto; width:100%; max-width:1100px;
   padding:clamp(14px,2.5vh,28px) clamp(16px,3vw,40px) clamp(16px,3vh,36px);
   display:flex; justify-content:flex-start;
   box-sizing:border-box;
 }
 #dv-grid {
-  display:flex; flex-wrap:wrap; gap:14px;
-  justify-content:flex-start; width:100%; max-width:1100px;
-  align-content:flex-start;
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap:10px;
+  width:100%; align-content:flex-start;
 }
 .dv-card-slot {
-  width:clamp(110px,9.5vw,145px); aspect-ratio:2/3;
+  width:100%; aspect-ratio:2/3;
   animation:shopItemIn 0.3s var(--sd,0s) both;
 }
 
@@ -1232,6 +1271,9 @@ body {
   #owned-items-panel { gap:3px !important; max-width:clamp(130px,20vw,180px) !important; right:6px !important; top:6px !important; }
   .owned-item-chip { font-size:7px !important; padding:2px 6px !important; }
 
+  /* ── Score overlay mobile ── */
+  #hand-score-overlay { top:clamp(60px,10vh,120px) !important; }
+  #hand-score-overlay > div { font-size:clamp(10px,2.5vw,16px) !important; padding:4px 12px !important; }
   /* ── Available hands panel ── */
   #hands-panel { top:4px !important; max-width:99vw !important; padding:3px 6px !important; gap:3px !important; }
   .hand-chip   { font-size:8px !important; padding:3px 8px !important; border-radius:10px !important; gap:3px !important; }
@@ -1267,7 +1309,7 @@ body {
   .between-title    { font-size:14px !important; margin-bottom:1px !important; }
   .between-subtitle { font-size:8px !important; margin-bottom:8px !important; }
   #route-pick-label { font-size:9px !important; }
-  #route-pokemon-row { gap:7px !important; margin-top:8px !important; padding-top:8px !important; }
+  #route-pokemon-row { gap:14px !important; margin-top:8px !important; padding-top:8px !important; }
   .card-visual      { border-width:1px !important; }
   #route-secondary-row { margin-top:8px !important; }
   #route-btn-row #route-confirm-btn { margin-top:10px !important; }
@@ -1327,7 +1369,7 @@ body {
             color-interpolation-filters="sRGB">
       <!-- Build a radial gradient as displacement map -->
       <!-- We use feTurbulence with very low freq as a static radial-like map -->
-      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.010"
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.015"
                     numOctaves="1" seed="5" result="warpMap"/>
       <feColorMatrix type="saturate" values="1.12" in="SourceGraphic" result="saturated"/>
       <feDisplacementMap in="saturated" in2="warpMap"
@@ -1366,7 +1408,7 @@ body {
   function frame(){
     t += 0.005;
     // Subtle scale oscillation: 5..8 range for gentle pulsing warp
-    const s = 12 + 4 * Math.sin(t);
+    const s = 22 + 8 * Math.sin(t * 0.7);
     disp.setAttribute('scale', s.toFixed(2));
     requestAnimationFrame(frame);
   }
@@ -2131,6 +2173,31 @@ function sortHand(mode) {
   renderHand();
 }
 
+function makeHcEl(card, i, isHidden) {
+  const el = document.createElement('div');
+  el.className = 'hc';
+  const tilt = getTilt(card.id || (card.name + i));
+  el.style.setProperty('--tilt', tilt + 'deg');
+  el.style.setProperty('--dx', '0px');
+  if(G_selected.has(i)) el.classList.add('selected-hand');
+  if(isHidden) { el.style.visibility = 'hidden'; el.style.pointerEvents = 'none'; }
+  const art = document.createElement('img');
+  art.className = 'hc-art'; art.draggable = false;
+  removeWhiteBg(card.fusionImg || card.img, url => { art.src = url; });
+  el.appendChild(art);
+  if(card.type1) el.appendChild(typeBadge(card.type1, 'hc-type1'));
+  if(card.type2) el.appendChild(typeBadge(card.type2, 'hc-type2'));
+  const ring = document.createElement('div'); ring.className = 'hc-select-ring';
+  el.appendChild(ring);
+  el.addEventListener('click', () => toggleHandSelect(i));
+  const floatDur = 2.8 + (i * 0.18) % 1.2;
+  const floatDelay = -(i * 0.55);
+  el.style.setProperty('--float-dur',   floatDur.toFixed(2) + 's');
+  el.style.setProperty('--float-delay', floatDelay.toFixed(2) + 's');
+  el.classList.add('hc-floating');
+  return el;
+}
+
 function renderHand(animateLast) {
   // Don't wipe the container while a reflow animation is in progress
   if(window._reflowAnimating) return;
@@ -2144,32 +2211,12 @@ function renderHand(animateLast) {
 
   G.hand.forEach((card, i) => {
     if(i >= 8) return;
-    const el = document.createElement('div');
-    el.className = 'hc';
-    const tilt = getTilt(card.id || (card.name + i));
-    el.style.setProperty('--tilt', tilt + 'deg');
-    if(G_selected.has(i)) el.classList.add('selected-hand');
-    if(_dealAnimating.has(i)) {
-      // This card is mid-animation — keep it invisible
-      el.style.visibility = 'hidden';
-      el.style.pointerEvents = 'none';
-    } else if(animateLast && i === n - 1) {
-      el.style.visibility = 'hidden';
-      el.style.pointerEvents = 'none';
-      const cardTilt = tilt;
-      const cardIndex = i;
-      requestAnimationFrame(() => dealFromDeckToHand(el, card, 'ours', cardTilt, cardIndex));
+    const hidden = _dealAnimating.has(i) || (animateLast && i === n - 1);
+    const el = makeHcEl(card, i, hidden);
+    if(!_dealAnimating.has(i) && animateLast && i === n - 1) {
+      const tilt = parseFloat(el.style.getPropertyValue('--tilt')) || 0;
+      requestAnimationFrame(() => dealFromDeckToHand(el, card, 'ours', tilt, i));
     }
-    const art = document.createElement('img');
-    art.className = 'hc-art'; art.draggable = false;
-    removeWhiteBg(card.fusionImg || card.img, url => { art.src = url; });
-    el.appendChild(art);
-    if(card.type1) el.appendChild(typeBadge(card.type1, 'hc-type1'));
-    if(card.type2) el.appendChild(typeBadge(card.type2, 'hc-type2'));
-    const ring = document.createElement('div');
-    ring.className = 'hc-select-ring';
-    el.appendChild(ring);
-    el.addEventListener('click', () => toggleHandSelect(i));
     hc.appendChild(el);
   });
   updateActionBar();
@@ -2177,12 +2224,22 @@ function renderHand(animateLast) {
 
 function toggleHandSelect(idx) {
   if(!G.ourTurn || G.animating) return;
-  if(G_selected.has(idx)) { G_selected.delete(idx); }
-  else {
-    if(G_selected.size >= 5) { const first = G_selected.values().next().value; G_selected.delete(first); }
+  const hcEls = [...document.querySelectorAll('#hand-container .hc')];
+
+  if(G_selected.has(idx)) {
+    G_selected.delete(idx);
+    hcEls[idx]?.classList.remove('selected-hand');
+  } else {
+    if(G_selected.size >= 5) {
+      const first = G_selected.values().next().value;
+      G_selected.delete(first);
+      hcEls[first]?.classList.remove('selected-hand');
+    }
     G_selected.add(idx);
+    hcEls[idx]?.classList.add('selected-hand');
   }
-  renderHand();
+  // Update action bar without rebuilding hand DOM
+  updateActionBar();
 }
 
 function updateActionBar() {
@@ -2286,60 +2343,153 @@ async function discardSelected() {
 }
 
 // ── HAND GAP CLOSE → DRAW ────────────────────────────────────────
+// Uses rAF loop to animate margin-left directly on alive cards.
+// flex-basis:auto is not CSS-transitionable; JS animation is the only way.
 async function animateHandReflow(deadIndices, callback) {
-  const CLOSE_DUR  = 340;  // ms — gap-close
-  const DRAW_DELAY = 130;  // ms — pause before drawing
+  const CLOSE_DUR  = 320;  // ms
+  const DRAW_DELAY = 110;  // ms pause before draw
 
   const hcContainer = document.getElementById('hand-container');
   if(!hcContainer) { if(callback) callback(); return; }
 
   const allEls = [...hcContainer.querySelectorAll('.hc')];
-  if(allEls.length === 0) { if(callback) callback(); return; }
+  if(!allEls.length) { if(callback) callback(); return; }
 
-  const deadSet  = new Set(deadIndices);
-  const deadEls  = allEls.filter((_, i) => deadSet.has(i));
-  if(deadEls.length === 0) { if(callback) callback(); return; }
+  const deadSet = new Set(deadIndices);
+  const deadEls  = allEls.filter((_,i) => deadSet.has(i));
+  const aliveEls = allEls.filter((_,i) => !deadSet.has(i));
+  if(!deadEls.length) { if(callback) callback(); return; }
 
-  // ── Guard: prevent renderHand from wiping our animated elements ──
   window._reflowAnimating = true;
 
-  // Ensure dead elements are fully hidden and have explicit width set
+  // STEP 1: snapshot where every alive card currently is on screen
+  const oldPositions = new Map();
+  aliveEls.forEach(el => {
+    oldPositions.set(el, el.getBoundingClientRect().left);
+  });
+
+  // STEP 2: collapse dead cards to zero width instantly (no transition)
+  // Use inline display:none equivalent: width=0, overflow=hidden, margin=0
   deadEls.forEach(el => {
     el.style.transition = 'none';
-    el.style.opacity = '0';
+    el.style.width = '0px';
+    el.style.minWidth = '0px';
+    el.style.margin = '0px';
+    el.style.padding = '0px';
     el.style.overflow = 'hidden';
-    el.style.pointerEvents = 'none';
+    el.style.opacity = '0';
     el.style.flexShrink = '0';
-    // Read current computed width so browser locks it in before we animate
-    el.style.width = el.getBoundingClientRect().width + 'px';
-    el.style.minWidth = '0';
-    el.style.boxSizing = 'border-box';
+    el.style.flexGrow = '0';
   });
 
-  // Force a layout — browser must commit the explicit widths above
+  // STEP 3: force layout — browser now positions alive cards in new gapless positions
   void hcContainer.getBoundingClientRect();
 
-  // One rAF so the explicit widths are painted before we start transition
-  await new Promise(r => requestAnimationFrame(r));
-
-  // Now animate dead slots collapsing.
-  // justify-content:center means alive cards slide smoothly toward centre.
-  const ease = `cubic-bezier(0.4, 0, 0.15, 1)`;
-  deadEls.forEach(el => {
-    el.style.transition = `width ${CLOSE_DUR}ms ${ease}, margin ${CLOSE_DUR}ms ${ease}`;
-    el.style.width  = '0px';
-    el.style.margin = '0';
+  // STEP 4: read new positions of alive cards
+  const newPositions = new Map();
+  aliveEls.forEach(el => {
+    newPositions.set(el, el.getBoundingClientRect().left);
   });
 
-  await new Promise(r => setTimeout(r, CLOSE_DUR + DRAW_DELAY));
+  // STEP 5: for each alive card, offset its --dx so it appears at OLD position
+  aliveEls.forEach(el => {
+    const oldX = oldPositions.get(el);
+    const newX = newPositions.get(el);
+    const dx = oldX - newX; // positive = card needs to appear further right
+    if(Math.abs(dx) > 0.5) {
+      el.style.transition = 'none';
+      el.style.setProperty('--dx', dx + 'px');
+    }
+  });
 
-  // Remove guard, then let caller mutate G.hand and draw
+  // STEP 6: force paint of the offset state
+  void hcContainer.getBoundingClientRect();
+  await new Promise(r => requestAnimationFrame(r));
+  await new Promise(r => requestAnimationFrame(r));
+
+  // STEP 7: animate --dx to 0 using rAF loop (CSS custom props aren't transitionable directly)
+  const startTime = performance.now();
+  const startDx = new Map();
+  aliveEls.forEach(el => {
+    startDx.set(el, parseFloat(el.style.getPropertyValue('--dx') || '0'));
+  });
+  const easeInOut = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+
+  await new Promise(resolve => {
+    function frame(now) {
+      const t = Math.min(1, (now - startTime) / CLOSE_DUR);
+      const e = easeInOut(t);
+      aliveEls.forEach(el => {
+        const dx0 = startDx.get(el) || 0;
+        if(Math.abs(dx0) > 0.5) {
+          el.style.setProperty('--dx', (dx0 * (1 - e)) + 'px');
+        }
+      });
+      if(t < 1) requestAnimationFrame(frame);
+      else {
+        aliveEls.forEach(el => el.style.setProperty('--dx', '0px'));
+        resolve();
+      }
+    }
+    requestAnimationFrame(frame);
+  });
+
+  // Switch to flex-start + padding-left to anchor hand on left.
+  // This prevents recentring jitter when cards are appended one by one.
+  const SHIFT_DUR = 220;
+  const hcWrap = document.getElementById('hand-container');
+  if(hcWrap && deadIndices.length > 0) {
+    const sampleHc = hcWrap.querySelector('.hc');
+    const cardW = sampleHc ? sampleHc.getBoundingClientRect().width : 120;
+    const slotW = cardW - 24;
+
+    // Current alive card count after gap-close
+    const aliveCount = hcWrap.querySelectorAll('.hc').length;
+    // Real width: N cards each cardW wide, overlapping by 24px between each pair
+    const currentHandW = aliveCount * cardW - Math.max(0, aliveCount - 1) * 24;
+    // padding-left that centres this hand
+    const centredPad = Math.max(0, (window.innerWidth - currentHandW) / 2);
+    // Shift left = only 1 full slot width (not per-dead-card — that was too much)
+    const shiftPx = Math.round(deadIndices.length * slotW * 0.5);
+    // Cap shift so we never push past the viewport edge
+    const cappedShift = Math.min(shiftPx, centredPad - 20);
+    const targetPad = Math.max(20, centredPad - cappedShift);
+
+    window._handShiftDone = false;
+    // Switch to flex-start with centred padding (visually same as center)
+    hcWrap.style.justifyContent = 'flex-start';
+    hcWrap.style.paddingLeft = centredPad + 'px';
+    // Force layout
+    void hcWrap.getBoundingClientRect();
+
+    // Animate padding-left down to targetPad = shifts hand left
+    hcWrap.style.transition = `padding-left ${SHIFT_DUR}ms cubic-bezier(0.4,0,0.2,1)`;
+    hcWrap.style.paddingLeft = targetPad + 'px';
+    await new Promise(r => setTimeout(r, SHIFT_DUR + DRAW_DELAY));
+    hcWrap.style.transition = '';
+    window._handShiftDone = true;
+    // Leave flex-start + paddingLeft in place during draw
+    // autoFillHand will call resetHandLayout() when done
+  } else {
+    await new Promise(r => setTimeout(r, DRAW_DELAY));
+  }
   window._reflowAnimating = false;
   if(callback) callback();
 }
 
+// Reset hand-container back to centred layout after draw completes
+function resetHandLayout() {
+  const hc = document.getElementById('hand-container');
+  if(!hc) return;
+  hc.style.transition = 'padding-left 200ms ease';
+  hc.style.justifyContent = '';
+  hc.style.paddingLeft = '';
+  setTimeout(() => { if(hc) hc.style.transition = ''; }, 220);
+}
+
 function renderHandWithNewCards() {
-  renderHand(true);
+  // Cards already appended by autoFillHand — just sync state
+  renderHand(false);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2657,14 +2807,26 @@ function autoFillHand(callback) {
   const needed = Math.max(0, 8 - G.hand.length);
   const toDraw = Math.min(needed, G.deck.length);
   if(toDraw === 0) { if(callback) setTimeout(callback, 100); return; }
+  const hc = document.getElementById('hand-container');
   for(let i = 0; i < toDraw; i++) {
     setTimeout(() => {
-      if(G.deck.length && G.hand.length < 8) {
-        G.hand.push({...G.deck.shift()});
+      if(!G.deck.length || G.hand.length >= 8) return;
+      const card = {...G.deck.shift()};
+      G.hand.push(card);
+      const cardIndex = G.hand.length - 1;
+      if(hc && !window._reflowAnimating) {
+        // Append ONE new card element directly — no DOM rebuild, no recentre jitter
+        _dealAnimating.add(cardIndex);
+        const el = makeHcEl(card, cardIndex, true); // hidden until ghost lands
+        hc.appendChild(el);
+        requestAnimationFrame(() => dealFromDeckToHand(el, card, 'ours',
+          parseFloat(el.style.getPropertyValue('--tilt')) || 0, cardIndex));
+      } else {
+        // Fallback: full rebuild (shouldn't happen during discard flow)
         renderHand(true);
       }
-      if(i === toDraw - 1 && callback) setTimeout(callback, 300);
-    }, i * 140);
+      if(i === toDraw - 1) { setTimeout(() => { resetHandLayout(); if(callback) setTimeout(callback, 100); }, 350); }
+    }, i * 160);
   }
 }
 
@@ -3070,8 +3232,8 @@ let _dvSort = 'species';
 
 const DV_HIDE_IDS = [
   'run-panel','hd-row','hands-panel','hand-container','balatro-bottom',
-  'owned-items-panel','deck-ours','game-hud'
-  // Note: between-screens are NOT hidden here — their own open/close manages them
+  'owned-items-panel','deck-ours','game-hud',
+  'route-screen','daycare-screen','shop-screen','route-map-screen'
 ];
 
 function openDeckViewer() {
@@ -3342,7 +3504,7 @@ async function dealFromDeckToHand(destEl, card, side, cardTilt, cardIndex) {
   ghostWrap.style.cssText = `position:fixed;left:${deckCx}px;top:${deckCy}px;z-index:999;pointer-events:none;`;
   const ghost = document.createElement('div');
   ghost.className = 'deal-ghost';
-  ghost.style.cssText = `position:relative;width:${nominalW}px;aspect-ratio:2/3;transform-origin:50% 50%;transform-style:preserve-3d;border-radius:8px;overflow:hidden;background:#0a0a18;border:2px solid #334488;box-shadow:0 4px 20px rgba(0,0,0,0.85);will-change:transform,opacity;perspective:800px;`;
+  ghost.style.cssText = `position:relative;width:${nominalW}px;aspect-ratio:2/3;transform-origin:50% 110%;transform-style:preserve-3d;border-radius:8px;overflow:hidden;background:#0a0a18;border:2px solid #334488;box-shadow:0 4px 20px rgba(0,0,0,0.85);will-change:transform,opacity;perspective:800px;`;
 
   // Back face
   const back = document.createElement('div');
@@ -3384,49 +3546,67 @@ async function dealFromDeckToHand(destEl, card, side, cardTilt, cardIndex) {
   await d(110);
   frontFace.style.opacity = '1'; back.style.opacity = '0';
 
-  // Phase 2: arc to hand — re-read LIVE card position just before flying
-  // Find the live .hc at cardIndex in the CURRENT DOM (not stale destEl)
+  // Phase 2: wait for hand shift to finish before reading card position
+  // (shift animates padding-left — reading during animation gives stale/wrong coords)
+  if(window._handShiftDone === false) {
+    await new Promise(r => {
+      const check = () => window._handShiftDone ? r() : requestAnimationFrame(check);
+      requestAnimationFrame(check);
+    });
+    // Extra frame for layout to settle
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  }
   const liveTarget = document.querySelectorAll('#hand-container .hc')[cardIndex];
   const tRect = liveTarget ? liveTarget.getBoundingClientRect() : null;
   const handCx = tRect ? tRect.left + tRect.width/2  : deckCx + 200;
-  const handCy = tRect ? tRect.top  + tRect.height/2 : deckCy - 100;
+  const handCy = tRect ? tRect.top  + tRect.height/2  : deckCy - 100;
 
-  ghostWrap.style.transition = [
-    `left 0.34s cubic-bezier(0.3,0,0.5,1)`,
-    `top 0.34s cubic-bezier(0.55,0,0.35,1)`
-  ].join(',');
-  ghost.style.transition = `transform 0.34s cubic-bezier(0.2,0.8,0.3,1)`;
-  ghostWrap.style.left = handCx+'px';
-  ghostWrap.style.top  = handCy+'px';
+  // Arc animation: LEFT first, then curve UP and land in hand
+  // We use a quadratic bezier arc so the card travels in a smooth curve.
+  // Control point is above and to the left of the midpoint — creates a natural throw arc.
+  ghost.style.transition = `transform 0.42s cubic-bezier(0.2,0.8,0.3,1)`;
   ghost.style.transform = `rotate(${fanRot}deg) scale(1.0)`;
-  await d(340);
 
-  // Phase 3: reveal live card while ghost is still on top (hides pop-in)
+  const startLeft = parseFloat(ghostWrap.style.left);
+  const startTop  = parseFloat(ghostWrap.style.top);
+  // Control point: horizontally 80% toward destination, vertically 200px above start
+  const ctrlX = startLeft + (handCx - startLeft) * 0.5;
+  const ctrlY = Math.min(startTop, handCy) - 180; // arc peak above both points
+  const ARC_DUR = 400;
+  const ease = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease-in-out
+
+  await new Promise(resolve => {
+    const t0 = performance.now();
+    function arcFrame(now) {
+      const t = Math.min(1, (now - t0) / ARC_DUR);
+      const e = ease(t);
+      // Quadratic bezier: P = (1-e)²·start + 2(1-e)e·ctrl + e²·end
+      const inv = 1 - e;
+      const x = inv*inv*startLeft + 2*inv*e*ctrlX + e*e*handCx;
+      const y = inv*inv*startTop  + 2*inv*e*ctrlY  + e*e*handCy;
+      ghostWrap.style.left = x + 'px';
+      ghostWrap.style.top  = y + 'px';
+      if(t < 1) requestAnimationFrame(arcFrame);
+      else resolve();
+    }
+    requestAnimationFrame(arcFrame);
+  });
+
+  // Phase 3: snap reveal — remove ghost, show live card instantly
   if(cardIndex !== undefined) _dealAnimating.delete(cardIndex);
   const liveHcEls2 = document.querySelectorAll('#hand-container .hc');
   const liveCard = (cardIndex !== undefined) ? liveHcEls2[cardIndex] : null;
   if(liveCard) {
-    // Kill all transitions so the card appears instantly with no animation jank
     liveCard.style.transition = 'none';
     liveCard.style.animation = 'none';
-    // Force the exact same transform state as the ghost (tilt already correct via CSS var)
     liveCard.style.setProperty('--dx', '0px');
     liveCard.style.visibility = '';
     liveCard.style.pointerEvents = '';
-    // Re-enable transitions after ONE paint so hover/select animations work again
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if(liveCard) {
-          liveCard.style.transition = '';
-          liveCard.style.animation = '';
-        }
-      });
-    });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if(liveCard) { liveCard.style.transition = ''; liveCard.style.animation = ''; }
+    }));
   }
-  // Ghost fades out on top — live card already rendered beneath it (no gap)
-  ghost.style.transition = 'opacity 0.10s ease';
-  ghost.style.opacity = '0';
-  await d(110);
+  // Remove ghost immediately — live card is at same position
   ghostWrap.remove();
 }
 
@@ -3679,7 +3859,19 @@ async function advanceTrainer() {
 function setTrainerPortrait(trainer) {
   // Update panel portrait
   const tcImg=document.getElementById('tc-opp-img');
-  if(tcImg){tcImg.style.opacity='0';setTimeout(()=>{tcImg.src=trainer.img;tcImg.style.transition='opacity 0.4s';tcImg.style.opacity='1';},300);}
+  if(tcImg){
+    // Set src immediately (preload), fade in once loaded
+    tcImg.style.opacity='0';
+    tcImg.style.transition='none';
+    const newSrc = trainer.img;
+    if(tcImg.src !== newSrc) {
+      tcImg.onload = () => { tcImg.style.transition='opacity 0.3s ease'; tcImg.style.opacity='1'; tcImg.onload=null; };
+      tcImg.onerror = () => { tcImg.style.opacity='1'; tcImg.onerror=null; };
+      tcImg.src = newSrc;
+    } else {
+      tcImg.style.transition='opacity 0.3s ease'; tcImg.style.opacity='1';
+    }
+  }
   // Update name + HP in panel
   const tcName=document.getElementById('tc-opp-name'); if(tcName) tcName.textContent=trainer.name.toUpperCase();
   const trainerName=document.getElementById('rp-trainer-name'); if(trainerName) trainerName.textContent=trainer.name.toUpperCase();
@@ -4238,7 +4430,7 @@ function buildDeckOf(coreDexNums, fillDexNums, target) {
 
 const STARTER_DECKS = [
   {
-    id:'species', name:'SPECIES MASTERY', emoji:'⚡', accent:'#ffdd00',
+    id:'species', name:'SPECIES', emoji:'⚡', accent:'#ffdd00',
     subtitle:'Everything revolves around one Pokémon',
     ability:'Species hands scale massively',
     weakness:'Vulnerable if bosses punish one species',
@@ -4246,7 +4438,7 @@ const STARTER_DECKS = [
     buildDeck:()=>buildDeckOf([25,26,172, 19,20, 16,17,18], [13,14,15, 43,44,45, 23,24], 30)
   },
   {
-    id:'type', name:'TYPE SPECIALIST', emoji:'🔥', accent:'#ff4422',
+    id:'type', name:'TYPE', emoji:'🔥', accent:'#ff4422',
     subtitle:'Build a mono-type team',
     ability:'Consistent type-hand scoring',
     weakness:'Harder to make rare hands',
@@ -4254,7 +4446,7 @@ const STARTER_DECKS = [
     buildDeck:()=>buildDeckOf([4,5,6, 37,38, 58,59, 126, 136], [21,22, 23,24, 19,20], 30)
   },
   {
-    id:'evolution', name:'EVOLUTION DECK', emoji:'🌿', accent:'#44bb44',
+    id:'evolution', name:'EVOLUTION', emoji:'🌿', accent:'#44bb44',
     subtitle:'Raise your Pokémon',
     ability:'Evolution upgrades scale stronger',
     weakness:'Slow early game',
@@ -4262,7 +4454,7 @@ const STARTER_DECKS = [
     buildDeck:()=>buildDeckOf([1,2,3, 4,5,6, 7,8,9], [16,17,18, 19,20, 39,40, 60,61,62], 30)
   },
   {
-    id:'network', name:'FUSION NETWORK', emoji:'🔗', accent:'#44aaff',
+    id:'network', name:'NETWORK', emoji:'🔗', accent:'#44aaff',
     subtitle:'Build connections',
     ability:'Cards score for linking together',
     weakness:'Needs specific combinations',
@@ -4270,7 +4462,7 @@ const STARTER_DECKS = [
     buildDeck:()=>buildDeckOf([6,9,3,94,25,131,149,143], [55,65,68,112,54,80,131,117], 30)
   },
   {
-    id:'mutation', name:'MUTATION DECK', emoji:'🌀', accent:'#cc44ff',
+    id:'mutation', name:'MUTATION', emoji:'🌀', accent:'#cc44ff',
     subtitle:'Chaos creates power',
     ability:'The stranger the combo, the stronger',
     weakness:'Cannot chase predictable hands',
@@ -4283,6 +4475,8 @@ let G_starterDeckId = null;
 let _selectedDeckEl = null;
 
 function initStarterDeckScreen() {
+  // Use Erika's grass palette for starter screen
+  if(window._balatroBg) window._balatroBg.setGym(3);
   const screen = document.getElementById('starter-screen');
   if(!screen) return;
   screen.classList.remove('hidden','exiting');
@@ -4304,28 +4498,22 @@ function initStarterDeckScreen() {
     const pile=document.createElement('div');
     pile.className='deck-pile-chooser';
     pile.style.animationDelay=(i*0.08)+'s';
-    // Stack container
+    // Single card — no stack behind it
     const stack=document.createElement('div');
     stack.className='dpc-stack';
-    // All cards face-up with slightly different fusions, random rotation/offset
-    const rng=(s)=>{ let x=Math.sin(s*9301+49297)*233280; return x-Math.floor(x); };
-    const deckFusions = deck.buildDeck().slice(0,4);
-    for(let b=3;b>=0;b--){
-      const bc=document.createElement('div');
-      bc.className='dpc-card';
-      const ang=(rng(i*10+b)-0.5)*12;
-      const ox=(rng(i*10+b+1)-0.5)*12;
-      const oy=(rng(i*10+b+2)-0.5)*10;
-      bc.style.transform=`rotate(${ang}deg) translate(${ox}px,${oy}px)`;
-      bc.style.zIndex=b;
-      bc.style.filter = b===3 ? 'none' : `brightness(${0.55+b*0.12})`;
-      const bImg=document.createElement('img');
-      bImg.draggable=false;
-      const bFusion = deckFusions[b] || deckFusions[0];
-      removeWhiteBg(bFusion.fusionImg||bFusion.img, url=>{ bImg.src=url; });
-      bc.appendChild(bImg);
-      stack.appendChild(bc);
-    }
+    const deckFusions = deck.buildDeck().slice(0,1);
+    const bc=document.createElement('div');
+    bc.className='dpc-card dpc-top';
+    bc.style.zIndex=1;
+    // Float animation phase offset per deck
+    bc.style.setProperty('--float-dur', (3.0 + i*0.22).toFixed(2)+'s');
+    bc.style.setProperty('--float-delay', (-i*0.6).toFixed(2)+'s');
+    const bImg=document.createElement('img');
+    bImg.draggable=false;
+    const bFusion = deckFusions[0];
+    removeWhiteBg(bFusion.fusionImg||bFusion.img, url=>{ bImg.src=url; });
+    bc.appendChild(bImg);
+    stack.appendChild(bc);
     pile.appendChild(stack);
     // Label — wrap at first space
     const label=document.createElement('div');
@@ -4954,6 +5142,50 @@ function startNextBattle() {
     <div id="dds-cards"></div>
   </div>
 </div>
+
+
+<script>
+// ── 3D CARD TILT ON HOVER ────────────────────────────────────────
+(function(){
+  const MAX_TILT = 8; // max degrees
+  function applyTilt(el, e) {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width/2;
+    const cy = r.top  + r.height/2;
+    const dx = (e.clientX - cx) / (r.width/2);  // -1 to 1
+    const dy = (e.clientY - cy) / (r.height/2); // -1 to 1
+    // rotateY: positive = right edge comes toward viewer when cursor is right
+    // rotateX: negative = top edge comes toward viewer when cursor is at top
+    const ry =  dx * MAX_TILT;
+    const rx = -dy * MAX_TILT;
+    el.style.setProperty('--tilt3d-rx', rx.toFixed(2) + 'deg');
+    el.style.setProperty('--tilt3d-ry', ry.toFixed(2) + 'deg');
+  }
+  function resetTilt(el) {
+    el.style.setProperty('--tilt3d-rx', '0deg');
+    el.style.setProperty('--tilt3d-ry', '0deg');
+  }
+  // Apply to hand cards, field cards, and visual cards
+  function attachTilt(el) {
+    el.addEventListener('mousemove', e => applyTilt(el, e), {passive:true});
+    el.addEventListener('mouseleave', () => resetTilt(el), {passive:true});
+  }
+  // MutationObserver: auto-attach tilt to any new .hc, .pc, .card-visual
+  const obs = new MutationObserver(muts => {
+    muts.forEach(m => m.addedNodes.forEach(n => {
+      if(n.nodeType !== 1) return;
+      const matches = [
+        ...(n.classList?.contains('hc') || n.classList?.contains('pc') || n.classList?.contains('card-visual') ? [n] : []),
+        ...n.querySelectorAll('.hc,.pc,.card-visual,.dpc-top')
+      ];
+      matches.forEach(attachTilt);
+    }));
+  });
+  obs.observe(document.body, {childList:true, subtree:true});
+  // Attach to already-existing cards
+  document.querySelectorAll('.hc,.pc,.card-visual,.dpc-top').forEach(attachTilt);
+})();
+</script>
 
 </body>
 </html>
