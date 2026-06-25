@@ -16,7 +16,7 @@ body {
   overflow:hidden;
 }
 /* Portrait handled by JS checkOrientationStep() */
-#gameWrap { position:fixed; inset:0; width:100vw; height:100vh; overflow:hidden; }
+#gameWrap { filter: url(#crt-warp-filter) saturate(1.06) contrast(1.04); position:fixed; inset:0; width:100vw; height:100vh; overflow:hidden; }
 .bf-zone {
   position:fixed; display:flex; align-items:center;
   justify-content:center; gap:1.2%; pointer-events:none;
@@ -121,6 +121,43 @@ body {
 }
 
 /* ── DISCARD ANIMATION ── */
+
+/* ── HAND REFLOW ANIMATION ── */
+.hc.hc-reflow {
+  transition: transform 0.22s cubic-bezier(0.3,0,0.3,1),
+              left 0.22s cubic-bezier(0.3,0,0.3,1) !important;
+}
+.hc.hc-deal-in {
+  animation: hcDealIn 0.28s cubic-bezier(0.15,1.1,0.35,1) both;
+}
+@keyframes hcDealIn {
+  from { transform: rotate(var(--tilt,0deg)) translateX(60px) scale(0.85); opacity:0; }
+  to   { transform: rotate(var(--tilt,0deg)) scale(1); opacity:1; }
+}
+
+
+/* ── HAND REFLOW ANIMATION ── */
+#hand-container {
+  transition: none; /* individual cards handle transitions */
+}
+.hc.hc-moving {
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1),
+              margin 0.25s cubic-bezier(0.4,0,0.2,1) !important;
+}
+@keyframes hcSlideInRight {
+  from {
+    opacity: 0;
+    transform: rotate(var(--tilt,0deg)) translateX(80px) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(var(--tilt,0deg));
+  }
+}
+.hc.hc-new-card {
+  animation: hcSlideInRight 0.28s cubic-bezier(0.15,1.1,0.35,1) both;
+}
+
 @keyframes discardFly {
   0%   { transform:rotate(var(--tilt,0deg)) translateY(0) rotateY(0deg) rotateZ(0deg) scale(1); opacity:1; }
   15%  { transform:rotate(var(--tilt,0deg)) translateY(-18px) translateX(30px) rotateY(-12deg) rotateZ(-4deg) scale(1.05); opacity:1; }
@@ -147,7 +184,7 @@ body {
   width:clamp(110px,9.2vw,148px); flex:0 0 auto; margin:0 -12px;
   aspect-ratio:2/3; position:relative;
   cursor:pointer; pointer-events:all;
-  transform: rotate(var(--tilt,0deg));
+  transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px));
   transform-origin: 50% 110%;
   transition:transform 0.18s ease, box-shadow 0.18s, z-index 0s;
   border-radius:8px; overflow:hidden;
@@ -540,17 +577,18 @@ body {
 #deck-detail-screen {
   position:fixed; inset:0; z-index:2100;
   display:none; flex-direction:column; align-items:center;
-  justify-content:flex-start; overflow-y:auto;
+  justify-content:flex-start; overflow:hidden;
   font-family:'PokemonClassic',monospace;
-  padding:clamp(20px,4vh,50px) clamp(16px,3vw,40px) clamp(16px,3vh,36px);
-  gap:clamp(16px,2.5vh,28px);
-  background:rgba(4,5,16,0.0); /* canvas shows through */
+  padding:0;
+  background:rgba(4,5,16,0.0);
 }
 #deck-detail-screen.open { display:flex; }
 #dds-header {
   display:flex; align-items:center; gap:16px;
-  width:100%; max-width:1100px; margin-bottom:clamp(12px,2vh,24px);
-  flex-shrink:0;
+  width:100%; max-width:1100px; flex-shrink:0;
+  padding:clamp(28px,4vh,52px) clamp(16px,3vw,40px) 14px;
+  background:transparent;
+  z-index:2;
 }
 #dds-back-btn {
   font-family:'PokemonClassic',monospace; font-size:clamp(9px,0.9vw,13px);
@@ -578,14 +616,18 @@ body {
 /* Info + cards two-column layout */
 #dds-body {
   display:flex; gap:clamp(20px,3vw,40px);
-  width:100%; max-width:1100px; align-items:flex-start;
-  flex:1;
+  align-items:flex-start;
+  flex:1; overflow-y:auto;
+  padding:clamp(16px,2vh,24px) clamp(16px,3vw,40px) clamp(20px,3vh,40px);
+  width:100%;
 }
 #dds-info {
   flex-shrink:0; width:clamp(200px,22vw,300px);
   background:rgba(8,10,26,0.92); border:2px solid rgba(50,70,140,0.5);
   border-radius:10px; padding:clamp(12px,1.5vw,20px);
   display:flex; flex-direction:column; gap:10px;
+  position:sticky; top:0; align-self:flex-start;
+  max-height:calc(100vh - 80px); overflow-y:auto;
 }
 .dds-info-stat { display:flex; flex-direction:column; gap:3px; }
 .dds-info-label { font-size:clamp(7px,0.68vw,9px); color:#445566; letter-spacing:2px; text-transform:uppercase; }
@@ -600,7 +642,7 @@ body {
   align-content:flex-start;
 }
 .dds-card-slot {
-  width:clamp(78px,8vw,110px); aspect-ratio:2/3;
+  width:clamp(70px,7vw,100px); aspect-ratio:2/3;
   animation:shopItemIn 0.3s var(--sd,0s) both;
 }
 
@@ -614,6 +656,12 @@ body {
   /* Scale up slightly to hide border artifacts */
   transform:perspective(1800px) rotateX(0.8deg) scale(1.02);
 }
+
+/* game-crt-wrap removed */
+
+/* ── NO SCROLLBARS anywhere ── */
+* { scrollbar-width:none; -ms-overflow-style:none; }
+::-webkit-scrollbar { display:none; width:0; height:0; }
 /* ── BOTTOM BAR tweaks ── */
 /* Sort row — bigger, white */
 #sort-row {
@@ -658,15 +706,19 @@ body {
 #deck-viewer {
   position:fixed; inset:0; z-index:1500; display:none;
   flex-direction:column; align-items:center; justify-content:flex-start;
-  padding:clamp(16px,3vh,36px) clamp(16px,3vw,40px);
-  background:transparent; overflow-y:auto;
+  padding:0;
+  background:transparent; overflow:hidden;
   font-family:'PokemonClassic',monospace;
   pointer-events:all;
 }
 #deck-viewer.open { display:flex; }
 #dv-header {
   display:flex; align-items:center; gap:16px;
-  margin-bottom:16px; flex-shrink:0; width:100%; max-width:1100px;
+  flex-shrink:0; width:100%;
+  padding:clamp(28px,4vh,52px) clamp(16px,3vw,40px) 14px;
+  background:rgba(4,5,16,0.96);
+  backdrop-filter:blur(4px);
+  z-index:2;
 }
 #dv-title { font-size:clamp(14px,1.8vw,24px); color:#ffdd66; letter-spacing:3px; flex:1; }
 #dv-count { font-size:clamp(10px,1.1vw,15px); color:#7799bb; letter-spacing:1px; }
@@ -687,12 +739,19 @@ body {
 }
 #dv-close:hover { color:#ff8888; border-color:rgba(220,60,60,0.8); }
 /* deck viewer type sizes inherit global */
+#dv-grid-wrap {
+  flex:1; overflow-y:auto; width:100%;
+  padding:clamp(14px,2.5vh,28px) clamp(16px,3vw,40px) clamp(16px,3vh,36px);
+  display:flex; justify-content:flex-start;
+  box-sizing:border-box;
+}
 #dv-grid {
   display:flex; flex-wrap:wrap; gap:14px;
   justify-content:flex-start; width:100%; max-width:1100px;
+  align-content:flex-start;
 }
 .dv-card-slot {
-  width:clamp(130px,12vw,170px); aspect-ratio:2/3;
+  width:clamp(110px,9.5vw,145px); aspect-ratio:2/3;
   animation:shopItemIn 0.3s var(--sd,0s) both;
 }
 
@@ -883,7 +942,7 @@ body {
 .deck-card:nth-child(2){ transform:translate(0px,-1px) rotate(0.5deg); }
 .deck-card:nth-child(3){ transform:translate(1px,0px) rotate(0deg); }
 .deck-count {
-  position:absolute; bottom:-22px; right:0; left:auto; text-align:right;
+  position:absolute; top:-32px; right:0; left:auto; text-align:right;
   font-family:'PokemonClassic',monospace; font-size:clamp(11px,1.1vw,15px);
   color:#8899bb; pointer-events:none; white-space:nowrap;
 }
@@ -1259,100 +1318,62 @@ body {
 <canvas id="balatro-bg" style="position:fixed;inset:0;z-index:-2;pointer-events:none;width:100vw;height:100vh;opacity:1;"></canvas>
 <div id="balatro-overlay" style="position:fixed;inset:0;z-index:-1;background:rgba(4,6,18,0.78);pointer-events:none;"></div>
 
-<!-- ── CRT SCREEN EFFECT OVERLAY ── -->
-<canvas id="crt-canvas" style="position:fixed;inset:0;width:100vw;height:100vh;z-index:9000;pointer-events:none;"></canvas>
+
+<!-- ── CRT EFFECT: SVG warp + CSS scanlines ── -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden;">
+  <defs>
+    <!-- Animated displacement for barrel warp on ALL content -->
+    <filter id="crt-warp-filter" x="-4%" y="-4%" width="108%" height="108%"
+            color-interpolation-filters="sRGB">
+      <!-- Build a radial gradient as displacement map -->
+      <!-- We use feTurbulence with very low freq as a static radial-like map -->
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.010"
+                    numOctaves="1" seed="5" result="warpMap"/>
+      <feColorMatrix type="saturate" values="1.12" in="SourceGraphic" result="saturated"/>
+      <feDisplacementMap in="saturated" in2="warpMap"
+                         scale="14" xChannelSelector="R" yChannelSelector="G"
+                         result="warped" id="crt-displacement"/>
+    </filter>
+  </defs>
+</svg>
+
+<!-- Scanline overlay (CSS only, no WebGL needed) -->
+<div id="crt-scanlines" style="
+  position:fixed;inset:0;z-index:8999;pointer-events:none;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.18) 0px,
+    rgba(0,0,0,0.18) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+  mix-blend-mode:multiply;
+"></div>
+
+<style>
+/* CRT warp applied to full-screen pseudo-element via canvas approach */
+/* body filter breaks position:fixed, so we use a different method */
+</style>
+
 <script>
+/* Animate the barrel warp displacement scale for subtle pulsing */
 (function(){
-  const canvas = document.getElementById('crt-canvas');
-  const gl = canvas.getContext('webgl', {alpha:true, premultipliedAlpha:false});
-  if(!gl){ console.warn('CRT: no webgl'); return; }
-
-  const vert = `
-attribute vec2 position;
-varying vec2 vUv;
-void main(){
-  vUv = position * 0.5 + 0.5;
-  gl_Position = vec4(position, 0.0, 1.0);
-}`;
-
-  const frag = `
-precision mediump float;
-varying vec2 vUv;
-uniform float iTime;
-uniform vec2 iResolution;
-
-void main(){
-  vec2 uv = vUv;
-
-  // ── Scanlines ─────────────────────────────────────────
-  // Each physical pixel row alternates slightly — creates ~2px bands
-  float scanlineY = uv.y * iResolution.y * 0.5;
-  float sl = sin(scanlineY * 3.14159265 * 2.0);
-  // Dark bands every 2 pixels, 28% opacity max
-  float scanline = 0.28 * (0.5 - 0.5 * sl);
-
-  // ── Slow rolling horizontal bright line (TV interlace) ─
-  float rollSpeed = iTime * 0.12;
-  float rollY = fract(uv.y - rollSpeed);
-  float roll = 0.04 * smoothstep(0.0, 0.02, rollY) * smoothstep(0.05, 0.02, rollY);
-
-  // ── Subtle RGB fringe near scanline edges ─────────────
-  float fringe = 0.012 * abs(sin(scanlineY * 3.14159265 * 2.0 + 0.3));
-
-  // ── Phosphor flicker at monitor refresh rate ──────────
-  float flicker = 0.015 * sin(iTime * 72.0);
-
-  // ── Very rare horizontal noise streak ────────────────
-  float noise = fract(sin(floor(uv.y * iResolution.y * 0.5) * 127.1 + iTime * 0.6) * 43758.5);
-  float streak = step(0.997, noise) * 0.07;
-
-  // Compose: dark overlay with varying alpha
-  float alpha = scanline + flicker + streak - roll;
-  alpha = clamp(alpha, 0.0, 0.55);
-
-  // Very slight warm tint to simulate phosphor
-  gl_FragColor = vec4(0.01, 0.0, 0.02, alpha);
-}`;
-
-  function compile(type, src){
-    const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); return s;
-  }
-  const prog=gl.createProgram();
-  gl.attachShader(prog,compile(gl.VERTEX_SHADER,vert));
-  gl.attachShader(prog,compile(gl.FRAGMENT_SHADER,frag));
-  gl.linkProgram(prog); gl.useProgram(prog);
-
-  const buf=gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
-  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
-  const loc=gl.getAttribLocation(prog,'position');
-  gl.enableVertexAttribArray(loc);
-  gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-
-  const uTime=gl.getUniformLocation(prog,'iTime');
-  const uRes=gl.getUniformLocation(prog,'iResolution');
-
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-  function resize(){
-    canvas.width=window.innerWidth; canvas.height=window.innerHeight;
-    gl.viewport(0,0,canvas.width,canvas.height);
-  }
-  window.addEventListener('resize',resize); resize();
-
-  let start=performance.now();
+  const filter = document.getElementById('crt-warp-filter');
+  if(!filter) return;
+  const disp = filter.querySelector('feDisplacementMap');
+  if(!disp) return;
+  let t = 0;
   function frame(){
-    const t=(performance.now()-start)*0.001;
-    gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.uniform1f(uTime,t);
-    gl.uniform2f(uRes,canvas.width,canvas.height);
-    gl.drawArrays(gl.TRIANGLES,0,3);
+    t += 0.005;
+    // Subtle scale oscillation: 5..8 range for gentle pulsing warp
+    const s = 12 + 4 * Math.sin(t);
+    disp.setAttribute('scale', s.toFixed(2));
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 })();
 </script>
+
 
 
 <script>
@@ -1761,9 +1782,10 @@ document.addEventListener('keydown',e=>{
 
 
 <div id="item-popover"></div>
+<div id="gold-display" style="display:none;position:fixed;z-index:112;right:clamp(14px,1.5vw,24px);bottom:clamp(16px,2.5vh,36px);font-family:'PokemonClassic',monospace;font-size:clamp(14px,1.5vw,20px);color:#ffcc22;font-weight:bold;text-shadow:0 0 10px rgba(255,200,0,0.6),1px 1px 0 #000;letter-spacing:1px;white-space:nowrap;background:linear-gradient(180deg,#5a3d00,#3a2600);border:2px solid #aa7700;border-radius:7px;padding:5px 13px;box-shadow:0 3px 0 #221400,0 0 12px rgba(180,120,0,0.3);">$4</div>
+
 <div id="owned-items-panel" style="display:none;">
   <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;">
-    <span id="gold-display" style="font-family:'PokemonClassic',monospace;font-size:clamp(11px,1.1vw,15px);color:#ffcc22;font-weight:bold;text-shadow:0 0 8px rgba(255,200,0,0.5);white-space:nowrap;">$4</span>
     <span id="owned-items-label">Items</span>
   </div>
 </div>
@@ -2110,6 +2132,8 @@ function sortHand(mode) {
 }
 
 function renderHand(animateLast) {
+  // Don't wipe the container while a reflow animation is in progress
+  if(window._reflowAnimating) return;
   if(G.hand && G.hand.length && typeof renderHandsPanel === 'function') setTimeout(renderHandsPanel, 0);
   const hc = document.getElementById('hand-container');
   if(!hc) return;
@@ -2218,79 +2242,104 @@ async function discardSelected() {
 
   const selectedIndices = Array.from(G_selected).sort((a,b) => a-b);
   const hcEls = [...document.querySelectorAll('#hand-container .hc')];
+  const FLY_DUR = 0.52, STAGGER = 0.07;
 
-  const CARD_DUR = 0.58;
-  const STAGGER  = 0.09;
-
-  // For each selected card: clone a fixed ghost at exact position, animate it, hide original
+  // Phase 1: fly selected cards off screen (3D Balatro style)
   selectedIndices.forEach((idx, n) => {
     const orig = hcEls[idx];
     if(!orig) return;
     const rect = orig.getBoundingClientRect();
-    // Create ghost at exact same screen position
     const ghost = document.createElement('div');
-    ghost.style.cssText = [
-      `position:fixed`,
-      `left:${rect.left}px`, `top:${rect.top}px`,
-      `width:${rect.width}px`, `height:${rect.height}px`,
-      `border-radius:8px`, `overflow:hidden`,
-      `background:#0a0a18`, `border:2px solid rgba(50,70,140,0.5)`,
-      `z-index:500`,
-      `pointer-events:none`,
-      `perspective:600px`,
-      `transform-style:preserve-3d`,
-      `transform:rotate(${(parseFloat(orig.style.getPropertyValue('--tilt'))||0)}deg)`,
-      `box-shadow:0 4px 14px rgba(0,0,0,0.8)`,
-      `will-change:transform,opacity`
-    ].join(';');
-    // Copy the art image into the ghost
+    ghost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:8px;overflow:hidden;background:#0a0a18;border:2px solid rgba(50,70,140,0.5);z-index:500;pointer-events:none;perspective:600px;transform-style:preserve-3d;transform:rotate(${parseFloat(orig.style.getPropertyValue('--tilt'))||0}deg);box-shadow:0 4px 14px rgba(0,0,0,0.8);will-change:transform,opacity;`;
     const artImg = orig.querySelector('.hc-art');
-    if(artImg) {
-      const gi = document.createElement('img');
-      gi.src = artImg.src; gi.draggable = false;
-      gi.style.cssText = `position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);height:100%;width:auto;object-fit:contain;image-rendering:pixelated;`;
-      ghost.appendChild(gi);
-    }
-    // Copy type badges
-    orig.querySelectorAll('.hc-type1,.hc-type2').forEach(b=>{
-      ghost.appendChild(b.cloneNode(true));
-    });
+    if(artImg){ const gi=document.createElement('img');gi.src=artImg.src;gi.draggable=false;gi.style.cssText=`position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);height:100%;width:auto;object-fit:contain;image-rendering:pixelated;`;ghost.appendChild(gi); }
+    orig.querySelectorAll('.hc-type1,.hc-type2').forEach(b=>ghost.appendChild(b.cloneNode(true)));
     document.body.appendChild(ghost);
-    // Hide original immediately
     orig.style.opacity = '0';
     orig.style.pointerEvents = 'none';
-
-    // Start animation after stagger delay
-    const delay_ms = n * STAGGER * 1000;
     setTimeout(() => {
       const tilt = parseFloat(orig.style.getPropertyValue('--tilt')) || 0;
-      ghost.style.transition = `transform ${CARD_DUR}s cubic-bezier(0.25,0,0.6,0.8), opacity ${CARD_DUR}s ease`;
-      ghost.style.transform = [
-        `rotate(${tilt - 15}deg)`,
-        `translateX(${window.innerWidth * 0.7 + 200}px)`,
-        `translateY(-60px)`,
-        `rotateY(-70deg)`,
-        `rotateZ(-18deg)`,
-        `scale(0.45)`
-      ].join(' ');
+      ghost.style.transition = `transform ${FLY_DUR}s cubic-bezier(0.25,0,0.6,0.8), opacity ${FLY_DUR}s ease`;
+      ghost.style.transform = `rotate(${tilt-15}deg) translateX(${window.innerWidth*0.6+200}px) translateY(-50px) rotateY(-65deg) rotateZ(-16deg) scale(0.45)`;
       ghost.style.opacity = '0';
-      setTimeout(() => ghost.remove(), CARD_DUR * 1000 + 50);
-    }, delay_ms);
+      setTimeout(() => ghost.remove(), FLY_DUR*1000+50);
+    }, n * STAGGER * 1000);
   });
 
-  // Wait for all animations to finish
-  await delay(Math.round((CARD_DUR + selectedIndices.length * STAGGER) * 1000) + 80);
+  const flyWait = Math.round((FLY_DUR + selectedIndices.length*STAGGER)*1000) + 60;
+  await delay(flyWait);
 
-  // Update game state
-  const toRemove = Array.from(G_selected).sort((a,b) => b-a);
-  toRemove.forEach(i => { if(G.hand[i]) G.hand.splice(i,1); });
-  G_selected.clear();
-  _activeHandType = null;
+  // Phase 2: animate gap close — G.hand is STILL intact (no re-render will fire)
+  // Only after the animation do we mutate G.hand and draw new cards
+  await animateHandReflow(selectedIndices, () => {
+    const toRemove = Array.from(G_selected).sort((a,b) => b-a);
+    toRemove.forEach(i => { if(G.hand[i]) G.hand.splice(i,1); });
+    G_selected.clear();
+    _activeHandType = null;
+    G.animating = false;
+    renderHandsPanel();
+    autoFillHand(() => {
+      renderHandWithNewCards();
+      updateRunPanel();
+    });
+  });
+}
 
-  G.animating = false;
-  renderHand();
-  renderHandsPanel();
-  autoFillHand(() => { renderHand(); updateRunPanel(); });
+// ── HAND GAP CLOSE → DRAW ────────────────────────────────────────
+async function animateHandReflow(deadIndices, callback) {
+  const CLOSE_DUR  = 340;  // ms — gap-close
+  const DRAW_DELAY = 130;  // ms — pause before drawing
+
+  const hcContainer = document.getElementById('hand-container');
+  if(!hcContainer) { if(callback) callback(); return; }
+
+  const allEls = [...hcContainer.querySelectorAll('.hc')];
+  if(allEls.length === 0) { if(callback) callback(); return; }
+
+  const deadSet  = new Set(deadIndices);
+  const deadEls  = allEls.filter((_, i) => deadSet.has(i));
+  if(deadEls.length === 0) { if(callback) callback(); return; }
+
+  // ── Guard: prevent renderHand from wiping our animated elements ──
+  window._reflowAnimating = true;
+
+  // Ensure dead elements are fully hidden and have explicit width set
+  deadEls.forEach(el => {
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.overflow = 'hidden';
+    el.style.pointerEvents = 'none';
+    el.style.flexShrink = '0';
+    // Read current computed width so browser locks it in before we animate
+    el.style.width = el.getBoundingClientRect().width + 'px';
+    el.style.minWidth = '0';
+    el.style.boxSizing = 'border-box';
+  });
+
+  // Force a layout — browser must commit the explicit widths above
+  void hcContainer.getBoundingClientRect();
+
+  // One rAF so the explicit widths are painted before we start transition
+  await new Promise(r => requestAnimationFrame(r));
+
+  // Now animate dead slots collapsing.
+  // justify-content:center means alive cards slide smoothly toward centre.
+  const ease = `cubic-bezier(0.4, 0, 0.15, 1)`;
+  deadEls.forEach(el => {
+    el.style.transition = `width ${CLOSE_DUR}ms ${ease}, margin ${CLOSE_DUR}ms ${ease}`;
+    el.style.width  = '0px';
+    el.style.margin = '0';
+  });
+
+  await new Promise(r => setTimeout(r, CLOSE_DUR + DRAW_DELAY));
+
+  // Remove guard, then let caller mutate G.hand and draw
+  window._reflowAnimating = false;
+  if(callback) callback();
+}
+
+function renderHandWithNewCards() {
+  renderHand(true);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2874,6 +2923,15 @@ function openRouteScreen() {
     });
     row.appendChild(wrap);
   });
+  // Auto-select middle card
+  const cards = row.querySelectorAll('.card-visual');
+  const midIdx = Math.floor(cards.length / 2);
+  if(cards[midIdx]) {
+    const midCard = pickedDex.map((_, i) => i === midIdx).findIndex(x=>x);
+    // Build an allCards reference to find the fusion for midIdx
+    // Just trigger click on the middle card element
+    setTimeout(() => { if(cards[midIdx]) cards[midIdx].click(); }, 50);
+  }
   document.getElementById('route-screen').classList.add('visible');
 }
 
@@ -2985,7 +3043,7 @@ function closeInterludeScreens() {
 
 function hideGameUIForInterlude() {
   _popoverEnabled = false; hideItemPopover();
-  ['hand-container','game-hud','deck-ours','balatro-bottom','run-panel','hd-row','owned-items-panel','hands-panel'].forEach(id=>{
+  ['hand-container','game-hud','deck-ours','balatro-bottom','run-panel','hd-row','owned-items-panel','hands-panel','gold-display'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('bf-ours') && (document.getElementById('bf-ours').innerHTML='');
@@ -3046,6 +3104,7 @@ function closeDeckViewer() {
 }
 
 function renderDeckViewer() {
+  // Ensure grid is inside scroll wrapper
   const grid = document.getElementById('dv-grid');
   const count = document.getElementById('dv-count');
   if(!grid) return;
@@ -3272,16 +3331,18 @@ async function dealFromDeckToHand(destEl, card, side, cardTilt, cardIndex) {
   if(topCard){ topCard.classList.add('popping'); topCard.addEventListener('animationend',()=>topCard.classList.remove('popping'),{once:true}); }
 
   const dr = deckEl.getBoundingClientRect();
-  const er = destEl.getBoundingClientRect();
   const deckCx = dr.left+dr.width/2, deckCy = dr.top+dr.height/2;
-  const handCx = er.left+er.width/2,  handCy = er.top+er.height/2;
+  // Note: we DON'T read destEl rect here — it may become stale.
+  // We'll read it right before the arc (after the flip).
+  // Use a nominal card width for the ghost.
+  const nominalW = document.querySelector('#hand-container .hc')?.getBoundingClientRect().width || 110;
 
   // Build ghost with full card art + 3D perspective
   const ghostWrap = document.createElement('div');
-  ghostWrap.style.cssText = `position:fixed;left:${deckCx}px;top:${deckCy}px;z-index:999;pointer-events:none;perspective:500px;`;
+  ghostWrap.style.cssText = `position:fixed;left:${deckCx}px;top:${deckCy}px;z-index:999;pointer-events:none;`;
   const ghost = document.createElement('div');
   ghost.className = 'deal-ghost';
-  ghost.style.cssText = `position:relative;width:${er.width||60}px;aspect-ratio:2/3;transform-origin:50% 50%;transform-style:preserve-3d;border-radius:8px;overflow:hidden;background:#0a0a18;border:2px solid #334488;box-shadow:0 4px 20px rgba(0,0,0,0.85);will-change:transform,opacity;`;
+  ghost.style.cssText = `position:relative;width:${nominalW}px;aspect-ratio:2/3;transform-origin:50% 50%;transform-style:preserve-3d;border-radius:8px;overflow:hidden;background:#0a0a18;border:2px solid #334488;box-shadow:0 4px 20px rgba(0,0,0,0.85);will-change:transform,opacity;perspective:800px;`;
 
   // Back face
   const back = document.createElement('div');
@@ -3317,36 +3378,56 @@ async function dealFromDeckToHand(destEl, card, side, cardTilt, cardIndex) {
     await d(350); ghostWrap.style.opacity='0'; await d(100); ghostWrap.remove(); return;
   }
 
-  // Phase 1: flip from back to front (90deg → 0deg)
-  ghost.style.transition = `transform 0.18s ease-in`;
-  ghost.style.transform   = `rotateY(0deg) scale(1.0)`;
-  await d(100);
+  // Phase 1: flip from back to front — start rotating toward final fan tilt
+  ghost.style.transition = `transform 0.20s ease-in`;
+  ghost.style.transform   = `rotate(${fanRot * 0.2}deg) rotateY(0deg) scale(1.0)`;
+  await d(110);
   frontFace.style.opacity = '1'; back.style.opacity = '0';
 
-  // Phase 2: arc from deck position to hand
+  // Phase 2: arc to hand — re-read LIVE card position just before flying
+  // Find the live .hc at cardIndex in the CURRENT DOM (not stale destEl)
+  const liveTarget = document.querySelectorAll('#hand-container .hc')[cardIndex];
+  const tRect = liveTarget ? liveTarget.getBoundingClientRect() : null;
+  const handCx = tRect ? tRect.left + tRect.width/2  : deckCx + 200;
+  const handCy = tRect ? tRect.top  + tRect.height/2 : deckCy - 100;
+
   ghostWrap.style.transition = [
-    `left 0.32s cubic-bezier(0.3,0,0.5,1)`,
-    `top 0.32s cubic-bezier(0.55,0,0.35,1)`
+    `left 0.34s cubic-bezier(0.3,0,0.5,1)`,
+    `top 0.34s cubic-bezier(0.55,0,0.35,1)`
   ].join(',');
-  ghost.style.transition = `transform 0.32s cubic-bezier(0.2,0.8,0.3,1)`;
+  ghost.style.transition = `transform 0.34s cubic-bezier(0.2,0.8,0.3,1)`;
   ghostWrap.style.left = handCx+'px';
   ghostWrap.style.top  = handCy+'px';
-  ghost.style.transform = `rotateY(${fanRot*0.3}deg) scale(1.0)`;
-  await d(300);
+  ghost.style.transform = `rotate(${fanRot}deg) scale(1.0)`;
+  await d(340);
 
-  // Phase 3: land into hand
-  ghost.style.transition = `transform 0.12s cubic-bezier(0.4,0,0.6,1), opacity 0.1s ease 0.05s`;
-  ghost.style.transform  = `rotateY(${fanRot}deg) scale(1.0)`;
-  await d(80);
-  ghost.style.opacity = '0';
-  await d(90);
+  // Phase 3: reveal live card while ghost is still on top (hides pop-in)
   if(cardIndex !== undefined) _dealAnimating.delete(cardIndex);
+  const liveHcEls2 = document.querySelectorAll('#hand-container .hc');
+  const liveCard = (cardIndex !== undefined) ? liveHcEls2[cardIndex] : null;
+  if(liveCard) {
+    // Kill all transitions so the card appears instantly with no animation jank
+    liveCard.style.transition = 'none';
+    liveCard.style.animation = 'none';
+    // Force the exact same transform state as the ghost (tilt already correct via CSS var)
+    liveCard.style.setProperty('--dx', '0px');
+    liveCard.style.visibility = '';
+    liveCard.style.pointerEvents = '';
+    // Re-enable transitions after ONE paint so hover/select animations work again
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if(liveCard) {
+          liveCard.style.transition = '';
+          liveCard.style.animation = '';
+        }
+      });
+    });
+  }
+  // Ghost fades out on top — live card already rendered beneath it (no gap)
+  ghost.style.transition = 'opacity 0.10s ease';
+  ghost.style.opacity = '0';
+  await d(110);
   ghostWrap.remove();
-  // Reveal the card by index in the LIVE DOM (destEl may be stale)
-  const liveHcEls = document.querySelectorAll('#hand-container .hc');
-  const targetHcEl = (cardIndex !== undefined && liveHcEls[cardIndex]) ? liveHcEls[cardIndex] : null;
-  if(targetHcEl) { targetHcEl.style.visibility = ''; targetHcEl.style.pointerEvents = ''; }
-  else liveHcEls.forEach(el => { if(el.style.visibility === 'hidden') { el.style.visibility = ''; el.style.pointerEvents = ''; } });
 }
 
 // ── COORDINATE FIX FOR PORTRAIT MODE ─────────────────────────
@@ -3852,7 +3933,7 @@ function updateRunPanel() {
   if(discardsEl) discardsEl.textContent = G.discardsLeft;
   // Gold display above deck
   const goldDisp = document.getElementById('gold-display');
-  if(goldDisp) { goldDisp.textContent = '$' + (G.gold || 0); goldDisp.style.display=''; }
+  if(goldDisp) { goldDisp.textContent = '$' + (G.gold || 0); goldDisp.style.display='block'; }
 }
 
 function initHpTooltips(){
@@ -4112,7 +4193,7 @@ function beginBattle(starterCard) {
   if(bb) bb.style.display='flex';
   const rp = document.getElementById('run-panel');
   if(rp){ rp.style.display='flex'; setTimeout(updateRunPanel, 200); }
-  // gold-display is inside owned-items-panel now
+  const gdEl=document.getElementById('gold-display'); if(gdEl) gdEl.style.display='block';
   const hdr = document.getElementById('hd-row');
   if(hdr) hdr.style.display='flex';
   _popoverEnabled = true;
@@ -4495,7 +4576,7 @@ let _shopActiveTab = 'All';
 
 function openShop() {
   _popoverEnabled = false; hideItemPopover();
-  ['hand-container','game-hud','deck-ours','balatro-bottom','run-panel','hd-row','owned-items-panel','hands-panel'].forEach(id=>{
+  ['hand-container','game-hud','deck-ours','balatro-bottom','run-panel','hd-row','owned-items-panel','hands-panel','gold-display'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('bf-ours') && (document.getElementById('bf-ours').innerHTML='');
@@ -4738,7 +4819,7 @@ function startNextBattle() {
   if(bb2) bb2.style.display='flex';
   const rp2 = document.getElementById('run-panel');
   if(rp2){ rp2.style.display='flex'; setTimeout(updateRunPanel, 200); }
-  // gold-display is inside owned-items-panel now
+  const gdEl=document.getElementById('gold-display'); if(gdEl) gdEl.style.display='block';
   const hdr2 = document.getElementById('hd-row');
   if(hdr2) hdr2.style.display='flex';
   _popoverEnabled = true;
@@ -4842,7 +4923,7 @@ function startNextBattle() {
     </div>
     <button id="dv-close" onclick="closeDeckViewer()">✕ CLOSE</button>
   </div>
-  <div id="dv-grid"></div>
+  <div id="dv-grid-wrap"><div id="dv-grid"></div></div>
 </div>
 
 
