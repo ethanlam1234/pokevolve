@@ -15,15 +15,7 @@ body {
   display:flex; align-items:center; justify-content:center;
   overflow:hidden;
 }
-/* Portrait: show rotate message, hide game */
-@media (orientation: portrait) and (max-width: 900px) {
-  #rotate-overlay { display:flex !important; }
-  #gameWrap, #starter-screen, #starter-particles,
-  #run-panel, #hd-row, #hands-panel, #hand-container,
-  #balatro-bottom, #gold-display, #owned-items-panel,
-  #deck-ours, #deck-viewer, #shop-screen, #route-screen,
-  #daycare-screen, .between-screen { display:none !important; }
-}
+/* Portrait handled by JS checkOrientationStep() */
 #gameWrap { position:fixed; inset:0; width:100vw; height:100vh; overflow:hidden; }
 .bf-zone {
   position:fixed; display:flex; align-items:center;
@@ -221,26 +213,28 @@ body {
   pointer-events:none; overflow:visible;
   font-family:'PokemonClassic',monospace;
 }
-/* Trainer portrait */
-#rp-portrait {
-  position:relative; flex-shrink:0;
-  height:clamp(150px,18vw,240px); border-radius:8px;
-  overflow:hidden; background:#0a0a18;
+/* Trainer portrait — two separate blocks */
+#rp-portrait { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+#rp-portrait-img-wrap {
+  width:100%; aspect-ratio:3/2; overflow:hidden; flex-shrink:0;
+  border-radius:8px; background:#0a0a18;
   border:2px solid rgba(50,70,140,0.6);
-  box-shadow:0 4px 16px rgba(0,0,0,0.7);
+  box-shadow:0 4px 14px rgba(0,0,0,0.7);
 }
-#rp-portrait img {
-  width:100%; height:100%; object-fit:cover; object-position:center 18%;
-  image-rendering:pixelated; display:block; filter:brightness(0.88);
+#rp-portrait-img-wrap img {
+  width:100%; height:100%; object-fit:cover; object-position:center 10%;
+  image-rendering:pixelated; display:block; filter:brightness(0.9);
 }
 #rp-portrait-overlay {
-  position:absolute; bottom:0; left:0; right:0;
-  background:linear-gradient(transparent,rgba(6,8,20,0.95));
-  padding:10px 12px 8px;
+  background:rgba(8,10,26,0.94);
+  border:2px solid rgba(50,70,140,0.5);
+  border-radius:8px; padding:8px 10px;
+  box-shadow:0 3px 10px rgba(0,0,0,0.6);
+  flex-shrink:0;
 }
-#rp-trainer-name { font-size:clamp(15px,1.6vw,22px); color:#fff; letter-spacing:1px; text-shadow:1px 1px 0 #000; }
-#rp-trainer-hp   { font-size:clamp(12px,1.25vw,17px); color:#ff9999; letter-spacing:1px; margin-top:2px; }
-#rp-hp-bar-wrap  { height:4px; background:rgba(255,30,30,0.15); border-radius:2px; overflow:hidden; margin-top:3px; }
+#rp-trainer-name { font-size:clamp(11px,1.2vw,16px); color:#fff; letter-spacing:1px; text-shadow:1px 1px 0 #000; }
+#rp-trainer-hp   { font-size:clamp(9px,0.95vw,13px); color:#ff9999; letter-spacing:1px; margin-top:2px; }
+#rp-hp-bar-wrap  { height:4px; background:rgba(255,30,30,0.15); border-radius:2px; overflow:hidden; margin-top:5px; }
 #rp-hp-bar       { height:100%; background:linear-gradient(90deg,#ff3322,#ff6644); border-radius:2px; transition:width 0.4s ease; }
 /* Hero power block */
 #rp-hero-power {
@@ -503,7 +497,7 @@ body {
 
 /* ── DECK VIEWER SCREEN ── */
 #deck-viewer {
-  position:fixed; inset:0; z-index:800; display:none;
+  position:fixed; inset:0; z-index:1500; display:none;
   flex-direction:column; align-items:center; justify-content:flex-start;
   padding:clamp(16px,3vh,36px) clamp(16px,3vw,40px);
   background:transparent; overflow-y:auto;
@@ -930,7 +924,7 @@ body {
 #rms-info { flex-shrink:0; padding:8px 20px 10px; text-align:center; color:#aabbcc; font-size:clamp(8px,0.9vw,12px); letter-spacing:1px; min-height:36px; width:100%; border-top:1px solid rgba(80,100,160,0.3); }
 
 /* ── SHOP ── */
-#shop-screen { position:fixed; inset:0; z-index:900; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow-y:auto; gap:0; font-family:'PokemonClassic',monospace; pointer-events:all; background:transparent; padding:clamp(16px,3vh,40px) 0; }
+#shop-screen { position:fixed; inset:0; z-index:900; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow-y:auto; gap:0; font-family:'PokemonClassic',monospace; pointer-events:all; background:transparent; padding:clamp(16px,3vh,40px) 0; touch-action:pan-y; }
 #shop-screen.hidden { display:none !important; }
 #shop-title { font-size:clamp(16px,2.2vw,30px); color:#ffdd66; letter-spacing:3px; text-shadow:2px 2px 0 #000,0 0 20px rgba(255,210,0,0.4); margin-bottom:4px; }
 #shop-subtitle { font-size:clamp(9px,1vw,14px); color:#7799bb; letter-spacing:2px; margin-bottom:20px; }
@@ -941,7 +935,7 @@ body {
 /* Shop gold display */
 #shop-gold { font-size:clamp(14px,1.6vw,22px); color:#ffcc22; letter-spacing:2px; margin-bottom:14px; text-shadow:0 0 8px rgba(255,200,0,0.4); }
 /* Item grid */
-#shop-items-grid { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; max-width:min(90vw,900px); }
+#shop-items-grid { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; max-width:min(90vw,900px); touch-action:pan-y; }
 .shop-item {
   width:clamp(130px,13vw,180px); background:rgba(8,10,26,0.95);
   border:2px solid rgba(50,70,140,0.6); border-radius:10px;
@@ -997,7 +991,8 @@ body {
 
   /* ── Left panel ── */
   #run-panel  { width:clamp(110px,20vw,150px) !important; gap:4px !important; left:6px !important; top:6px !important; }
-  #rp-portrait { height:clamp(80px,16vw,120px) !important; }
+  #rp-hand-preview { display:none !important; }
+  #rp-portrait-img-wrap { aspect-ratio:1/1 !important; }
   #rp-trainer-name  { font-size:9px !important; }
   #rp-trainer-hp    { font-size:8px !important; }
   #rp-hero-power    { padding:6px 8px !important; }
@@ -1277,10 +1272,20 @@ void main(){
 
 
 <!-- Portrait rotation overlay -->
-<div id="rotate-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#080c14;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-family:'PokemonClassic',monospace;color:#ffdd66;text-align:center;pointer-events:all;">
-  <div style="font-size:48px;animation:rotateHint 2s ease infinite;">📱</div>
-  <div style="font-size:14px;letter-spacing:2px;">ROTATE YOUR DEVICE</div>
-  <div style="font-size:9px;color:#7799bb;letter-spacing:1px;margin-top:4px;">RIFTBORN REQUIRES LANDSCAPE</div>
+<div id="rotate-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#080c14;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-family:'PokemonClassic',monospace;color:#ffdd66;text-align:center;pointer-events:all;">
+  <!-- Step 1: rotate -->
+  <div id="rot-step1">
+    <div style="font-size:52px;animation:rotateHint 2s ease infinite;display:block;margin-bottom:14px;">📱</div>
+    <div style="font-size:14px;letter-spacing:2px;">ROTATE YOUR DEVICE</div>
+    <div style="font-size:9px;color:#7799bb;letter-spacing:1px;margin-top:6px;">RIFTBORN REQUIRES LANDSCAPE</div>
+  </div>
+  <!-- Step 2: fullscreen (shown after rotation) -->
+  <div id="rot-step2" style="display:none;flex-direction:column;align-items:center;gap:14px;">
+    <div style="font-size:52px;animation:fullscreenPulse 1.4s ease infinite;display:block;">⛶</div>
+    <div style="font-size:13px;letter-spacing:2px;">GO FULL SCREEN</div>
+    <div style="font-size:9px;color:#7799bb;letter-spacing:1px;margin-top:2px;">TAP FOR BEST EXPERIENCE</div>
+    <button onclick="tryFullscreen()" style="margin-top:8px;background:linear-gradient(180deg,#665500,#443300);border:2px solid #aa8800;border-radius:8px;color:#ffdd66;font-family:'PokemonClassic',monospace;font-size:11px;padding:10px 24px;cursor:pointer;letter-spacing:2px;">FULL SCREEN ⛶</button>
+  </div>
 </div>
 <style>
 @keyframes rotateHint {
@@ -1288,7 +1293,50 @@ void main(){
   40%{transform:rotate(90deg);}
   60%{transform:rotate(90deg);}
 }
+@keyframes fullscreenPulse {
+  0%,100%{transform:scale(1);opacity:1;}
+  50%{transform:scale(1.2);opacity:0.7;}
+}
 </style>
+<script>
+// Rotate → fullscreen flow
+function checkOrientationStep() {
+  const overlay = document.getElementById('rotate-overlay');
+  if(!overlay) return;
+  const isPortrait = window.innerHeight > window.innerWidth;
+  const isMobile = Math.min(window.screen.width, window.screen.height) < 600;
+  if(!isMobile) { overlay.style.display='none'; return; }
+  if(isPortrait) {
+    overlay.style.display='flex';
+    document.getElementById('rot-step1').style.display='block';
+    document.getElementById('rot-step2').style.display='none';
+  } else {
+    // Landscape — show fullscreen step
+    overlay.style.display='flex';
+    document.getElementById('rot-step1').style.display='none';
+    document.getElementById('rot-step2').style.display='flex';
+  }
+}
+function tryFullscreen() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+  if(req) {
+    req.call(el).then(() => {
+      document.getElementById('rotate-overlay').style.display='none';
+    }).catch(() => {
+      document.getElementById('rotate-overlay').style.display='none';
+    });
+  } else {
+    document.getElementById('rotate-overlay').style.display='none';
+  }
+}
+document.addEventListener('DOMContentLoaded', checkOrientationStep);
+window.addEventListener('orientationchange', ()=>setTimeout(checkOrientationStep, 400));
+window.addEventListener('resize', checkOrientationStep);
+document.addEventListener('fullscreenchange', ()=>{
+  if(document.fullscreenElement) document.getElementById('rotate-overlay').style.display='none';
+});
+</script>
 
 <div id="gameWrap" style="position:fixed;inset:0;width:100vw;height:100vh;overflow:hidden;">
   <div id="board-outline" style="display:none"></div>
@@ -1396,7 +1444,9 @@ document.addEventListener('keydown',e=>{
 <div id="run-panel" style="display:none;">
   <!-- Trainer portrait -->
   <div id="rp-portrait">
-    <img id="tc-opp-img" src="https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/tc-opp-img.png" alt="">
+    <div id="rp-portrait-img-wrap">
+      <img id="tc-opp-img" src="https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/tc-opp-img.png" alt="">
+    </div>
     <div id="rp-portrait-overlay">
       <div id="rp-trainer-name">BROCK</div>
       <div id="rp-trainer-hp">❤️ 20 / 20</div>
@@ -1664,8 +1714,8 @@ function initGame() {
   }
   // Ensure hands panel renders after all cards are in hand
   setTimeout(()=>{ if(typeof renderHandsPanel==='function') renderHandsPanel(); }, 150+DRAW_N*180+100);
-  setTimeout(()=>{}, 150+DRAW*180+100);
 }
+// initGame draw complete
 
 function buildUI() {
   const wrap = document.getElementById('gameWrap');
@@ -1838,6 +1888,17 @@ function updateActionBar() {
       const result = evaluateHand(selectedCards);
       nameEl.textContent = result?.name || '—';
       nameEl.className = (result && result.name !== 'No Hand') ? '' : 'no-hand';
+      // Sync active chip on hands panel
+      const detectedName = result?.name;
+      if(detectedName && detectedName !== 'No Hand') {
+        if(_activeHandType !== detectedName) {
+          _activeHandType = detectedName;
+          renderHandsPanel();
+        }
+      } else if(sel < 2) {
+        _activeHandType = null;
+        renderHandsPanel();
+      }
     }
   }
   updatePlayHandBtn();
@@ -2561,15 +2622,36 @@ function makeCardVisual(card, sizeCss) {
 // ── DECK VIEWER ───────────────────────────────────────────────────
 let _dvSort = 'species';
 
+const DV_HIDE_IDS = [
+  'run-panel','hd-row','hands-panel','hand-container','balatro-bottom',
+  'gold-display','owned-items-panel','deck-ours','game-hud',
+  'shop-screen','route-screen','daycare-screen','route-map-screen'
+];
+
 function openDeckViewer() {
   const viewer = document.getElementById('deck-viewer');
   if(!viewer) return;
+  // Hide everything except bg canvas and its overlay
+  DV_HIDE_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) { el.dataset.dvWasHidden = el.style.display; el.style.display = 'none'; }
+  });
   viewer.classList.add('open');
   renderDeckViewer();
 }
 
 function closeDeckViewer() {
-  document.getElementById('deck-viewer')?.classList.remove('open');
+  const viewer = document.getElementById('deck-viewer');
+  if(!viewer) return;
+  viewer.classList.remove('open');
+  // Restore all hidden elements
+  DV_HIDE_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el && el.dataset.dvWasHidden !== undefined) {
+      el.style.display = el.dataset.dvWasHidden || '';
+      delete el.dataset.dvWasHidden;
+    }
+  });
 }
 
 function renderDeckViewer() {
@@ -2743,6 +2825,8 @@ function showHandsPanel() {
   const panel = document.getElementById('hands-panel');
   if(panel) panel.style.display = 'flex';
   renderHandsPanel();
+  // Re-render after draw animation completes (8 cards × 180ms + buffer)
+  setTimeout(renderHandsPanel, 1700);
 }
 
 function hideHandsPanel() {
@@ -3971,8 +4055,8 @@ function renderShop() {
     `;
     if(!owned && canAfford) {
       el.addEventListener('click', () => buyItem(item, el));
+      el.addEventListener('touchend', (e) => { e.preventDefault(); buyItem(item, el); }, {passive:false});
     }
-    // Popover for description
     attachPopover(el, item.desc);
     grid.appendChild(el);
   });
