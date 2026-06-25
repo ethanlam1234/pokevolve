@@ -975,6 +975,122 @@ body {
 .shop-hc-wrap .hc-type1 { left:auto !important; right:3px !important; }
 #shop-skip-btn { margin-top:24px; background:rgba(30,30,50,0.8); border:1px solid #334; border-radius:6px; color:#667; font-family:'PokemonClassic',monospace; font-size:clamp(8px,0.9vw,12px); padding:7px 18px; cursor:pointer; letter-spacing:1px; transition:all 0.15s; }
 #shop-skip-btn:hover { color:#99aacc; border-color:#556; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MOBILE — landscape phones/tablets (height ≤ 500px OR narrow landscape)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media screen and (max-height: 520px),
+       screen and (max-width: 960px) and (orientation: landscape) {
+
+  /* ── Cards ── */
+  .hc { width:clamp(68px,10.5vw,100px) !important; margin:0 -7px !important; }
+  .hc:hover { transform:rotate(var(--tilt,0deg)) translateY(-16px) scale(1.07) !important; }
+  .hc.selected-hand { transform:rotate(var(--tilt,0deg)) translateY(-20px) scale(1.05) !important; }
+  #hand-container { bottom:clamp(90px,13vh,130px) !important; }
+
+  /* ── Bottom bar ── */
+  #sort-label { font-size:9px !important; }
+  .sort-btn   { font-size:9px !important; padding:4px 9px !important; }
+  .action-btn { font-size:9px !important; padding:6px 16px !important; min-width:0 !important; }
+  #action-row { gap:4px !important; padding:3px 8px 7px !important; }
+  #sort-row   { padding:2px 8px !important; }
+
+  /* ── Left panel ── */
+  #run-panel  { width:clamp(110px,20vw,150px) !important; gap:4px !important; left:6px !important; top:6px !important; }
+  #rp-portrait { height:clamp(80px,16vw,120px) !important; }
+  #rp-trainer-name  { font-size:9px !important; }
+  #rp-trainer-hp    { font-size:8px !important; }
+  #rp-hero-power    { padding:6px 8px !important; }
+  .rp-hp-name       { font-size:8px !important; }
+  .rp-hp-desc       { font-size:7px !important; }
+  #rp-hand-preview  { padding:6px 8px !important; }
+  #rp-hand-preview-label { font-size:7px !important; }
+  #rp-hand-name     { font-size:9px !important; }
+
+  /* ── Hands / Discards ── */
+  #hd-row { bottom:8px !important; left:6px !important; gap:5px !important; }
+  .rp-hd-box  { padding:5px 9px !important; min-width:50px !important; border-radius:6px !important; }
+  .rp-hd-val  { font-size:20px !important; }
+  .rp-hd-label { font-size:7px !important; }
+
+  /* ── Gold + deck ── */
+  #gold-display { font-size:12px !important; padding:3px 9px !important; border-width:2px !important; }
+  #deck-ours { width:clamp(68px,10.5vw,100px) !important; bottom:clamp(52px,8vh,90px) !important; right:8px !important; }
+
+  /* ── Owned items ── */
+  #owned-items-panel { gap:3px !important; max-width:clamp(130px,20vw,180px) !important; right:6px !important; top:6px !important; }
+  .owned-item-chip { font-size:7px !important; padding:2px 6px !important; }
+
+  /* ── Available hands panel ── */
+  #hands-panel { top:4px !important; max-width:99vw !important; padding:3px 6px !important; gap:3px !important; }
+  .hand-chip   { font-size:8px !important; padding:3px 8px !important; border-radius:10px !important; gap:3px !important; }
+  .hand-chip-mult { font-size:7px !important; }
+
+  /* ── Score overlay / damage ── */
+  #turn-announce { font-size:16px !important; padding:6px 16px !important; }
+
+  /* ── Deck viewer ── */
+  #deck-viewer { padding:10px 10px !important; }
+  #dv-header   { margin-bottom:8px !important; gap:8px !important; }
+  #dv-title    { font-size:13px !important; }
+  #dv-count    { font-size:9px !important; }
+  .dv-sort-btn { font-size:8px !important; padding:3px 9px !important; }
+  #dv-close    { font-size:8px !important; padding:3px 9px !important; }
+  .dv-card-slot { width:clamp(78px,13vw,105px) !important; }
+  #dv-grid { gap:8px !important; }
+
+  /* ── Shop ── */
+  #shop-screen { padding:8px 0 !important; }
+  #shop-title    { font-size:16px !important; margin-bottom:2px !important; }
+  #shop-subtitle { font-size:8px !important; margin-bottom:8px !important; }
+  #shop-gold     { font-size:12px !important; margin-bottom:8px !important; }
+  .shop-item     { width:clamp(95px,17vw,130px) !important; padding:7px 6px !important; border-radius:8px !important; }
+  .shop-item-emoji { font-size:20px !important; margin-bottom:4px !important; }
+  .shop-item-name  { font-size:7px !important; margin-bottom:3px !important; }
+  .shop-item-desc  { font-size:6px !important; margin-bottom:5px !important; }
+  .shop-item-cost  { font-size:10px !important; }
+  .shop-item-tag   { font-size:6px !important; }
+  #shop-skip-btn   { font-size:8px !important; padding:5px 14px !important; margin-top:10px !important; }
+
+  /* ── Between screens (route / daycare) ── */
+  .between-title    { font-size:14px !important; margin-bottom:1px !important; }
+  .between-subtitle { font-size:8px !important; margin-bottom:8px !important; }
+  #route-pick-label { font-size:9px !important; }
+  #route-pokemon-row { gap:7px !important; margin-top:8px !important; padding-top:8px !important; }
+  .card-visual      { border-width:1px !important; }
+  #route-confirm-btn { font-size:9px !important; padding:7px 16px !important; }
+  .between-skip      { font-size:8px !important; padding:5px 14px !important; margin-top:8px !important; }
+  .daycare-action    { padding:9px 10px !important; width:clamp(110px,20vw,150px) !important; }
+  .daycare-action-emoji { font-size:20px !important; }
+  .daycare-action-name  { font-size:9px !important; }
+  .daycare-action-desc  { font-size:7px !important; }
+  #daycare-cards-row    { gap:6px !important; }
+
+  /* ── Starter deck screen ── */
+  #starter-screen { padding:8px 0 clamp(60px,9vh,90px) !important; gap:8px !important; }
+  #starter-main-title { font-size:15px !important; }
+  #starter-sub        { font-size:8px !important; }
+  #starter-arc-wrap   { gap:6px !important; padding:0 6px !important; }
+  .deck-choice-card   {
+    width:clamp(100px,17vw,140px) !important;
+    min-height:clamp(150px,26vh,200px) !important;
+    padding:7px 7px !important;
+    border-radius:9px !important;
+  }
+  .dcc-emoji     { font-size:22px !important; }
+  .dcc-name      { font-size:8px !important; }
+  .dcc-subtitle  { font-size:6px !important; }
+  .dcc-stat-label { font-size:6px !important; }
+  .dcc-stat-val   { font-size:6px !important; line-height:1.3 !important; }
+  .dcc-divider    { margin:2px 0 !important; }
+  .dcc-stat       { gap:1px !important; }
+  #starter-confirm { gap:6px !important; }
+  #starter-confirm-btn { font-size:10px !important; padding:8px 20px !important; }
+
+  /* ── Type badges ── */
+  .hc-type1,.hc-type2,.pc-type1,.pc-type2 { font-size:7px !important; padding:1px 3px !important; }
+}
+
 </style>
 </head>
 <body>
@@ -1541,10 +1657,13 @@ function initGame() {
   renderAll();
   renderOppHand();
   const DRAW=8;
-  for(let i=0;i<DRAW;i++){
+  const DRAW_N=8;
+  for(let i=0;i<DRAW_N;i++){
     setTimeout(()=>{ if(G.deck.length){G.hand.push({...G.deck.shift()});renderHand(true);} }, 150+i*180);
     setTimeout(()=>{ if(G.theirDeck.length){G.theirHand.push({...G.theirDeck.shift()});renderOppHand(true);} }, 150+i*180);
   }
+  // Ensure hands panel renders after all cards are in hand
+  setTimeout(()=>{ if(typeof renderHandsPanel==='function') renderHandsPanel(); }, 150+DRAW_N*180+100);
   setTimeout(()=>{}, 150+DRAW*180+100);
 }
 
@@ -4072,6 +4191,7 @@ function startNextBattle() {
     setTimeout(() => { if (G.theirDeck.length) { G.theirHand.push({ ...G.theirDeck.shift() }); } }, 150 + i * 180);
   }
   setTimeout(() => announceText('YOUR TURN', 1400), 150 + DRAW * 180 + 100);
+  setTimeout(() => { if(typeof renderHandsPanel==='function') renderHandsPanel(); }, 150 + DRAW * 180 + 200);
 }
 </script>
 
