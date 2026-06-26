@@ -847,7 +847,7 @@ html { overflow: hidden; }
   position:fixed; inset:0; z-index:1500; display:none;
   flex-direction:column; align-items:center; justify-content:flex-start;
   padding:0;
-  background:transparent; overflow:hidden;
+  background:rgba(4,6,18,0.97); overflow:hidden;
   font-family:'PokemonClassic',monospace;
   pointer-events:all;
 }
@@ -1341,7 +1341,7 @@ html { overflow: hidden; }
   #run-panel  { width:clamp(110px,20vw,150px) !important; gap:4px !important; left:6px !important; top:6px !important; }
   #rp-hand-preview { display:none !important; }
   #rp-portrait { flex-direction:row !important; align-items:stretch !important; gap:0 !important; }
-  #rp-portrait-img-wrap { width:34px !important; min-width:34px !important; height:auto !important; aspect-ratio:unset !important; flex-shrink:0 !important; border-radius:6px 0 0 6px !important; border-right:2px solid rgba(60,90,180,0.5) !important; overflow:hidden !important; }
+  #rp-portrait-img-wrap { width:56px !important; min-width:56px !important; height:auto !important; aspect-ratio:1/1 !important; flex-shrink:0 !important; border-radius:8px 0 0 8px !important; border:none !important; overflow:hidden !important; }
   #rp-portrait-img-wrap img { width:100% !important; height:100% !important; object-fit:cover !important; transform:scale(3.0) !important; transform-origin:center 45% !important; }
   #rp-portrait-overlay { flex:1 !important; padding:4px 6px !important; border-radius:0 !important; border-left:none !important; margin-left:0 !important; border-top:none !important; border-bottom:none !important; border-right:none !important; }
   #rp-hp-bar-wrap { height:3px !important; }
@@ -2166,67 +2166,67 @@ const FUSIONS = [{"name": "Hitmoking", "img": "https://raw.githubusercontent.com
 // modifier: applied at battle start, affects scoring
 const TRAINERS = [
   // ── NORMAL TRAINERS (tier 1) ──────────────────────────────────
-  { name:'Youngster',  img:'', hp:18, tier:'normal', hpEmoji:'🧒', hpName:'Taunt',    hpDesc:'Nothing special — just eager.',
+  { name:'Youngster',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Youngster.png', hp:18, tier:'normal', hpEmoji:'🧒', hpName:'Taunt',    hpDesc:'Nothing special — just eager.',
     modifier:'first_hand_minus20', modDesc:'First hand each battle scores -20%.' },
-  { name:'Lass',       img:'', hp:18, tier:'normal', hpEmoji:'👧', hpName:'Charm',    hpDesc:'Draw a card.',
+  { name:'Lass',       img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Lass.png', hp:18, tier:'normal', hpEmoji:'👧', hpName:'Charm',    hpDesc:'Draw a card.',
     modifier:'draw_minus1', modDesc:'Draw 1 fewer card on your first turn.' },
-  { name:'Bug Catcher',img:'', hp:20, tier:'normal', hpEmoji:'🐛', hpName:'Net',      hpDesc:'Disable a random opponent card.',
+  { name:'Bug Catcher',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Bug_Catcher.png', hp:20, tier:'normal', hpEmoji:'🐛', hpName:'Net',      hpDesc:'Disable a random opponent card.',
     modifier:'swarm_minus20', modDesc:'Swarm/species hands score -20%.' },
-  { name:'Camper',     img:'', hp:20, tier:'normal', hpEmoji:'⛺', hpName:'Rest',     hpDesc:'Heal 3 HP.',
+  { name:'Camper',     img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Camper.png', hp:20, tier:'normal', hpEmoji:'⛺', hpName:'Rest',     hpDesc:'Heal 3 HP.',
     modifier:'gold_minus25', modDesc:'Earn 25% less gold after this battle.' },
-  { name:'Picnicker',  img:'', hp:20, tier:'normal', hpEmoji:'🧺', hpName:'Share',    hpDesc:'Gain $1.',
+  { name:'Picnicker',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Picnicker.png', hp:20, tier:'normal', hpEmoji:'🧺', hpName:'Share',    hpDesc:'Gain $1.',
     modifier:'daycare_cost_up', modDesc:'Day Care actions cost +1 this run.' },
-  { name:'Fisherman',  img:'', hp:22, tier:'normal', hpEmoji:'🎣', hpName:'Reel',     hpDesc:'Draw 2 cards.',
+  { name:'Fisherman',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Fisherman.png', hp:22, tier:'normal', hpEmoji:'🎣', hpName:'Reel',     hpDesc:'Draw 2 cards.',
     modifier:'water_no_bonus', modDesc:'Water Pokémon deal no bonus damage.' },
-  { name:'Sailor',     img:'', hp:22, tier:'normal', hpEmoji:'⚓', hpName:'Anchor',   hpDesc:'Give a card +1 ATK.',
+  { name:'Sailor',     img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Sailor.png', hp:22, tier:'normal', hpEmoji:'⚓', hpName:'Anchor',   hpDesc:'Give a card +1 ATK.',
     modifier:'taunt_disabled', modDesc:'Taunt & defensive traits disabled.' },
-  { name:'Hiker',      img:'', hp:22, tier:'normal', hpEmoji:'🥾', hpName:'Climb',    hpDesc:'Gain 2 extra score.',
+  { name:'Hiker',      img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Hiker.png', hp:22, tier:'normal', hpEmoji:'🥾', hpName:'Climb',    hpDesc:'Gain 2 extra score.',
     modifier:'rock_no_bonus', modDesc:'Rock/Ground Pokémon deal no bonus damage.' },
-  { name:'Bird Keeper',img:'', hp:24, tier:'normal', hpEmoji:'🦅', hpName:'Swoop',    hpDesc:'Deal 2 damage to a card.',
+  { name:'Bird Keeper',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Bird_Keeper.png', hp:24, tier:'normal', hpEmoji:'🦅', hpName:'Swoop',    hpDesc:'Deal 2 damage to a card.',
     modifier:'flying_half', modDesc:'Flying Pokémon lose 50% effectiveness.' },
-  { name:'Engineer',   img:'', hp:24, tier:'normal', hpEmoji:'🔧', hpName:'Tune',     hpDesc:'Give a card +2 HP.',
+  { name:'Engineer',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Engineer.png', hp:24, tier:'normal', hpEmoji:'🔧', hpName:'Tune',     hpDesc:'Give a card +2 HP.',
     modifier:'adaptive_disabled', modDesc:'Adaptive/Steel traits disabled.' },
-  { name:'Gambler',    img:'', hp:24, tier:'normal', hpEmoji:'🎲', hpName:'Bet',      hpDesc:'Random outcome: +/- score.',
+  { name:'Gambler',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Gambler.png', hp:24, tier:'normal', hpEmoji:'🎲', hpName:'Bet',      hpDesc:'Random outcome: +/- score.',
     modifier:'random_card_no_effect', modDesc:'One random hand card loses its bonus.' },
-  { name:'Super Nerd', img:'', hp:24, tier:'normal', hpEmoji:'🤓', hpName:'Analyze',  hpDesc:'Preview top card of deck.',
+  { name:'Super Nerd', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Super_Nerd.png', hp:24, tier:'normal', hpEmoji:'🤓', hpName:'Analyze',  hpDesc:'Preview top card of deck.',
     modifier:'fusion_quality_off', modDesc:'Fusion quality bonuses disabled.' },
-  { name:'Scientist',  img:'', hp:26, tier:'normal', hpEmoji:'🧪', hpName:'Mutate',   hpDesc:'Transform a card randomly.',
+  { name:'Scientist',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Scientist.png', hp:26, tier:'normal', hpEmoji:'🧪', hpName:'Mutate',   hpDesc:'Transform a card randomly.',
     modifier:'unstable_no_bonus', modDesc:'Unstable fusions lose bonus effects.' },
-  { name:'Burglar',    img:'', hp:26, tier:'normal', hpEmoji:'🔦', hpName:'Steal',    hpDesc:'Steal $1 from you.',
+  { name:'Burglar',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Burglar.png', hp:26, tier:'normal', hpEmoji:'🔦', hpName:'Steal',    hpDesc:'Steal $1 from you.',
     modifier:'lose_gold_2', modDesc:'Lose $2 after this battle.' },
-  { name:'Juggler',    img:'', hp:26, tier:'normal', hpEmoji:'🤹', hpName:'Juggle',   hpDesc:'Shuffle 2 cards in hand.',
+  { name:'Juggler',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Juggler.png', hp:26, tier:'normal', hpEmoji:'🤹', hpName:'Juggle',   hpDesc:'Shuffle 2 cards in hand.',
     modifier:'retrigger_half', modDesc:'Retrigger chance halved this battle.' },
-  { name:'Channeler',  img:'', hp:26, tier:'normal', hpEmoji:'🔮', hpName:'Séance',   hpDesc:'Ghost effect activates.',
+  { name:'Channeler',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Channeler.png', hp:26, tier:'normal', hpEmoji:'🔮', hpName:'Séance',   hpDesc:'Ghost effect activates.',
     modifier:'mystic_half', modDesc:'Mystic/Ghost effects weakened by 50%.' },
-  { name:'Pokémaniac', img:'', hp:28, tier:'normal', hpEmoji:'🧠', hpName:'Obsess',   hpDesc:'Buff a random Pokémon.',
+  { name:'Pokémaniac', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Pokemaniac.png', hp:28, tier:'normal', hpEmoji:'🧠', hpName:'Obsess',   hpDesc:'Buff a random Pokémon.',
     modifier:'evolution_minus30', modDesc:'Evolution hands score -30%.' },
-  { name:'Black Belt', img:'', hp:28, tier:'normal', hpEmoji:'🥊', hpName:'Focus',    hpDesc:'Give a card Double Strike.',
+  { name:'Black Belt', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Black_Belt.png', hp:28, tier:'normal', hpEmoji:'🥊', hpName:'Focus',    hpDesc:'Give a card Double Strike.',
     modifier:'powerhouse_weak', modDesc:'Powerhouse/Fighting effects weakened.' },
-  { name:'Tamer',      img:'', hp:28, tier:'normal', hpEmoji:'🦁', hpName:'Tame',     hpDesc:'Buff an opposing card.',
+  { name:'Tamer',      img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Tamer.png', hp:28, tier:'normal', hpEmoji:'🦁', hpName:'Tame',     hpDesc:'Buff an opposing card.',
     modifier:'final_evo_weak', modDesc:'Final evolutions lose 25% effectiveness.' },
-  { name:'Swimmer',    img:'', hp:28, tier:'normal', hpEmoji:'🏊', hpName:'Dive',     hpDesc:'Shuffle your hand.',
+  { name:'Swimmer',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Swimmer.png', hp:28, tier:'normal', hpEmoji:'🏊', hpName:'Dive',     hpDesc:'Shuffle your hand.',
     modifier:'each_hand_minus10', modDesc:'Each hand after the first scores -10%.' },
-  { name:'Cue Ball',   img:'', hp:30, tier:'normal', hpEmoji:'🎱', hpName:'Strike',   hpDesc:'Deal 3 damage.',
+  { name:'Cue Ball',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Cue_Ball.png', hp:30, tier:'normal', hpEmoji:'🎱', hpName:'Strike',   hpDesc:'Deal 3 damage.',
     modifier:'aggressive_weak', modDesc:'Aggressive traits weakened this battle.' },
-  { name:'Rocket Grunt',img:'',hp:30, tier:'normal', hpEmoji:'🚀', hpName:'Enforce', hpDesc:'Disable one of your cards for 1 turn.',
+  { name:'Rocket Grunt',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Rocket_Grunt.png',hp:30, tier:'normal', hpEmoji:'🚀', hpName:'Enforce', hpDesc:'Disable one of your cards for 1 turn.',
     modifier:'random_card_disabled', modDesc:'One random card is disabled this battle.' },
 
   // ── ELITE TRAINERS (tier 2) ────────────────────────────────────
-  { name:'Ace Trainer', img:'', hp:35, tier:'elite', hpEmoji:'🏆', hpName:'Master',   hpDesc:'Boost the best hand type.',
+  { name:'Ace Trainer', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Ace_Trainer.png', hp:35, tier:'elite', hpEmoji:'🏆', hpName:'Master',   hpDesc:'Boost the best hand type.',
     modifier:'best_hand_disabled', modDesc:'Your highest-scoring hand type is disabled.' },
-  { name:'Cooltrainer', img:'', hp:35, tier:'elite', hpEmoji:'😎', hpName:'Chill',    hpDesc:'Freeze scaling for 1 turn.',
+  { name:'Cooltrainer', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Cooltrainer.png', hp:35, tier:'elite', hpEmoji:'😎', hpName:'Chill',    hpDesc:'Freeze scaling for 1 turn.',
     modifier:'scaling_frozen', modDesc:'All scaling effects frozen — growth stops.' },
-  { name:'Veteran',     img:'', hp:38, tier:'elite', hpEmoji:'🎖️', hpName:'Experience',hpDesc:'Gain a bonus item.',
+  { name:'Veteran',     img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Veteran.png', hp:38, tier:'elite', hpEmoji:'🎖️', hpName:'Experience',hpDesc:'Gain a bonus item.',
     modifier:'fusion_quality_off', modDesc:'Fusion quality bonuses disabled.' },
-  { name:'Elite Scientist',img:'',hp:40,tier:'elite',hpEmoji:'⚗️','hpName':'Formula', hpDesc:'Combine two effects.',
+  { name:'Elite Scientist',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Scientist.png',hp:40,tier:'elite',hpEmoji:'⚗️','hpName':'Formula', hpDesc:'Combine two effects.',
     modifier:'one_trait_only', modDesc:'Only one inherited trait works per fusion.' },
-  { name:'Elite Psychic',img:'',hp:40,tier:'elite', hpEmoji:'🧿', hpName:'Amplify',   hpDesc:'XMult boosted briefly.',
+  { name:'Elite Psychic',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Psychic.png',hp:40,tier:'elite', hpEmoji:'🧿', hpName:'Amplify',   hpDesc:'XMult boosted briefly.',
     modifier:'xmult_minus75', modDesc:'XMult effects reduced by 75%.' },
-  { name:'Elite Black Belt',img:'',hp:42,tier:'elite',hpEmoji:'🥋','hpName':'Iron Fist',hpDesc:'Powerhouse boost.',
+  { name:'Elite Black Belt',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Black_Belt.png',hp:42,tier:'elite',hpEmoji:'🥋','hpName':'Iron Fist',hpDesc:'Powerhouse boost.',
     modifier:'powerhouse_disabled', modDesc:'Powerhouse traits fully disabled.' },
-  { name:'Elite Breeder',img:'',hp:42,tier:'elite',hpEmoji:'🥚','hpName':'Hatch',    hpDesc:'Add an evolution card.',
+  { name:'Elite Breeder',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Breeder.png',hp:42,tier:'elite',hpEmoji:'🥚','hpName':'Hatch',    hpDesc:'Add an evolution card.',
     modifier:'evolution_disabled', modDesc:'Evolution bonuses fully disabled.' },
-  { name:'Elite Executive',img:'',hp:45,tier:'elite',hpEmoji:'👔','hpName':'Order',  hpDesc:'Disrupt your items.',
+  { name:'Elite Executive',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/trainers/Rocket_Executive.png',hp:45,tier:'elite',hpEmoji:'👔','hpName':'Order',  hpDesc:'Disrupt your items.',
     modifier:'random_item_disabled', modDesc:'One random item disabled this battle.' },
 
   // ── GYM LEADERS (boss tier) ────────────────────────────────────
@@ -5066,13 +5066,17 @@ const DV_HIDE_IDS = [
 ];
 
 function openDeckViewer() {
-  if(G && G.animating) return; // blocked during lethal/advance
+  if(G && G.animating) return;
   const viewer = document.getElementById('deck-viewer');
   if(!viewer) return;
-  // Hide everything except bg canvas and its overlay
   DV_HIDE_IDS.forEach(id => {
     const el = document.getElementById(id);
-    if(el) { el.dataset.dvWasHidden = el.style.display; el.style.display = 'none'; }
+    if(el) {
+      el.dataset.dvWasHidden = el.style.display;
+      el.dataset.dvHadVisible = el.classList.contains('visible') ? '1' : '';
+      el.style.display = 'none';
+      el.classList.remove('visible'); // ensure CSS class doesn't override
+    }
   });
   viewer.classList.add('open');
   renderDeckViewer();
@@ -5082,15 +5086,16 @@ function closeDeckViewer() {
   const viewer = document.getElementById('deck-viewer');
   if(!viewer) return;
   viewer.classList.remove('open');
-  // Restore elements that were visible before (dvWasHidden was something non-none)
   DV_HIDE_IDS.forEach(id => {
     const el = document.getElementById(id);
     if(el && el.dataset.dvWasHidden !== undefined) {
-      // Only restore if it was visible before (non-empty, non-none)
       const prev = el.dataset.dvWasHidden;
       if(prev && prev !== 'none') el.style.display = prev;
-      else if(prev === '') el.style.display = '';  // was using CSS class
+      else el.style.display = '';
+      // Restore visible class if it had one
+      if(el.dataset.dvHadVisible === '1') el.classList.add('visible');
       delete el.dataset.dvWasHidden;
+      delete el.dataset.dvHadVisible;
     }
   });
 }
