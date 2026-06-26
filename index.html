@@ -285,6 +285,7 @@ html { overflow: hidden; }
   pointer-events:none; overflow:visible;
   font-family:'PokemonClassic',monospace;
 }
+#rp-portrait { pointer-events:all; }
 /* Trainer portrait — two separate blocks */
 #rp-portrait { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
 #rp-portrait-img-wrap {
@@ -412,6 +413,7 @@ html { overflow: hidden; }
   font-size:clamp(10px,1.0vw,13px); color:#ccd6f0; letter-spacing:2px;
   text-transform:uppercase; text-align:right;
 }
+#owned-items-list::-webkit-scrollbar { display:none; }
 .owned-item-chip {
   background:rgba(16,20,48,0.92); border:1px solid rgba(60,90,180,0.5);
   border-radius:6px; padding:5px 10px;
@@ -593,6 +595,72 @@ html { overflow: hidden; }
 }
 /* Float animation on the top card — slightly more pronounced than hand cards */
 
+
+/* ── TRAINER DIALOGUE BUBBLE ── */
+#trainer-dialogue {
+  position:fixed;
+  top:10px;
+  left:calc(10px + clamp(160px,16vw,220px) + 10px); /* right of run-panel */
+  z-index:9990;
+  display:none;
+  max-width:clamp(180px,22vw,280px);
+  pointer-events:none;
+}
+#trainer-dialogue-inner {
+  background:rgba(8,12,28,0.97);
+  border:2px solid rgba(80,120,220,0.6);
+  border-radius:8px;
+  padding:10px 14px 12px;
+  font-family:'PokemonClassic',monospace;
+  font-size:clamp(7px,0.7vw,9.5px);
+  color:#e8eeff;
+  letter-spacing:0.5px;
+  line-height:1.7;
+  box-shadow:0 4px 20px rgba(0,0,0,0.9);
+  position:relative;
+}
+/* Arrow pointing left toward portrait */
+#trainer-dialogue-inner::before {
+  content:'';
+  position:absolute;
+  left:-9px; top:18px;
+  width:0; height:0;
+  border-top:7px solid transparent;
+  border-bottom:7px solid transparent;
+  border-right:9px solid rgba(80,120,220,0.6);
+}
+#trainer-dialogue-inner::after {
+  content:'';
+  position:absolute;
+  left:-6px; top:19px;
+  width:0; height:0;
+  border-top:6px solid transparent;
+  border-bottom:6px solid transparent;
+  border-right:7px solid rgba(8,12,28,0.97);
+}
+#trainer-dialogue-name {
+  color:#aabbff;
+  font-size:clamp(6px,0.62vw,8px);
+  letter-spacing:2px;
+  display:block;
+  margin-bottom:6px;
+  opacity:0.75;
+}
+#trainer-dialogue-text {
+  display:block;
+}
+@media (max-height:520px), (max-width:960px) and (orientation:landscape) {
+  #trainer-dialogue {
+    left:calc(6px + clamp(110px,20vw,150px) + 8px);
+    max-width:clamp(140px,30vw,220px);
+    top:6px;
+  }
+  #trainer-dialogue-inner {
+    font-size:clamp(6px,1.1vw,8px);
+    padding:7px 10px 9px;
+  }
+}
+@keyframes dialoguePop { from{opacity:0;transform:translateX(-6px) scale(0.97)} to{opacity:1;transform:translateX(0) scale(1)} }
 @keyframes cvFloat {
   0%   { transform: rotate(var(--tilt,0deg)) translateY(0px) scale(1.000); }
   30%  { transform: rotate(var(--tilt,0deg)) translateY(-2px) rotateX(1deg) scale(1.005); }
@@ -1220,7 +1288,7 @@ html { overflow: hidden; }
 .shop-item {
   width:clamp(130px,13vw,180px); background:rgba(8,10,26,0.95);
   border:2px solid rgba(50,70,140,0.6); border-radius:10px;
-  padding:12px 10px 32px 10px; cursor:pointer; text-align:center;
+  padding:12px 10px 40px 10px; cursor:pointer; text-align:center;
   transition:transform 0.15s, border-color 0.15s, box-shadow 0.15s;
   position:relative; font-family:'PokemonClassic',monospace;
   box-shadow:0 4px 16px rgba(0,0,0,0.7);
@@ -1326,7 +1394,8 @@ html { overflow: hidden; }
 
   /* ── Owned items ── */
   #owned-items-panel { gap:3px !important; max-width:clamp(130px,20vw,180px) !important; right:6px !important; top:6px !important; }
-  .owned-item-chip { font-size:7px !important; padding:2px 6px !important; }
+  #owned-items-list::-webkit-scrollbar { display:none; }
+.owned-item-chip { font-size:7px !important; padding:2px 6px !important; }
 
   /* ── Score overlay mobile ── */
   #hand-score-overlay { top:clamp(40px,6vh,80px) !important; transform:translateX(-50%) scale(0.72) !important; transform-origin:top center !important; }
@@ -1567,23 +1636,102 @@ void main(){
   // Gym 5: Sabrina (Psychic)— hot pink + deep violet
   // Gym 6: Blaine (Fire)  — deep red + molten orange
   // Gym 7: Giovanni (Ground/Dark)— blood red + void purple
+  // Each palette: c1=primary highlight, c2=secondary, c3=dark base
+  // Designed to evoke the trainer's personality and type specialty
+  function mkP(r1,g1,b1, r3,g3,b3) {
+    const mid = [(r1+r3)/2,(g1+g3)/2,(b1+b3)/2];
+    return {c1:[r1,g1,b1], c2:mid, c3:[r3,g3,b3]};
+  }
+  const TRAINER_PALETTES = {
+    // ── NORMAL TRAINERS ─────────────────────────────────────────
+    // Youngster — bright cheerful green, shorts energy
+    'Youngster':     mkP(0.30,0.75,0.20,  0.05,0.18,0.04),
+    // Lass — soft pastel pink, playful
+    'Lass':          mkP(0.90,0.45,0.65,  0.25,0.08,0.16),
+    // Bug Catcher — muddy olive green, forest floor
+    'Bug Catcher':   mkP(0.55,0.62,0.10,  0.12,0.16,0.02),
+    // Camper — warm khaki/orange, campfire
+    'Camper':        mkP(0.78,0.55,0.20,  0.22,0.13,0.04),
+    // Picnicker — sunny yellow-green, meadow
+    'Picnicker':     mkP(0.72,0.80,0.15,  0.16,0.20,0.03),
+    // Fisherman — deep sea teal, patient
+    'Fisherman':     mkP(0.10,0.60,0.65,  0.02,0.14,0.18),
+    // Sailor — navy blue with white caps
+    'Sailor':        mkP(0.15,0.35,0.80,  0.02,0.06,0.22),
+    // Hiker — rocky grey-brown, mountain stone
+    'Hiker':         mkP(0.60,0.52,0.40,  0.14,0.11,0.08),
+    // Bird Keeper — sky blue, aerial
+    'Bird Keeper':   mkP(0.40,0.72,0.95,  0.06,0.16,0.28),
+    // Engineer — cold steel blue, technical
+    'Engineer':      mkP(0.45,0.58,0.80,  0.08,0.10,0.22),
+    // Gambler — deep gold, fortune
+    'Gambler':       mkP(0.92,0.72,0.05,  0.28,0.18,0.01),
+    // Super Nerd — pale purple-blue, lab light
+    'Super Nerd':    mkP(0.55,0.48,0.85,  0.10,0.08,0.24),
+    // Scientist — cold clinical cyan
+    'Scientist':     mkP(0.20,0.88,0.82,  0.03,0.20,0.18),
+    // Burglar — dark smoky orange, flashlight beam
+    'Burglar':       mkP(0.85,0.40,0.05,  0.20,0.08,0.01),
+    // Juggler — bright circus purple-magenta
+    'Juggler':       mkP(0.82,0.18,0.72,  0.22,0.03,0.18),
+    // Channeler — deep eerie violet, ghost tower
+    'Channeler':     mkP(0.42,0.08,0.72,  0.08,0.01,0.18),
+    // Pokémaniac — deep collector purple
+    'Pokémaniac':    mkP(0.50,0.20,0.80,  0.10,0.03,0.22),
+    // Black Belt — crimson red, fighting spirit
+    'Black Belt':    mkP(0.85,0.08,0.08,  0.22,0.01,0.01),
+    // Tamer — warm amber, beast handler
+    'Tamer':         mkP(0.88,0.58,0.12,  0.24,0.12,0.02),
+    // Swimmer — bright aqua, sunlit water
+    'Swimmer':       mkP(0.05,0.78,0.90,  0.01,0.18,0.24),
+    // Cue Ball — raw grey-white, road tough
+    'Cue Ball':      mkP(0.70,0.68,0.65,  0.14,0.12,0.10),
+    // Rocket Grunt — Team Rocket grey-red
+    'Rocket Grunt':  mkP(0.70,0.08,0.08,  0.18,0.02,0.02),
+    // ── ELITE TRAINERS ──────────────────────────────────────────
+    // Ace Trainer — golden champion aura
+    'Ace Trainer':   mkP(0.95,0.78,0.10,  0.30,0.20,0.01),
+    // Cooltrainer — icy silver-blue, composed
+    'Cooltrainer':   mkP(0.55,0.72,0.90,  0.08,0.14,0.26),
+    // Veteran — deep bronze, weathered
+    'Veteran':       mkP(0.72,0.48,0.15,  0.20,0.12,0.03),
+    // Elite Scientist — harsh lab white-blue
+    'Elite Scientist':mkP(0.75,0.90,0.95, 0.10,0.18,0.24),
+    // Elite Psychic — deep magenta, third eye
+    'Elite Psychic': mkP(0.88,0.15,0.75,  0.22,0.02,0.20),
+    // Elite Black Belt — pure blood red
+    'Elite Black Belt':mkP(0.90,0.05,0.05, 0.25,0.01,0.01),
+    // Elite Breeder — warm egg-cream
+    'Elite Breeder': mkP(0.90,0.80,0.55,  0.25,0.18,0.08),
+    // Elite Executive — Team Rocket cold dark red
+    'Elite Executive':mkP(0.65,0.05,0.10, 0.15,0.01,0.02),
+    // ── GYM LEADERS ─────────────────────────────────────────────
+    // Brock — earthy brown rock
+    'Brock':         mkP(0.680,0.430,0.120, 0.14,0.08,0.01),
+    // Misty — deep ocean blue
+    'Misty':         mkP(0.050,0.520,0.900, 0.01,0.10,0.24),
+    // Lt. Surge — electric yellow-white
+    'Lt. Surge':     mkP(0.980,0.900,0.000, 0.28,0.22,0.00),
+    // Erika — rich forest green
+    'Erika':         mkP(0.140,0.720,0.160, 0.02,0.16,0.02),
+    // Koga — toxic purple
+    'Koga':          mkP(0.520,0.050,0.820, 0.12,0.01,0.20),
+    // Sabrina — psychic hot pink
+    'Sabrina':       mkP(0.950,0.100,0.620, 0.26,0.01,0.14),
+    // Blaine — volcanic fire orange-red
+    'Blaine':        mkP(0.960,0.300,0.000, 0.28,0.06,0.00),
+    // Giovanni — dark authority crimson
+    'Giovanni':      mkP(0.700,0.020,0.060, 0.18,0.00,0.01),
+    // ── DEFAULT (fallback) ───────────────────────────────────────
+    'default':       mkP(0.15,0.20,0.45, 0.03,0.04,0.12),
+  };
+
+  // Legacy index-based lookup kept for compatibility
   const GYM_PALETTES = [
-    // Brock   — Rock/Ground  : earthy brown
-    (()=>{ const c=[0.680,0.430,0.120]; return {c1:c, c2:c, c3:[c[0]*0.35,c[1]*0.35,c[2]*0.35]}; })(),
-    // Misty   — Water        : ocean blue
-    (()=>{ const c=[0.050,0.520,0.900]; return {c1:c, c2:c, c3:[c[0]*0.3,c[1]*0.3,c[2]*0.3]}; })(),
-    // Surge   — Electric     : electric yellow
-    (()=>{ const c=[0.980,0.900,0.000]; return {c1:c, c2:c, c3:[c[0]*0.3,c[1]*0.3,c[2]*0.05]}; })(),
-    // Erika   — Grass        : forest green
-    (()=>{ const c=[0.140,0.720,0.160]; return {c1:c, c2:c, c3:[c[0]*0.3,c[1]*0.3,c[2]*0.3]}; })(),
-    // Koga    — Poison       : toxic purple
-    (()=>{ const c=[0.520,0.050,0.820]; return {c1:c, c2:c, c3:[c[0]*0.3,c[1]*0.1,c[2]*0.3]}; })(),
-    // Sabrina — Psychic      : hot pink/magenta
-    (()=>{ const c=[0.950,0.100,0.620]; return {c1:c, c2:c, c3:[c[0]*0.3,c[1]*0.1,c[2]*0.3]}; })(),
-    // Blaine  — Fire         : deep red-orange
-    (()=>{ const c=[0.960,0.300,0.000]; return {c1:c, c2:c, c3:[c[0]*0.3,c[1]*0.1,0.000]}; })(),
-    // Giovanni — Dark/Ground : dark crimson
-    (()=>{ const c=[0.700,0.020,0.060]; return {c1:c, c2:c, c3:[c[0]*0.25,c[1]*0.1,c[2]*0.1]}; })(),
+    TRAINER_PALETTES['Brock'], TRAINER_PALETTES['Misty'],
+    TRAINER_PALETTES['Lt. Surge'], TRAINER_PALETTES['Erika'],
+    TRAINER_PALETTES['Koga'], TRAINER_PALETTES['Sabrina'],
+    TRAINER_PALETTES['Blaine'], TRAINER_PALETTES['Giovanni'],
   ];
 
   // Current and target colors for smooth transition
@@ -1595,6 +1743,11 @@ void main(){
   window._balatroBg = {
     setGym(idx) {
       const p = GYM_PALETTES[Math.max(0, Math.min(7, idx))];
+      tgtC1=[...p.c1]; tgtC2=[...p.c2]; tgtC3=[...p.c3];
+      lerpT=0.0;
+    },
+    setTrainer(name) {
+      const p = TRAINER_PALETTES[name] || TRAINER_PALETTES['default'];
       tgtC1=[...p.c1]; tgtC2=[...p.c2]; tgtC3=[...p.c3];
       lerpT=0.0;
     },
@@ -1643,7 +1796,7 @@ void main(){
 
 
 <!-- Portrait rotation overlay -->
-<div id="rotate-overlay" style="display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:24px;font-family:'PokemonClassic',monospace;color:#ffdd66;text-align:center;pointer-events:all;" onclick="if(document.getElementById('rot-step2').style.display!=='none'){tryFullscreen();}">
+<div id="rotate-overlay" style="display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:24px;font-family:'PokemonClassic',monospace;color:#ffdd66;text-align:center;pointer-events:all;" onclick="if(document.getElementById('rot-step2').style.display!=='none'){ if(typeof SFX!=='undefined') SFX.confirm(); tryFullscreen();}">
   <!-- Scanlines overlay (CRT effect inside overlay) -->
   <div style="position:absolute;inset:0;z-index:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.15) 0px,rgba(0,0,0,0.15) 2px,transparent 2px,transparent 4px);mix-blend-mode:multiply;"></div>
   <!-- Semi-transparent bg so the bg canvas shows through -->
@@ -1826,7 +1979,7 @@ document.addEventListener('keydown',e=>{
 
 <!-- gold-display is inside owned-items-panel -->
 <!-- ── DECK PILE (fixed position) ── -->
-<div class="deck-pile" id="deck-ours" style="display:none;" onclick="openDeckViewer()">
+<div class="deck-pile" id="deck-ours" style="display:none;" onclick="if(G.animating) return; if(typeof SFX!=='undefined') SFX.deckClick(); openDeckViewer();" onmouseenter="if(typeof SFX!=='undefined') SFX.deckHover();">
   <div class="deck-card"></div><div class="deck-card"></div><div class="deck-card"></div>
   <span class="deck-count" id="deck-ours-count"></span>
 </div>
@@ -1834,7 +1987,7 @@ document.addEventListener('keydown',e=>{
 <!-- ── UNIFIED LEFT PANEL ── -->
 <div id="run-panel" style="display:none;">
   <!-- Trainer portrait -->
-  <div id="rp-portrait">
+  <div id="rp-portrait" onmouseenter="if(typeof SFX!=='undefined') SFX.hover();" onclick="const t=getCurrentTrainer(); if(t) { if(typeof SFX!=='undefined') SFX.uiClick(); showTrainerDialogue(t.name); }" style="cursor:pointer;">
     <div id="rp-portrait-img-wrap">
       <img id="tc-opp-img" src="https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Brock.png" alt="">
     </div>
@@ -1856,6 +2009,14 @@ document.addEventListener('keydown',e=>{
   <!-- Hands/Discards moved to bottom-left fixed element -->
 </div>
 
+<!-- ── TRAINER DIALOGUE BUBBLE — fixed right of run-panel ── -->
+<div id="trainer-dialogue">
+  <div id="trainer-dialogue-inner">
+    <span id="trainer-dialogue-name"></span>
+    <span id="trainer-dialogue-text"></span>
+  </div>
+</div>
+
 <!-- Hands / Discards — fixed bottom-left -->
 <div id="hd-row" style="display:none;">
   <div class="rp-hd-box hands">
@@ -1866,7 +2027,38 @@ document.addEventListener('keydown',e=>{
     <span class="rp-hd-label">Discards</span>
     <span class="rp-hd-val" id="rp-discards">3</span>
   </div>
+
+<!-- ── ROTOM RADIO WIDGET ── -->
+<!-- sits to the right of hd-row at same bottom position, managed by show/hideRotomRadio --></div><!-- /hd-row -->
+
+<!-- ── MUSIC TOGGLE BUTTON ── -->
+<div id="rotom-widget" style="display:none;position:fixed;z-index:200;font-family:'PokemonClassic',monospace;">
+  <div id="rotom-box" onclick="rotomToggle()" title="Toggle Music"
+    style="border-radius:8px;padding:8px 14px;cursor:pointer;
+           background:#0a1a33;border:2px solid #1a3366;
+           box-shadow:0 3px 0 #04090f,0 0 10px rgba(40,80,200,0.25);
+           display:flex;flex-direction:row;align-items:center;gap:10px;
+           transition:border-color 0.12s,background 0.12s;min-width:80px;"
+    onmouseover="this.style.borderColor='#3366aa';this.style.background='#0d2244';"
+    onmouseout="this.style.borderColor='#1a3366';this.style.background='#0a1a33';">
+    <!-- Pixel speaker/music SVG — larger -->
+    <svg id="rotom-music-icon" width="32" height="32" viewBox="0 0 8 8"
+      style="image-rendering:pixelated;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="3" width="2" height="2" fill="#4488ff"/>
+      <polygon points="3,2 3,6 5,7 5,1" fill="#4488ff"/>
+      <rect x="6" y="2" width="1" height="1" fill="#44aaff" id="rotom-wave1"/>
+      <rect x="7" y="3" width="1" height="1" fill="#44aaff" id="rotom-wave2"/>
+      <rect x="6" y="4" width="1" height="1" fill="#44aaff" id="rotom-wave3"/>
+    </svg>
+    <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1;">
+      <span style="font-size:clamp(9px,0.9vw,12px);color:rgba(100,160,255,0.9);letter-spacing:1px;">MUSIC</span>
+      <span id="rotom-widget-status" style="font-size:clamp(8px,0.75vw,11px);color:#3366aa;letter-spacing:1px;">OFF</span>
+    </div>
+  </div>
 </div>
+
+
+
 
 <span id="tc-opp-name" style="display:none!important;position:fixed;left:-9999px;">BROCK</span>
 <span id="tc-opp-hp-txt" style="display:none!important;position:fixed;left:-9999px;">❤️ 20</span>
@@ -1880,6 +2072,30 @@ document.addEventListener('keydown',e=>{
 <div id="owned-items-panel" style="display:none;">
   <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;">
     <span id="owned-items-label">Items</span>
+  </div>
+  <div id="owned-items-scroll-wrap" style="
+    position:relative;
+    max-height:clamp(180px,40vh,420px);
+    overflow:hidden;
+  ">
+    <div id="owned-items-list" style="
+      display:flex; flex-direction:column; gap:5px; align-items:flex-end;
+      overflow-y:scroll; overflow-x:hidden;
+      max-height:clamp(180px,40vh,420px);
+      scrollbar-width:none; -ms-overflow-style:none;
+      padding:4px 0;
+    "></div>
+    <!-- Fade masks — shown/hidden by scroll position JS -->
+    <div id="items-fade-top" style="
+      position:absolute;top:0;left:0;right:0;height:28px;
+      background:linear-gradient(to bottom,rgba(4,6,20,0.95),transparent);
+      pointer-events:none;opacity:0;transition:opacity 0.2s;z-index:2;
+    "></div>
+    <div id="items-fade-bottom" style="
+      position:absolute;bottom:0;left:0;right:0;height:28px;
+      background:linear-gradient(to top,rgba(4,6,20,0.95),transparent);
+      pointer-events:none;opacity:0;transition:opacity 0.2s;z-index:2;
+    "></div>
   </div>
 </div>
 <div id="hand-container" style="display:none"></div>
@@ -2389,6 +2605,7 @@ function getTilt(id) {
 }
 
 function sortHand(mode) {
+  if(typeof SFX!=='undefined') SFX.sortToggle();
   G_sort_mode = mode;
   document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('sort-' + mode)?.classList.add('active');
@@ -2420,6 +2637,7 @@ function makeHcEl(card, i, isHidden) {
   const ring = document.createElement('div'); ring.className = 'hc-select-ring';
   el.appendChild(ring);
   el.addEventListener('click', () => toggleHandSelect(i));
+  el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
   const floatDur = 2.8 + (i * 0.22) % 1.0; // 2.8-3.8s range
   // Negative delays = animation already in progress (staggered, no waiting)
   // Negative value is -phase into the cycle so each card is at a different point
@@ -2462,7 +2680,6 @@ function renderHand(animateLast) {
 }
 
 function toggleHandSelect(idx) {
-  // Safety: clear stuck animation flags
   if(window._reflowAnimating && !G.animating) window._reflowAnimating = false;
   if(!G.ourTurn || G.animating) return;
   const hcEls = [...document.querySelectorAll('#hand-container .hc')];
@@ -2470,6 +2687,7 @@ function toggleHandSelect(idx) {
   if(G_selected.has(idx)) {
     G_selected.delete(idx);
     hcEls[idx]?.classList.remove('selected-hand');
+    if(typeof SFX!=='undefined') SFX.cardDeselect();
   } else {
     if(G_selected.size >= 5) {
       const first = G_selected.values().next().value;
@@ -2478,6 +2696,7 @@ function toggleHandSelect(idx) {
     }
     G_selected.add(idx);
     hcEls[idx]?.classList.add('selected-hand');
+    if(typeof SFX!=='undefined') SFX.cardSelect();
   }
   // Update action bar without rebuilding hand DOM
   updateActionBar();
@@ -2533,6 +2752,7 @@ function updatePlayHandBtn() {
 }
 
 async function discardSelected() {
+  if(typeof SFX!=='undefined') SFX.discard();
   if(!G.ourTurn || G.animating || G_selected.size === 0) return;
   if(G.discardsLeft <= 0) {
     // Show "no discards" message where score overlay appears
@@ -2551,6 +2771,9 @@ async function discardSelected() {
   }
   G.animating = true;
   G.discardsLeft--;
+  // Update discard display IMMEDIATELY — don't wait for animation
+  const discEl = document.getElementById('rp-discards');
+  if(discEl) discEl.textContent = G.discardsLeft;
 
   const selectedIndices = Array.from(G_selected).sort((a,b) => a-b);
   const hcEls = [...document.querySelectorAll('#hand-container .hc')];
@@ -2936,16 +3159,34 @@ function openCinnabarMansion() {
   const show = basicCards.slice(0,6);
 
   show.forEach((card, i) => {
-    const wrap = makeCardVisual(card, `width:clamp(80px,8vw,110px);aspect-ratio:2/3;transition:transform 0.2s,border-color 0.2s;`);
+    const wrap = makeCardVisual(card, `width:clamp(120px,12vw,160px);aspect-ratio:2/3;transition:transform 0.2s,border-color 0.2s;`);
     wrap.dataset.idx = i;
+    wrap.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+    wrap.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
     wrap.addEventListener('click', () => {
       const alreadyIdx = _cinnabarSelected.indexOf(i);
       if(alreadyIdx >= 0) {
         _cinnabarSelected.splice(alreadyIdx, 1);
         wrap.classList.remove('cv-selected');
+        if(typeof SFX!=='undefined') SFX.cardDeselect();
       } else if(_cinnabarSelected.length < 2) {
-        _cinnabarSelected.push(i);
-        wrap.classList.add('cv-selected');
+        // Prevent selecting the same Pokémon species twice
+        const existingCard = _cinnabarSelected.length > 0 ? show[_cinnabarSelected[0]] : null;
+        const sameSpecies = existingCard && (
+          (card.dexA && existingCard.dexA && card.dexA === existingCard.dexA) ||
+          (card.name && existingCard.name && card.name === existingCard.name)
+        );
+        if(sameSpecies) {
+          // Flash the card red briefly to indicate it's blocked
+          wrap.style.transition='border-color 0.1s';
+          wrap.style.borderColor='rgba(255,60,60,0.9)';
+          setTimeout(()=>{ wrap.style.borderColor=''; }, 500);
+          if(typeof SFX!=='undefined') SFX.error();
+        } else {
+          _cinnabarSelected.push(i);
+          wrap.classList.add('cv-selected');
+          if(typeof SFX!=='undefined') SFX.cardSelect();
+        }
       }
       updateCinnabarPreview(show);
     });
@@ -2955,7 +3196,12 @@ function openCinnabarMansion() {
   document.getElementById('cinnabar-preview').style.display = 'none';
   const fuseBtn = document.getElementById('cinnabar-fuse-btn');
   if(fuseBtn) { fuseBtn.style.opacity='0.4'; fuseBtn.style.pointerEvents='none'; }
-  document.getElementById('cinnabar-screen').classList.add('visible');
+  // Reset title/subtitle opacity (may have been hidden by previous animation)
+  const screen = document.getElementById('cinnabar-screen');
+  screen.querySelectorAll('.between-title,.between-subtitle').forEach(el=>{
+    el.style.transition='none'; el.style.opacity='1';
+  });
+  screen.classList.add('visible');
 }
 
 function buildFusedCard(a, b) {
@@ -3112,6 +3358,7 @@ function _runFusionCore(cardA, cardB, rA, rB, allWraps, elA, elB) {
       wB.style.transition = 'transform 200ms ease, opacity 150ms ease';
       wA.style.transform = 'translate(0,0) scale(1) rotate(0deg)';
       wB.style.transform = 'translate(0,0) scale(1) rotate(0deg)';
+      if(typeof SFX!=='undefined') SFX.fusionCollide();
       setTimeout(startEvoPhase, 220);
     }, DUR + 40);
   }, 430);
@@ -3149,7 +3396,7 @@ function _runFusionCore(cardA, cardB, rA, rB, allWraps, elA, elB) {
           return;
         }
         step++;
-        // Swap src while filter is already brightness(0) — invisible change
+        if(typeof SFX!=='undefined') SFX.fusionZap();
         wA._img.src = sprites[step];
         setTimeout(cycleSprite, CYCLE_MS);
       }
@@ -3160,13 +3407,45 @@ function _runFusionCore(cardA, cardB, rA, rB, allWraps, elA, elB) {
   }
 
   // ══ Reveal: transition from black silhouette to full colour ═
+  function getDominantColor(imgEl, callback) {
+    try {
+      const canvas = document.createElement('canvas');
+      const size = 32;
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(imgEl, 0, 0, size, size);
+      const data = ctx.getImageData(0, 0, size, size).data;
+      let r=0,g=0,b=0,count=0;
+      for(let i=0;i<data.length;i+=4){
+        const a=data[i+3];
+        if(a<80) continue; // skip transparent
+        r+=data[i]; g+=data[i+1]; b+=data[i+2]; count++;
+      }
+      if(!count){ callback(null); return; }
+      callback([Math.round(r/count), Math.round(g/count), Math.round(b/count)]);
+    } catch(e){ callback(null); }
+  }
+
   function evoReveal() {
+    if(typeof SFX!=='undefined') SFX.fusionReveal();
     wA._img.style.transition = 'filter 0.7s ease';
     wA._img.style.filter = 'brightness(1) saturate(1)';
     wA.style.transition = 'background 0.5s, border 0.4s';
     wA.style.background = '#ffffff';
     wA.style.border = '2px solid rgba(50,70,140,0.8)';
     restoreScanlines();
+
+    // After color fully materializes, sample dominant color and tint bg
+    setTimeout(()=>{
+      getDominantColor(wA._img, (rgb)=>{
+        if(rgb) {
+          // Darken the dominant color for a moody bg tint
+          const dr=Math.round(rgb[0]*0.3), dg=Math.round(rgb[1]*0.3), db=Math.round(rgb[2]*0.3);
+          bg.style.transition = 'background 0.8s ease';
+          bg.style.background = `rgba(${dr},${dg},${db},0.85)`;
+        }
+      });
+    }, 500);
 
     // Pop once colour is in, then auto-advance after 1s
     setTimeout(()=>{
@@ -3202,7 +3481,7 @@ function showFusionResult(fusedCard) {
   addBtn.className = 'action-btn play';
   addBtn.style.cssText += ';opacity:0;transition:opacity 0.4s 0.4s ease;font-size:clamp(9px,1vw,13px);';
   addBtn.textContent = 'ADD TO DECK';
-  addBtn.onclick = ()=>{ overlay.remove(); confirmFusion(); };
+  addBtn.onclick = ()=>{ if(typeof SFX!=='undefined') SFX.confirm(); overlay.remove(); confirmFusion(); };
 
   overlay.append(cardEl, addBtn);
 
@@ -3224,6 +3503,7 @@ function confirmFusion() {
 }
 
 function skipCinnabar() {
+  if(typeof SFX!=='undefined') SFX.skip();
   window._pendingFusion = null;
   _cinnabarSelected = [];
   closeInterludeScreens();
@@ -3292,6 +3572,731 @@ function cardDexNums(card) {
 function getEvoFamily(dex) {
   return EVO_FAMILIES.find(fam => fam.includes(dex)) || [dex];
 }
+
+// ── ROTOM RADIO ──────────────────────────────────────────────
+const ROTOM_TRACKS = [
+  { title:'Littleroot Town — OR/AS',        url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/01%20-%20Littleroot%20Town%20-%20Pokemon%20Omega%20Ruby%20%26%20Alpha%20Sapphire.mp3' },
+  { title:'Aspertia City — BW2',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/02%20-%20Aspertia%20City%20-%20Pokemon%20Black%20White%202.mp3' },
+  { title:'File Select — MD DX',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/03%20-%20File%20Select%20-%20Pokemon%20Mystery%20Dungeon%20Rescue%20Team%20DX.mp3' },
+  { title:'Route 1 — BW',                   url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/04%20-%20Route%201%20-%20Pokemon%20Black%20and%20White.mp3' },
+  { title:'Juniper Lab — BW',               url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/05%20-%20Juniper%20Pokemon%20Lab%20-%20Pokemon%20Black%20%26%20White.mp3' },
+  { title:'Floaroma Town — BDSP',           url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/06%20-%20Floaroma%20Town%20%28Day%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
+  { title:'Jubilife City — BDSP',           url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/07%20-%20Jubilife%20City%20%28Day%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
+  { title:'Route 209 — DPP',               url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/08%20-%20Route%20209%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
+  { title:'Research Lab — DPP',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/09%20-%20Research%20Lab%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
+  { title:'Calm Conversation — Duel',       url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/10%20-%20Calm%20Conversation%20-%20Pokemon%20Duel.mp3' },
+  { title:'Meeting Luca — Duel',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/11%20-%20Meeting%20Luca%20-%20Pokemon%20Duel.mp3' },
+  { title:'Eterna City — DPP',             url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/12%20-%20Eterna%20City%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
+  { title:'Canalave City Night — BDSP',     url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/13%20-%20Canalave%20City%20%28Night%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
+  { title:'Personality Quiz — MD DX',       url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/14%20-%20Personality%20Quiz%20-%20Pokemon%20Mystery%20Dungeon%20Rescue%20Team%20DX.mp3' },
+  { title:'Escape Through Snow — MD DX',    url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/15%20-%20Escape%20Through%20the%20Snow%20-%20Pokemon%20Mystery%20Dungeon%20Rescue%20Team%20DX.mp3' },
+  { title:'Fallarbor Town — RSE',           url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/16%20-%20Fallarbor%20Town%20-%20Pokemon%20Ruby%20Sapphire%20Emerald.mp3' },
+  { title:'Rustboro City — RSE',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/17%20-%20Rustboro%20City%20-%20Pokemon%20Ruby%20Sapphire%20Emerald.mp3' },
+  { title:'Route 101 — RSE',               url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/18%20-%20Route%20101%20-%20Pokemon%20Ruby%20Sapphire%20Emerald.mp3' },
+  { title:'Route 201 Day — BDSP',          url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/19%20-%20Route%20201%20%28Day%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
+  { title:'The Sea — FRLG',               url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/20%20-%20The%20Sea%20-%20Pokemon%20FireRed%20%26%20LeafGreen.mp3' },
+  { title:'Pewter City — FRLG',           url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/21%20-%20Pewter%20City%20Theme%20-%20Pokemon%20FireRed%20%26%20LeafGreen.mp3' },
+  { title:'Humilau City Gym — BW2',        url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/22%20-%20Humilau%20City%20Gym%20-%20Pokemon%20Black%202%20%26%20White%202.mp3' },
+  { title:'Surrounded Sea — MD Sky',       url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/23%20-%20Surrounded%20Sea%20-%20Pokemon%20Mystery%20Dungeon%20Explorers%20of%20Sky.mp3' },
+  { title:'Defend Globe — MD Sky',         url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/24%20-%20Defend%20Globe%20-%20Pokemon%20Mystery%20Dungeon%20Explorers%20of%20Sky.mp3' },
+  { title:'Mt. Coronet — BDSP',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/25%20-%20Mt.%20Coronet%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
+  { title:'Lake — DPP',                   url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/26%20-%20Lake%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
+  { title:'Cherrygrove City — HGSS',       url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/27%20-%20Cherrygrove%20City%20-%20Pokemon%20HeartGold%20%26%20SoulSilver.mp3' },
+  { title:'Pewter City — HGSS',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/28%20-%20Pewter%20City%20-%20Pokemon%20HeartGold%20SoulSilver.mp3' },
+  { title:'Rustboro City — OR/AS',         url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/29%20-%20Rustboro%20City%20-%20Pokemon%20Omega%20Ruby%20%26%20Alpha%20Sapphire.mp3' },
+];
+
+let _rotomAudio  = null;
+let _rotomIdx    = Math.floor(Math.random() * ROTOM_TRACKS.length);
+let _rotomPlaying = false;
+let _rotomVol    = 0.4;
+let _rotomPanelOpen = false;
+
+function rotomLoad(idx, autoplay) {
+  _rotomIdx = ((idx % ROTOM_TRACKS.length) + ROTOM_TRACKS.length) % ROTOM_TRACKS.length;
+  if(_rotomAudio) { _rotomAudio.pause(); _rotomAudio.src=''; }
+  _rotomAudio = new Audio(ROTOM_TRACKS[_rotomIdx].url);
+  _rotomAudio.volume = _rotomVol;
+  _rotomAudio.addEventListener('ended', rotomNext);
+  if(autoplay) { _rotomAudio.play().catch(()=>{}); _rotomPlaying = true; }
+  rotomUpdateUI();
+}
+
+function rotomUpdateUI() {
+  const t = document.getElementById('rotom-song-title');
+  const n = document.getElementById('rotom-song-num');
+  const b = document.getElementById('rotom-play-btn');
+  const ind = document.getElementById('rotom-play-indicator');
+  if(t) { t.textContent = ROTOM_TRACKS[_rotomIdx].title; t.style.transform='translateX(0)'; rotomStartMarquee(); }
+  if(n) n.textContent = `\u266a ${String(_rotomIdx+1).padStart(2,'0')} / ${ROTOM_TRACKS.length}`;
+  if(b) b.textContent = _rotomPlaying ? '\u275a\u275a' : '\u25b6';
+  if(b) b.style.textShadow = _rotomPlaying ? '0 0 6px #44ee66' : '0 0 4px #888';
+  if(ind) { ind.textContent = _rotomPlaying ? '\u25b6' : '\u275a\u275a'; ind.style.color = _rotomPlaying ? '#44ee66' : '#3366aa'; }
+}
+
+let _marqueeId = null;
+function rotomStartMarquee() {
+  if(_marqueeId) clearInterval(_marqueeId);
+  const el = document.getElementById('rotom-song-title');
+  if(!el) return;
+  const parent = el.parentElement;
+  if(!parent) return;
+  el.style.transform = 'translateX(0)';
+  const pw = parent.offsetWidth;
+  const tw = el.scrollWidth;
+  if(tw <= pw) return; // no scroll needed
+  let pos = 0;
+  const speed = 0.4; // px per frame
+  _marqueeId = setInterval(()=>{
+    pos -= speed;
+    if(pos < -(tw - pw + 20)) pos = pw;
+    el.style.transform = `translateX(${pos}px)`;
+  }, 16);
+}
+
+let _reelId = null, _reelAngle = 0;
+function rotomStartReels() {
+  if(_reelId) clearInterval(_reelId);
+  const rL = document.getElementById('rotom-reel-l');
+  const rR = document.getElementById('rotom-reel-r');
+  if(!rL || !rR) return;
+  _reelId = setInterval(()=>{
+    if(!_rotomPlaying) return;
+    _reelAngle += 3;
+    rL.style.transform = `rotate(${_reelAngle}deg)`;
+    rR.style.transform = `rotate(${_reelAngle}deg)`;
+  }, 30);
+}
+
+// Progress pixel blocks update
+setInterval(()=>{
+  if(!_rotomAudio || !_rotomPlaying) return;
+  rotomUpdateUI();
+}, 800);
+
+
+function rotomToggle() {
+  if(!_rotomAudio) { rotomLoad(_rotomIdx, true); if(typeof SFX!=='undefined') SFX.musicOn(); return; }
+  if(_rotomPlaying) {
+    _rotomAudio.pause(); _rotomPlaying=false;
+    if(typeof SFX!=='undefined') SFX.musicOff();
+  } else {
+    _rotomAudio.play().catch(()=>{}); _rotomPlaying=true;
+    if(typeof SFX!=='undefined') SFX.musicOn();
+  }
+  rotomUpdateUI();
+}
+function rotomNext() { rotomLoad(_rotomIdx+1, true); }
+function rotomPrev() {
+  if(_rotomAudio && _rotomAudio.currentTime > 3) { _rotomAudio.currentTime=0; return; }
+  rotomLoad(_rotomIdx-1, true);
+}
+function rotomSetVol(v) {
+  _rotomVol=Math.max(0,Math.min(1,parseFloat(v)));
+  if(_rotomAudio) _rotomAudio.volume=_rotomVol;
+}
+function rotomVolUp()   { rotomSetVol(_rotomVol+0.12); }
+function rotomVolDown() { rotomSetVol(_rotomVol-0.12); }
+function toggleRotomPanel() { rotomToggle(); }
+function showRotomRadio() {
+  const el=document.getElementById('rotom-widget');
+  if(el) {
+    el.style.display='block';
+    // Position just above the hd-row (bottom-left)
+    const hdRow = document.getElementById('hd-row');
+    if(hdRow) {
+      const r = hdRow.getBoundingClientRect();
+      el.style.left = r.left + 'px';
+      el.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+    }
+
+  }
+  if(!_rotomAudio) { rotomLoad(_rotomIdx, true); _rotomPlaying=true; }
+}
+function hideRotomRadio() {
+  const el=document.getElementById('rotom-widget');
+  if(el) el.style.display='none';
+
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// SFX ENGINE — Web Audio API procedural sound effects
+// ══════════════════════════════════════════════════════════════
+const SFX = (() => {
+  let _ctx = null;
+  let masterVol = 0.32;
+
+  function ac() {
+    if(!_ctx) _ctx = new (window.AudioContext||window.webkitAudioContext)();
+    if(_ctx.state==='suspended') _ctx.resume();
+    return _ctx;
+  }
+
+  // Envelope helper: osc with ADSR-like gain
+  function tone(type, freq, t, dur, vol, bend) {
+    try {
+      const c=ac();
+      const o=c.createOscillator(), g=c.createGain();
+      const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=8000;
+      o.type=type;
+      o.frequency.setValueAtTime(freq,t);
+      if(bend) o.frequency.exponentialRampToValueAtTime(bend,t+dur);
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(vol*masterVol, t+Math.min(0.008,dur*0.1));
+      g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      o.connect(lp); lp.connect(g); g.connect(c.destination);
+      o.start(t); o.stop(t+dur+0.01);
+    } catch(e){}
+  }
+
+  // Noise burst helper
+  function nburst(t, dur, vol, hpFreq=200) {
+    try {
+      const c=ac();
+      const len=Math.ceil(c.sampleRate*dur);
+      const buf=c.createBuffer(1,len,c.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,1.5);
+      const src=c.createBufferSource();
+      src.buffer=buf;
+      const hp=c.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=hpFreq;
+      const g=c.createGain(); g.gain.value=vol*masterVol;
+      src.connect(hp); hp.connect(g); g.connect(c.destination);
+      src.start(t); src.stop(t+dur+0.01);
+    } catch(e){}
+  }
+
+  return {
+    setVol(v) { masterVol=parseFloat(v); },
+
+    // ── Card flip: whisper-soft paper rustle ──────────────
+    cardFlip(delay=0) {
+      const c=ac(), t=c.currentTime+delay;
+      nburst(t, 0.045, 0.18, 1800);
+      tone('sine', 220, t, 0.06, 0.08);
+    },
+
+    // ── Card select: pure soft sine, no noise ──────────────
+    cardSelect() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 880, t,      0.07, 0.16);
+      tone('sine', 1320, t+0.02, 0.05, 0.08);
+    },
+
+    cardDeselect() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 900, t, 0.04, 0.10);
+      tone('sine', 500, t, 0.05, 0.05);
+    },
+
+    // ── Play hand: Balatro-style card whoosh ──────────────
+    // Soft rising sweep, feels weighty but not harsh
+    playHand() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 180, t,      0.12, 0.28, 420);
+      tone('sine', 360, t+0.04, 0.10, 0.16, 720);
+      nburst(t+0.06, 0.08, 0.10, 400);
+      // Satisfying low thud at peak
+      tone('sine', 80, t+0.08, 0.18, 0.35);
+    },
+
+    // ── Chips scoring: rapid ascending piano-like pops ────
+    scoreChips(chips) {
+      const c=ac();
+      const steps=Math.max(1,Math.min(Math.ceil(chips/40),10));
+      // Pentatonic scale — always sounds musical
+      const scale=[261,294,330,392,440,523,587,659,784,880];
+      for(let i=0;i<steps;i++) {
+        const t=c.currentTime+i*0.048;
+        tone('sine', scale[i%scale.length], t, 0.09, 0.22);
+        tone('sine', scale[i%scale.length]*2, t, 0.05, 0.08);
+      }
+    },
+
+    // ── Mult: deep satisfying bass note ──────────────────
+    scoreMult(mult) {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 110, t,      0.22, 0.40);
+      tone('sine', 220, t+0.04, 0.18, 0.22);
+      tone('sine', 440, t+0.08, 0.12, 0.12);
+    },
+
+    // ── Damage: soft thud, not harsh ─────────────────────
+    damageHit(dmg) {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 75, t, 0.22, 0.45, 40);
+      tone('sine',150, t, 0.12, 0.20, 60);
+      nburst(t, 0.06, 0.08, 100);
+    },
+
+    // ── Victory: classic ascending arpeggio ───────────────
+    victory() {
+      const c=ac();
+      // C major arpeggio bright and satisfying
+      [[523,0],[659,0.1],[784,0.2],[1047,0.32],[1047,0.5],[784,0.62],[1047,0.74]].forEach(([f,d])=>{
+        const t=c.currentTime+d;
+        tone('square',f,t,0.12,0.18);
+        tone('sine',f*0.5,t,0.16,0.12);
+      });
+    },
+
+    // ── Discard: soft flutter ─────────────────────────────
+    discard() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 500, t,      0.07, 0.14, 200);
+      tone('sine', 300, t+0.04, 0.07, 0.10, 150);
+      nburst(t, 0.05, 0.08, 600);
+    },
+
+    // ── Shop open: pleasant bell chime ────────────────────
+    shopOpen() {
+      const c=ac();
+      [[1047,0],[1319,0.07],[1568,0.15]].forEach(([f,d])=>{
+        const t=c.currentTime+d;
+        tone('sine',f,t,0.25,0.20);
+        tone('sine',f*2,t,0.12,0.06);
+      });
+    },
+
+    // ── Purchase: coin shimmer ────────────────────────────
+    purchase() {
+      const c=ac();
+      [[1200,0],[1600,0.05],[2000,0.10],[1600,0.16],[1200,0.22]].forEach(([f,d])=>{
+        tone('sine',f,c.currentTime+d,0.10,0.16);
+      });
+      tone('sine',600,c.currentTime,0.25,0.12);
+    },
+
+    // ── Error / can't afford ──────────────────────────────
+    error() {
+      const c=ac(), t=c.currentTime;
+      tone('square',220,t,      0.10,0.20, 180);
+      tone('square',175,t+0.12, 0.14,0.20, 140);
+    },
+
+    // ── Route pick: nature rustle ─────────────────────────
+    routePick() {
+      const c=ac();
+      nburst(c.currentTime, 0.07, 0.12, 800);
+      [[440,0.02],[554,0.07],[659,0.13]].forEach(([f,d])=>{
+        tone('sine',f,c.currentTime+d,0.12,0.16);
+      });
+    },
+
+    // ── Cinnabar open: fun lab startup ─────────────────────
+    cinnabarOpen() {
+      const c=ac();
+      // Ascending bubbly arpeggio — fun not scary
+      [[262,0],[330,0.08],[392,0.16],[523,0.24],[659,0.32],[784,0.40]].forEach(([f,d])=>{
+        tone('sine',f,c.currentTime+d,0.18,0.20);
+        tone('square',f*2,c.currentTime+d,0.06,0.08);
+      });
+      // Final sparkle
+      tone('sine',1047,c.currentTime+0.52,0.25,0.18);
+    },
+
+    // ── Fusion zap: brief electric ────────────────────────
+    fusionZap() {
+      const c=ac(), t=c.currentTime;
+      const f=600+Math.random()*600;
+      tone('sawtooth',f,t,0.06,0.18,f*0.2);
+      nburst(t,0.04,0.10,1200);
+    },
+
+    // ── Fusion collide ────────────────────────────────────
+    fusionCollide() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 60, t, 0.30, 0.55, 35);
+      tone('sine',120, t, 0.18, 0.30, 60);
+      nburst(t, 0.10, 0.14, 80);
+    },
+
+    // ── Fusion reveal: magical shimmer ────────────────────
+    fusionReveal() {
+      const c=ac();
+      // Rising pentatonic shimmer
+      [523,659,784,1047,1319,1568].forEach((f,i)=>{
+        const t=c.currentTime+i*0.07;
+        tone('sine',f,t,0.35,0.22);
+        tone('sine',f*2,t,0.18,0.08);
+      });
+      // Held sustain
+      tone('sine',1047,c.currentTime+0.5,0.8,0.18);
+    },
+
+    // ── Confirm ───────────────────────────────────────────
+    confirm() {
+      const c=ac(), t=c.currentTime;
+      tone('sine',660,t,      0.09,0.20);
+      tone('sine',880,t+0.07, 0.12,0.18);
+    },
+
+    // ── Skip ─────────────────────────────────────────────
+    skip() {
+      const c=ac(), t=c.currentTime;
+      tone('sine',440,t,      0.07,0.14);
+      tone('sine',330,t+0.05, 0.09,0.10);
+    },
+
+    // ── Battle start ──────────────────────────────────────
+    battleStart(isGym=false) {
+      const c=ac(), t=c.currentTime;
+      if(isGym) {
+        tone('square',110,t,     0.12,0.40);
+        tone('square',220,t+0.1, 0.12,0.35);
+        tone('square',440,t+0.2, 0.14,0.32);
+        tone('square',880,t+0.3, 0.20,0.45);
+        tone('sine',  440,t+0.45,0.5, 0.28);
+      } else {
+        tone('square',330,t,     0.09,0.28);
+        tone('square',440,t+0.08,0.09,0.24);
+        tone('square',550,t+0.16,0.12,0.22);
+      }
+    },
+
+    // ── No discards ──────────────────────────────────────
+    noDiscards() {
+      const c=ac(), t=c.currentTime;
+      tone('square',220,t,     0.10,0.25,180);
+      tone('square',185,t+0.12,0.12,0.25,160);
+      tone('square',165,t+0.24,0.16,0.25,140);
+    },
+
+    // ── Starter deck choose ──────────────────────────────
+    starterChoose() {
+      const c=ac();
+      [262,330,392,523,659,784].forEach((f,i)=>{
+        const t=c.currentTime+i*0.07;
+        tone('sine',f,t,0.20,0.24);
+        tone('sine',f*2,t,0.10,0.10);
+      });
+    },
+
+    // ── Hover (subtle whisper) ───────────────────────────
+    hover() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 1200, t, 0.03, 0.05);
+    },
+
+    // ── Sort toggle ──────────────────────────────────────
+    sortToggle() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 660,  t,      0.06, 0.14);
+      tone('sine', 990,  t+0.05, 0.06, 0.12);
+    },
+
+    // ── Hand chip select (top panel) ────────────────────
+    handChipSelect() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 740,  t,      0.06, 0.18);
+      tone('sine', 1110, t+0.03, 0.05, 0.12);
+    },
+
+    handChipDeselect() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 520,  t,      0.06, 0.14);
+      tone('sine', 390,  t+0.03, 0.05, 0.10);
+    },
+
+    // ── Generic UI button click ──────────────────────────
+    uiClick() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 500, t,      0.05, 0.12);
+      tone('sine', 750, t+0.03, 0.04, 0.08);
+    },
+
+    // ── Back / close ────────────────────────────────────
+    back() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 440, t,      0.06, 0.14);
+      tone('sine', 330, t+0.04, 0.06, 0.10);
+    },
+
+    // ── Music toggle on ──────────────────────────────────
+    musicOn() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 523, t,      0.06, 0.16);
+      tone('sine', 659, t+0.05, 0.06, 0.14);
+      tone('sine', 784, t+0.10, 0.08, 0.16);
+    },
+
+    // ── Music toggle off ─────────────────────────────────
+    musicOff() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 784, t,      0.05, 0.14);
+      tone('sine', 523, t+0.06, 0.07, 0.12);
+    },
+
+    // ── Deck pile hover / click ───────────────────────────
+    deckHover() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 420, t, 0.04, 0.10);
+    },
+
+    deckClick() {
+      const c=ac(), t=c.currentTime;
+      tone('sine', 350, t,      0.07, 0.18);
+      tone('sine', 525, t+0.05, 0.06, 0.14);
+    },
+  };
+})();
+
+
+
+// ── TRAINER DIALOGUE ─────────────────────────────────────────
+// 3 lines per trainer — click portrait to cycle through them
+// Written in authentic Gen 1 style: ALL CAPS, short punchy lines,
+// trainer-class personality, no modern slang
+const TRAINER_DIALOGUE = {
+  'Youngster': [
+    "HEY! I\'VE GOT POKÉMON AND I\'M NOT AFRAID TO USE THEM!",
+    "MY SHORTS ARE COMFY AND EASY TO WEAR!",
+    "WOW! YOU\'RE PRETTY GOOD! WANNA SWAP NUMBERS?",
+  ],
+  'Lass': [
+    "LA LA LA! I LOVE POKÉMON!",
+    "TEEHEE! I BET YOU WEREN\'T EXPECTING SUCH A TOUGH TRAINER!",
+    "MY POKÉMON ARE JUST THE CUTEST, DON\'T YOU THINK?",
+  ],
+  'Bug Catcher': [
+    "I CAUGHT ALL THESE BUGS MYSELF! EVERY SINGLE ONE!",
+    "BUG POKÉMON ARE SERIOUSLY UNDERRATED. I\'LL PROVE IT!",
+    "CATERPIE! WEEDLE! DON\'T LET ME DOWN OUT THERE!",
+  ],
+  'Camper': [
+    "I\'VE BEEN TRAINING IN THE WILD FOR WEEKS. I\'M READY FOR THIS.",
+    "NOTHING LIKE FRESH AIR AND POKÉMON BATTLES!",
+    "MY MOM PACKED ME SANDWICHES. I FEEL GREAT TODAY.",
+  ],
+  'Picnicker': [
+    "I CAME ALL THIS WAY FROM PALLET JUST FOR A BATTLE!",
+    "DON\'T GO EASY ON ME JUST BECAUSE I\'M ON A PICNIC!",
+    "MY POKÉMON EAT BETTER THAN MOST TRAINERS, YOU KNOW.",
+  ],
+  'Hiker': [
+    "SCALED EVERY MOUNTAIN IN KANTO. YOUR TEAM WON\'T SLOW ME DOWN.",
+    "THESE BOOTS HAVE WALKED A THOUSAND MILES. BRING IT ON.",
+    "ROCK TYPES ARE THE BACKBONE OF ANY STRONG TEAM!",
+  ],
+  'Super Nerd': [
+    "MY CALCULATIONS SUGGEST YOU HAVE A 23.7% CHANCE OF WINNING.",
+    "I HAVE STUDIED EVERY POKÉMON\'S BASE STATS. I NEVER LOSE.",
+    "THE SCIENCE OF BATTLE IS PERFECTLY CLEAR TO ME.",
+  ],
+  'Sailor': [
+    "I\'VE SEEN STORMS THAT WOULD MAKE YOUR KNEES BUCKLE. YOU WON\'T.",
+    "LISTEN HERE, LANDLUBBER — WATER TYPES RULE THE SEAS AND THE LAND.",
+    "GYARADOS ATE MY LAST OPPONENT. JUST SO YOU KNOW.",
+  ],
+  'Fisherman': [
+    "PATIENCE. THAT\'S THE KEY TO FISHING AND POKÉMON BATTLES BOTH.",
+    "BEEN SITTING ON THIS ROUTE FOR SEVEN HOURS. YOU WALKED RIGHT INTO IT.",
+    "MAGIKARP\'S NOTHING TO LAUGH AT. I\'VE SEEN WHAT IT BECOMES.",
+  ],
+  'Engineer': [
+    "SYSTEM DIAGNOSTIC COMPLETE. YOU ARE SIGNIFICANTLY OUTMATCHED.",
+    "I HAVE UPGRADED MY POKÉMON\'S TRAINING REGIMEN FOUR TIMES THIS MONTH.",
+    "EFFICIENCY IS EVERYTHING. THIS BATTLE WILL BE BRIEF.",
+  ],
+  'Gambler': [
+    "I\'LL BET MY ENTIRE WINNINGS ON THIS. I NEVER LOSE TWICE.",
+    "LUCK IS JUST SKILL YOU HAVEN\'T TRAINED YET.",
+    "DOUBLE OR NOTHING? TOO BAD — THERE\'S NOTHING LEFT FOR YOU TO WIN.",
+  ],
+  'Channeler': [
+    "THE SPIRITS ARE RESTLESS TODAY... THEY WARN ME OF A STRONG OPPONENT.",
+    "I CAN HEAR THE POKÉMON TOWER FROM HERE. CAN YOU?",
+    "THE GHOSTS TOLD ME YOUR WEAKNESS. THEY TELL ME EVERYTHING.",
+  ],
+  'Pokémaniac': [
+    "I HAVE SPENT MY ENTIRE ALLOWANCE ON POKÉMON MERCHANDISE. WORTH IT.",
+    "I KNOW EVERY POKÉMON\'S EVOLUTION LINE BY HEART. DON\'T TEST ME.",
+    "MY PARENTS THINK THIS IS A PHASE. IT IS NOT A PHASE.",
+  ],
+  'Juggler': [
+    "KEEP YOUR EYES ON THE POKÉ BALL — WAIT, WHICH ONE?",
+    "MISDIRECTION IS AN ART. YOU\'RE ALREADY LOSING AND YOU DON\'T KNOW IT.",
+    "MY ACTS PLAY IN CELADON EVERY WEEKEND. COME SEE ME SOMETIME.",
+  ],
+  'Burglar': [
+    "YOU DIDN\'T SEE ME. I WASN\'T HERE. THIS BATTLE ISN\'T HAPPENING.",
+    "I BORROWED THESE POKÉMON. TECHNICALLY.",
+    "THE SILPH CO. JOB WENT SIDEWAYS. THIS ROUTE IS MY ONLY OPTION NOW.",
+  ],
+  'Scientist': [
+    "FASCINATING. A TRAINER WHO USES FUSIONS. I MUST STUDY THIS.",
+    "MY RESEARCH AT THE LAB HAS GIVEN MY POKÉMON CERTAIN... ADVANTAGES.",
+    "CLONE. ENHANCE. REPEAT. THAT IS THE WAY OF SCIENCE.",
+  ],
+  'Black Belt': [
+    "I HAVE BROKEN SEVENTEEN BOARDS TODAY. YOU ARE NUMBER EIGHTEEN.",
+    "MIND. BODY. POKÉMON. ALL THREE MUST BE STRONG.",
+    "I TRAINED UNDER THE MASTER OF SAFFRON DOJO. DO NOT TAKE ME LIGHTLY.",
+  ],
+  'Tamer': [
+    "I HAVE RAISED WILD POKÉMON FROM SCRATCH. THEY OBEY ONLY ME.",
+    "EVERY POKÉMON CAN BE TAMED IF YOU UNDERSTAND IT. I UNDERSTAND ALL OF THEM.",
+    "DON\'T MISTAKE CALM FOR WEAKNESS. MY TEAM IS VERY CALM.",
+  ],
+  'Swimmer': [
+    "I SWIM FIFTY LAPS BEFORE EVERY BATTLE. CAN YOU SAY THE SAME?",
+    "WATER IS MY HOME. COME ON IN — THE BATTLE\'S FINE.",
+    "BEAT ME AND I\'LL SWIM BACK TO SHORE. LOSE AND... SAME, ACTUALLY.",
+  ],
+  'Cue Ball': [
+    "NOBODY TELLS ME WHERE TO GO OR WHAT TO DO. NOBODY.",
+    "I\'VE BEEN BANNED FROM THREE POKÉMON GYMS. THAT\'S NOT A CRIME.",
+    "MY TEAM HITS FIRST AND THINKS LATER. WORKS EVERY TIME.",
+  ],
+  'Rocket Grunt': [
+    "PREPARE FOR TROUBLE! ...THERE\'S NO PARTNER TODAY, JUST ME.",
+    "TEAM ROCKET WILL RISE AGAIN. GIOVANNI HAS A PLAN. WE ALWAYS HAVE A PLAN.",
+    "HAND OVER YOUR RARE POKÉMON AND NOBODY GETS HURT. OR BATTLE ME. WHATEVER.",
+  ],
+  'Bird Keeper': [
+    "MY BIRDS HAVE FLOWN EVERY ROUTE IN KANTO. THEY KNOW YOUR WEAKNESSES.",
+    "FROM UP HIGH, YOUR STRATEGY IS COMPLETELY VISIBLE.",
+    "PIDGEOT CAN FLY AT MACH TWO. YOUR FUSION CARDS CAN\'T.",
+  ],
+  // ELITE TRAINERS
+  'Ace Trainer': [
+    "I HAVE DEDICATED MY LIFE TO POKÉMON. DO YOU KNOW WHAT THAT LOOKS LIKE?",
+    "EVERY TRAINER IN KANTO KNOWS MY NAME. DO YOU?",
+    "I DON\'T LOSE. NOT ONCE. NOT EVER. LET\'S KEEP IT THAT WAY.",
+  ],
+  'Cooltrainer': [
+    "RELAX. I\'LL MAKE THIS QUICK.",
+    "HEARD YOU WERE SOMETHING SPECIAL. I\'VE HEARD THAT BEFORE.",
+    "MY TEAM IS OPTIMISED. YOURS IS... CREATIVE. WE\'LL SEE HOW THAT GOES.",
+  ],
+  'Veteran': [
+    "I REMEMBER WHEN TRAINERS ACTUALLY TRAINED. WHAT HAPPENED TO THAT?",
+    "THIRTY YEARS ON THESE ROUTES. NOTHING SURPRISES ME ANYMORE.",
+    "LOSE TO A KID? NOT TODAY. NOT AFTER EVERYTHING I\'VE SEEN.",
+  ],
+  'Elite Scientist': [
+    "PROJECT LAZARUS IS CLASSIFIED. ALL YOU NEED TO KNOW IS THAT IT WORKED.",
+    "MEWTWO WAS JUST THE BEGINNING. MY WORK GOES MUCH FURTHER.",
+    "YOUR FUSION CARDS ARE PRIMITIVE COMPARED TO WHAT I\'VE CREATED IN THE LAB.",
+  ],
+  'Elite Psychic': [
+    "I ALREADY KNOW HOW THIS ENDS. I\'M SIMPLY BEING POLITE.",
+    "YOUR NEXT MOVE IS... YES. EXACTLY WHAT I THOUGHT.",
+    "THE MIND IS THE STRONGEST MUSCLE. MINE IS VERY, VERY FIT.",
+  ],
+  'Elite Black Belt': [
+    "POWER WITHOUT DISCIPLINE IS NOTHING. OBSERVE DISCIPLINE.",
+    "I HAVE TRAINED AT EVERY DOJO FROM VERMILION TO SAFFRON.",
+    "FIGHTING SPIRIT IS THE FINAL EVOLUTION. I HAVE ACHIEVED IT.",
+  ],
+  'Elite Breeder': [
+    "EVERY POKÉMON ON MY TEAM WAS BRED FOR ONE PURPOSE: TO WIN.",
+    "NATURE. IV\'S. EV\'S. I UNDERSTOOD THESE THINGS BEFORE ANYONE ELSE.",
+    "YOUR FUSIONS INTEREST ME. BUT BREEDING IS AN OLDER AND WISER ART.",
+  ],
+  'Elite Executive': [
+    "TEAM ROCKET DOES NOT FAIL. INDIVIDUALS FAIL. THE ORGANISATION ENDURES.",
+    "GIOVANNI BUILT SOMETHING THAT CANNOT BE STOPPED. I AM THE PROOF.",
+    "YOU THINK YOU\'RE FIGHTING A GRUNT? YOU\'RE FIGHTING THE MACHINE.",
+  ],
+  // GYM LEADERS
+  'Brock': [
+    "I\'M BROCK! I\'M THE GYM LEADER HERE! MY ROCK-HARD WILL IS AS SOLID AS BOULDERS!",
+    "NOTHING GETS THROUGH ROCK. NOT WATER. NOT GRASS. NOT YOUR LITTLE CARD TRICKS.",
+    "I\'VE TRAINED ON THESE VERY MOUNTAINS SINCE I WAS OLD ENOUGH TO HOLD A POKÉ BALL.",
+  ],
+  'Misty': [
+    "PREPARE YOURSELF! I\'M THE WORLD-FAMOUS BEAUTY, MISTY! I SPECIALIZE IN WATER-TYPE POKÉMON!",
+    "MY CERULEAN GYM HAS STOOD UNDEFEATED SINCE BEFORE YOU WERE BORN. ALMOST.",
+    "STARMIE IS A MYSTERY EVEN TO ME. THAT\'S WHAT MAKES US PERFECT TOGETHER.",
+  ],
+  'Lt. Surge': [
+    "HEY BABY! WANT TO FEEL WHAT REAL POWER IS LIKE? MY POKÉMON WILL SHOW YOU!",
+    "BACK IN THE WAR, ELECTRIC POKÉMON SAVED MY LIFE MORE THAN ONCE. I OWE THEM EVERYTHING.",
+    "NOBODY LEAVES VERMILION GYM WITHOUT A LIGHTNING BOLT MEMORY!",
+  ],
+  'Erika': [
+    "OH MY... I DOZED OFF FOR A MOMENT. SHALL WE BEGIN? MY GRASS TYPES HAVE BEEN PATIENT.",
+    "THIS GYM DOUBLES AS A TEA HOUSE. PERHAPS AFTER YOUR DEFEAT WE CAN SHARE A CUP.",
+    "VILEPLUME IS BLOOMING TODAY. THAT\'S ALWAYS A GOOD SIGN FOR US AND A BAD ONE FOR YOU.",
+  ],
+  'Koga': [
+    "FWAHAHAHA! PREPARE YOURSELF FOR THE ULTIMATE BATTLING EXPERIENCE!",
+    "POISON SEEPS IN SLOWLY. BY THE TIME YOU NOTICE, IT IS ALREADY TOO LATE.",
+    "SILENCE. STILLNESS. POISON. THESE ARE THE WEAPONS OF THE TRUE NINJA.",
+  ],
+  'Sabrina': [
+    "I HAD A VISION OF THIS BATTLE. YOU DIDN\'T WIN THERE EITHER.",
+    "MY PSYCHIC POWERS TELL ME EVERYTHING ABOUT YOU. EVERYTHING.",
+    "ALAKAZAM\'S IQ IS 5000. YOU CANNOT OUTWIT IT. DO NOT TRY.",
+  ],
+  'Blaine': [
+    "HAHAHA! MY FIERY POKÉMON WILL MAKE YOU FEEL THE HEAT!",
+    "RIDDLE ME THIS: WHAT BURNS HOTTER THAN THE SUN AND SLOWER THAN YOU\'LL LOSE? MY ARCANINE!",
+    "I BUILT THIS GYM ON A VOLCANO. DOES THAT TELL YOU SOMETHING ABOUT MY PERSONALITY?",
+  ],
+  'Giovanni': [
+    "SO. YOU MADE IT THIS FAR. IMPRESSIVE. FUTILE, BUT IMPRESSIVE.",
+    "TEAM ROCKET IS NOT A GANG. IT IS AN ORGANISATION. THERE IS A DIFFERENCE. YOU WON\'T UNDERSTAND IT.",
+    "I HAVE DEDICATED MY LIFE TO THE PURSUIT OF POWER. STAND ASIDE OR BE CRUSHED. CHOOSE.",
+  ],
+};
+
+// How many times we've clicked the portrait this battle
+let _dialogueIdx = 0;
+
+let _dialogueDismissTimer = null;
+
+function showTrainerDialogue(trainerName) {
+  const lines = TRAINER_DIALOGUE[trainerName];
+  const bubble = document.getElementById('trainer-dialogue');
+  const nameEl = document.getElementById('trainer-dialogue-name');
+  const textEl = document.getElementById('trainer-dialogue-text');
+  const inner  = document.getElementById('trainer-dialogue-inner');
+  if(!bubble || !nameEl || !textEl || !inner) return;
+  if(!lines || !lines.length) return;
+
+  const line = lines[_dialogueIdx % lines.length];
+  _dialogueIdx++;
+
+  nameEl.textContent = trainerName.toUpperCase();
+  textEl.textContent = line;
+
+  console.log('[DIALOGUE] Showing:', trainerName, '|', line.slice(0,40));
+  // Show + reset opacity first, then animate in
+  bubble.style.display = 'block';
+  bubble.style.opacity = '1';
+  bubble.style.transition = 'none';
+  inner.style.animation = 'none';
+  inner.style.opacity = '0';
+  inner.style.transform = 'translateX(-6px)';
+  // Force reflow then animate
+  void bubble.offsetWidth;
+  inner.style.transition = 'opacity 0.2s ease, transform 0.2s cubic-bezier(0.2,1.4,0.3,1)';
+  inner.style.opacity = '1';
+  inner.style.transform = 'translateX(0)';
+
+  if(_dialogueDismissTimer) clearTimeout(_dialogueDismissTimer);
+  _dialogueDismissTimer = setTimeout(() => {
+    bubble.style.transition = 'opacity 0.35s ease';
+    bubble.style.opacity = '0';
+    setTimeout(() => {
+      bubble.style.display = 'none';
+      bubble.style.transition = '';
+      inner.style.transition = '';
+    }, 380);
+  }, 4200);
+}
+
+function hideTrainerDialogue() {
+  const bubble = document.getElementById('trainer-dialogue');
+  if(bubble) { bubble.style.display = 'none'; bubble.style.opacity = '0'; }
+  if(_dialogueDismissTimer) { clearTimeout(_dialogueDismissTimer); _dialogueDismissTimer = null; }
+}
+
+// Reset dialogue index at start of each battle
+function resetDialogue() { _dialogueIdx = 0; }
 
 function evaluateHand(cards) {
   if(!cards || cards.length === 0) return null;
@@ -3523,6 +4528,7 @@ function showHandScore(handName, chips, mult, totalDmg, cards) {
   totalEl.style.cssText = `font-family:'PokemonClassic',monospace;font-size:clamp(22px,3vw,44px);
     color:#ffdd44; text-shadow:0 0 20px rgba(255,200,0,0.8); letter-spacing:2px; white-space:nowrap;`;
   totalEl.textContent = totalDmg + ' DMG';
+  if(typeof SFX!=='undefined') { SFX.scoreChips(chips); setTimeout(()=>SFX.scoreMult(mult),chips>0?Math.min(chips/50,8)*55+30:30); }
 
   mathRow.append(chipsEl, multSymbol, multEl, eqEl, totalEl);
   overlay.append(nameBanner, mathRow);
@@ -3546,6 +4552,7 @@ function showHandScore(handName, chips, mult, totalDmg, cards) {
 // ── AUTO DRAW to fill hand ────────────────────────────────────
 
 async function playSelectedHand() {
+  if(typeof SFX!=='undefined') SFX.playHand();
   if(!G.ourTurn || G.animating || G_selected.size === 0) return;
   G.animating = true;
 
@@ -3689,6 +4696,7 @@ async function playSelectedHand() {
   });
 
   // Deal damage
+  if(typeof SFX!=='undefined' && totalDmg>0) setTimeout(()=>SFX.damageHit(totalDmg), 400);
   G.trainerHp = Math.max(0, G.trainerHp - totalDmg);
   updatePortraits();
 
@@ -3707,13 +4715,31 @@ async function playSelectedHand() {
   setTimeout(()=>dmgEl2.remove(), 1500);
   document.getElementById('hand-score-overlay')?.remove();
   await delay(300);
+
+  if(G.trainerHp <= 0) {
+    // Trainer defeated — keep G.animating = true so ALL UI stays locked
+    // No hand select, no discard, no deck viewer, no hand chips until next battle
+    renderHand(); // re-render hand (cards are gone) but buttons stay disabled via G.animating
+    setTimeout(advanceTrainer, 400);
+    return;
+  }
+
   G.animating = false;
   renderHand();
-
-  if(G.trainerHp <= 0) { setTimeout(advanceTrainer, 400); return; }
   autoFillHand(() => { renderHand(); checkAutoEndTurn(); });
 }
 
+
+function updateItemsFade() {
+  const list = document.getElementById('owned-items-list');
+  const ft   = document.getElementById('items-fade-top');
+  const fb   = document.getElementById('items-fade-bottom');
+  if(!list || !ft || !fb) return;
+  const scrollTop = list.scrollTop;
+  const maxScroll = list.scrollHeight - list.clientHeight;
+  ft.style.opacity = scrollTop > 4 ? '1' : '0';
+  fb.style.opacity = (maxScroll - scrollTop) > 4 ? '1' : '0';
+}
 
 function renderOwnedItemsPanel() {
   const panel = document.getElementById('owned-items-panel');
@@ -3734,7 +4760,7 @@ function renderOwnedItemsPanel() {
 // ══ BETWEEN-BATTLE INTERLUDE SYSTEM ══════════════════════════════
 
 // Which interlude after each gym (0=route, 1=shop, 2=daycare)
-const INTERLUDE_SEQUENCE = ['route', 'shop', 'cinnabar', 'route', 'shop', 'daycare', 'route', 'shop'];
+const INTERLUDE_SEQUENCE = ['cinnabar', 'route', 'cinnabar', 'shop', 'cinnabar', 'route', 'cinnabar', 'shop', 'daycare', 'cinnabar', 'route', 'shop'];
 
 // Kanto routes with actual Pokémon and locations
 const KANTO_ROUTES = [
@@ -3806,6 +4832,7 @@ function openRouteScreen() {
       card = mkCard(fusion);
     }
     const wrap = makeCardVisual(card, 'width:clamp(110px,11vw,155px);aspect-ratio:2/3;animation:shopItemIn 0.4s '+(i*0.08)+'s cubic-bezier(0.15,1.1,0.35,1) both;');
+    wrap.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
     wrap.addEventListener('click', () => {
       row.querySelectorAll('.card-visual').forEach(c=>c.classList.remove('cv-selected'));
       wrap.classList.add('cv-selected');
@@ -3828,6 +4855,7 @@ function openRouteScreen() {
 
 function confirmRoutePick() {
   if(!_routePicked) return;
+  if(typeof SFX!=='undefined') SFX.routePick();
   // Store the full card object — works for both fusion and basic cards
   G.bonusCards.push({..._routePicked, _isBonusCard:true});
   closeInterludeScreens();
@@ -3835,6 +4863,7 @@ function confirmRoutePick() {
 }
 
 function skipRoute() {
+  if(typeof SFX!=='undefined') SFX.skip();
   closeInterludeScreens();
   startNextBattle();
 }
@@ -3880,6 +4909,7 @@ function selectDaycareAction(action) {
     xpBar.appendChild(xpFill); el.appendChild(xpBar);
     // XP label
     if(xp>0){const xl=document.createElement('div');xl.style.cssText='position:absolute;top:4px;right:4px;background:rgba(255,200,0,0.85);color:#000;font-family:"PokemonClassic",monospace;font-size:8px;padding:1px 4px;border-radius:3px;z-index:12;';xl.textContent='XP:'+xp+'/3';el.appendChild(xl);}
+    el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
     el.addEventListener('click', () => {
       row.querySelectorAll('.card-visual').forEach(c=>c.classList.remove('cv-selected'));
       el.classList.add('cv-selected');
@@ -3901,7 +4931,8 @@ function confirmDaycareAction(card) {
     if(bi>-1) G.bonusCards.splice(bi,1);
   } else if(_daycareAction === 'breed') {
     const f = FUSIONS.find(f=>f.name===card.name)||FUSIONS[0];
-    G.bonusCards.push(f); // fusion object — handled in startNextBattle
+    if(typeof SFX!=='undefined') SFX.purchase();
+    G.bonusCards.push(f);
     G.deck.push({...mkCard(f)}); shuffle(G.deck);
   } else if(_daycareAction === 'training') {
     CARD_XP[card.name] = (CARD_XP[card.name]||0) + 1;
@@ -3921,6 +4952,7 @@ function confirmDaycareAction(card) {
 }
 
 function skipDaycare() {
+  if(typeof SFX!=='undefined') SFX.skip();
   closeInterludeScreens();
   startNextBattle();
 }
@@ -3933,6 +4965,8 @@ function closeInterludeScreens() {
 }
 
 function hideGameUIForInterlude() {
+  if(typeof hideRotomRadio==='function') hideRotomRadio();
+  if(typeof hideTrainerDialogue==='function') hideTrainerDialogue();
   _popoverEnabled = false; hideItemPopover();
   ['hand-container','game-hud','deck-ours','balatro-bottom','run-panel','hd-row','owned-items-panel','hands-panel','gold-display'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
@@ -3964,6 +4998,9 @@ function makeCardVisual(card, sizeCss) {
   if(card.type1) { const t=typeBadge(card.type1,'hc-type1'); el.appendChild(t); }
   if(card.type2) { const t=typeBadge(card.type2,'hc-type2'); el.appendChild(t); }
 
+  // Hover sound on every card in the game
+  el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+
   return el;
 }
 
@@ -3973,10 +5010,12 @@ let _dvSort = 'species';
 const DV_HIDE_IDS = [
   'run-panel','hd-row','hands-panel','hand-container','balatro-bottom',
   'owned-items-panel','deck-ours','game-hud',
-  'route-screen','daycare-screen','shop-screen','route-map-screen','cinnabar-screen'
+  'route-screen','daycare-screen','shop-screen','route-map-screen','cinnabar-screen',
+  'rotom-widget','gold-display'
 ];
 
 function openDeckViewer() {
+  if(G && G.animating) return; // blocked during lethal/advance
   const viewer = document.getElementById('deck-viewer');
   if(!viewer) return;
   // Hide everything except bg canvas and its overlay
@@ -4033,6 +5072,7 @@ function renderDeckViewer() {
     slot.style.setProperty('--sd', (i*0.02)+'s');
     const cv = makeCardVisual(card, 'width:100%;height:100%;');
     cv.style.cursor = 'default';
+    // hover already wired inside makeCardVisual
     slot.appendChild(cv);
     grid.appendChild(slot);
   });
@@ -4112,14 +5152,16 @@ function renderHandsPanel() {
 }
 
 function selectHandType(name) {
+  if(!G.ourTurn || G.animating) return; // locked during lethal/advance
   if(_activeHandType === name) {
-    // Deselect — clear selection
+    if(typeof SFX!=='undefined') SFX.handChipDeselect();
     _activeHandType = null;
     G_selected.clear();
     renderHand();
     renderHandsPanel();
     return;
   }
+  if(typeof SFX!=='undefined') SFX.handChipSelect();
   _activeHandType = name;
   renderHandsPanel();
   // Try to auto-select cards that form this hand
@@ -4591,6 +5633,7 @@ async function attackTrainer(srcIdx) {
 }
 
 async function advanceTrainer() {
+  if(typeof SFX!=='undefined') SFX.victory();
   const t=getCurrentTrainer();
   G.trainerIdx = G.trainerIdx + 1;
   G.gold = (G.gold||0) + 4 + Math.floor(G.trainerIdx/3);
@@ -4608,11 +5651,20 @@ function setTrainerPortrait(trainer) {
     tcImg.style.transition='none';
     const newSrc = trainer.img;
     if(tcImg.src !== newSrc) {
-      tcImg.onload = () => { tcImg.style.transition='opacity 0.3s ease'; tcImg.style.opacity='1'; tcImg.onload=null; };
-      tcImg.onerror = () => { tcImg.style.opacity='1'; tcImg.onerror=null; };
+      tcImg.onload = () => {
+        tcImg.style.transition='opacity 0.3s ease'; tcImg.style.opacity='1'; tcImg.onload=null;
+        // Show dialogue 600ms after image fades in (feels natural)
+        setTimeout(()=>{ if(typeof showTrainerDialogue==='function') showTrainerDialogue(trainer.name); }, 600);
+      };
+      tcImg.onerror = () => {
+        tcImg.style.opacity='1'; tcImg.onerror=null;
+        setTimeout(()=>{ if(typeof showTrainerDialogue==='function') showTrainerDialogue(trainer.name); }, 400);
+      };
       tcImg.src = newSrc;
     } else {
       tcImg.style.transition='opacity 0.3s ease'; tcImg.style.opacity='1';
+      // Image already loaded — show dialogue after fade
+      setTimeout(()=>{ if(typeof showTrainerDialogue==='function') showTrainerDialogue(trainer.name); }, 700);
     }
   }
   // Update name + HP in panel
@@ -4716,7 +5768,7 @@ async function executeAttack(srcIdx,tIdx){
   }
   G.ourBoard=[...G.ourBoard.filter(c=>c&&c.hp>0),...new Array(6).fill(null)];
   G.theirBoard=[...G.theirBoard.filter(c=>c&&c.hp>0),...new Array(4).fill(null)];
-  G.animating=false;renderAll();checkGameEnd();
+  if(G.trainerHp > 0) G.animating=false; renderAll(); checkGameEnd();
   setTimeout(autoAttackTrainerIfOpen,200);
   setTimeout(checkAutoEndTurn,300);
 }
@@ -4761,7 +5813,8 @@ async function opponentAttack(tIdx,oIdx){
   }
   G.ourBoard=[...G.ourBoard.filter(c=>c&&c.hp>0),...new Array(6).fill(null)];
   G.theirBoard=[...G.theirBoard.filter(c=>c&&c.hp>0),...new Array(4).fill(null)];
-  G.animating=false;
+  // Don't unlock UI if trainer is already dead — keep locked until advanceTrainer
+  if(G.trainerHp > 0) G.animating=false;
 }
 
 function spawnDmg(wrap,wr,el,dmg,color){
@@ -4804,7 +5857,7 @@ async function autoAttackTrainerIfOpen(){
     renderAll();updatePortraits();await delay(180);
     if(G.trainerHp<=0) break;
   }
-  G.animating=false;renderAll();updatePortraits();
+  if(G.trainerHp > 0) G.animating=false; renderAll(); updatePortraits();
   if(G.trainerHp<=0) setTimeout(advanceTrainer,400);
 }
 
@@ -4865,6 +5918,7 @@ function updateRunPanel() {
   const handsEl    = document.getElementById('rp-hands');
   const discardsEl = document.getElementById('rp-discards');
   if(handsEl)    handsEl.textContent    = G.handsLeft;
+  showRotomRadio();
   if(discardsEl) discardsEl.textContent = G.discardsLeft;
   // Gold display above deck
   const goldDisp = document.getElementById('gold-display');
@@ -5607,6 +6661,10 @@ let G_starterDeckId = null;
 let _selectedDeckEl = null;
 
 function initStarterDeckScreen() {
+  // Start music on first user interaction
+  document.addEventListener('click', ()=>{
+    if(!_rotomAudio) { rotomLoad(_rotomIdx, true); _rotomPlaying=true; }
+  }, {once:true});
   document.body.classList.add('game-active');
   // Use Erika's grass palette for starter screen
   if(window._balatroBg) window._balatroBg.setGym(3);
@@ -5655,7 +6713,8 @@ function initStarterDeckScreen() {
     if(words.length>=2){label.innerHTML=words[0]+'<br>'+words.slice(1).join(' ');}
     else{label.textContent=deck.name;}
     pile.appendChild(label);
-    pile.addEventListener('click',()=>openDeckDetail(deck.id, pile));
+    pile.addEventListener('click',()=>{ if(typeof SFX!=='undefined') SFX.uiClick(); openDeckDetail(deck.id, pile); });
+    pile.addEventListener('mouseenter',()=>{ if(typeof SFX!=='undefined') SFX.hover(); });
     arc.appendChild(pile);
   });
   // Hide game UI
@@ -5758,6 +6817,31 @@ function beginBattleWithDeck(deckId){
 <script>
 // Now the DOM element exists — safe to call
 initStarterDeckScreen();
+
+// Autoplay music immediately — browsers may block, fallback to first interaction
+(function tryAutoplay() {
+  let started = false;
+  function startMusic() {
+    if(started) return;
+    if(!_rotomAudio) rotomLoad(_rotomIdx, false);
+    _rotomAudio.play().then(() => {
+      started = true;
+      _rotomPlaying = true;
+      rotomUpdateUI();
+    }).catch(() => {}); // Browser blocked silently
+  }
+  // 1. Try immediately
+  setTimeout(startMusic, 200);
+  // 2. Try after a short delay (some browsers allow after page settles)
+  setTimeout(startMusic, 1500);
+  // 3. Guaranteed unlock on first interaction
+  ['pointerdown','touchstart','mousedown','keydown'].forEach(e =>
+    document.addEventListener(e, function f() {
+      startMusic();
+      document.removeEventListener(e, f);
+    }, {passive:true})
+  );
+})();
 </script>
 
 <script>
@@ -5872,7 +6956,8 @@ function renderRouteMap() {
     g.appendChild(lbl);
 
     if (node.unlocked && !node.beaten) {
-      g.addEventListener('click', () => selectMapNode(node));
+      g.addEventListener('click', () => { if(typeof SFX!=='undefined') SFX.uiClick(); selectMapNode(node); });
+      g.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
       g.addEventListener('pointerenter', () => {
         document.getElementById('rms-info').textContent =
           (trainer?.name || node.label) + ' — ' + (trainer?.hpDesc || '') + '  HP: ' + (trainer?.hp || '?');
@@ -5896,6 +6981,7 @@ let shopCards = [];
 let _shopActiveTab = 'All';
 
 function openShop() {
+  if(typeof SFX!=='undefined') SFX.shopOpen();
   _popoverEnabled = false; hideItemPopover();
   ['hand-container','game-hud','deck-ours','balatro-bottom','run-panel','hd-row','hands-panel','gold-display'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
@@ -5940,6 +7026,7 @@ function renderShop() {
     `;
     if(!owned && canAfford) {
       el.addEventListener('click', () => buyItem(item, el));
+      el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
       el.addEventListener('touchend', (e) => { e.preventDefault(); buyItem(item, el); }, {passive:false});
     }
     attachPopover(el, item.desc);
@@ -5950,7 +7037,8 @@ function renderShop() {
 }
 
 function buyItem(item, el) {
-  if((G.gold||0) < item.cost) return;
+  if((G.gold||0) < item.cost) { if(typeof SFX!=='undefined') SFX.error(); return; }
+  if(typeof SFX!=='undefined') SFX.purchase();
   G.gold = (G.gold||0) - item.cost;
   G_items.push(item);
   applyItemEffect(item);
@@ -6094,6 +7182,11 @@ function applyItemEffect(item) {
 }
 
 function startNextBattle() {
+  if(typeof resetDialogue==='function') resetDialogue();
+  if(typeof SFX!=='undefined') {
+    const t=getCurrentTrainer();
+    SFX.battleStart(t&&t.tier==='boss');
+  }
   const shopScreen = document.getElementById('shop-screen');
   if (shopScreen) shopScreen.classList.add('hidden');
   // Show game UI for next battle
@@ -6101,7 +7194,7 @@ function startNextBattle() {
   G.trainerHp = trainer.hp; G.trainerMaxHp = trainer.hp;
   G.ourBoard = new Array(6).fill(null);
   G.theirBoard = new Array(4).fill(null);
-  G.ourTurn = true; G.heroPowerUsed = false; G.ourMana = 10; G.maxMana = 10;
+  G.ourTurn = true; G.animating = false; G.heroPowerUsed = false; G.ourMana = 10; G.maxMana = 10;
   G.hand = []; G.theirHand = [];
   G.theirDeck = shuffle(FUSIONS.map(mkCard));
   // Rebuild deck fresh each round from starter deck + bonuses
@@ -6119,8 +7212,15 @@ function startNextBattle() {
   G.roundScore = 0;
   G.roundChips = 0;
   G.roundMult = 0;
-  if (window._balatroBg) window._balatroBg.setGym(G.trainerIdx);
+  if (window._balatroBg) {
+    const _palTrainer = getCurrentTrainer();
+    if(_palTrainer && _palTrainer.name) window._balatroBg.setTrainer(_palTrainer.name);
+    else window._balatroBg.setGym(G.trainerIdx);
+  }
   setTimeout(() => setTrainerPortrait(trainer), 100);
+  // Hide any stale dialogue immediately — portrait change will show fresh one
+  const _dlg = document.getElementById('trainer-dialogue');
+  if(_dlg) { _dlg.style.display='none'; _dlg.style.opacity='0'; }
 
   document.getElementById('tc-opp') && (document.getElementById('tc-opp').style.display = 'flex');
   document.getElementById('tc-us')  && (document.getElementById('tc-us').style.display  = 'flex');
@@ -6172,7 +7272,7 @@ function startNextBattle() {
   <div id="shop-subtitle">SPEND YOUR GOLD WISELY</div>
   <div id="shop-gold">GOLD: $4</div>
   <div id="shop-items-grid"></div>
-  <button id="shop-skip-btn" onclick="shopSkip()" style="margin-top:20px;">LEAVE STORE →</button>
+  <button id="shop-skip-btn" onclick="if(typeof SFX!='undefined') SFX.back(); shopSkip();" style="margin-top:20px;">LEAVE STORE →</button>
 </div>
 
   <div class="hpt-desc" id="hpt-desc"></div>
@@ -6188,10 +7288,10 @@ function startNextBattle() {
   <div id="route-pokemon-row"></div>
   <div id="route-btn-row">
     <div id="route-secondary-row">
-      <button id="route-view-deck-btn" onclick="openDeckViewer()">VIEW DECK</button>
-      <button class="between-skip" onclick="skipRoute()">SKIP →</button>
+      <button id="route-view-deck-btn" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); openDeckViewer();">VIEW DECK</button>
+      <button class="between-skip" onclick="if(typeof SFX!=='undefined') SFX.skip(); skipRoute();">SKIP →</button>
     </div>
-    <button id="route-confirm-btn" onclick="confirmRoutePick()">ADD TO DECK ✓</button>
+    <button id="route-confirm-btn" onclick="if(typeof SFX!=='undefined') SFX.confirm(); confirmRoutePick();">ADD TO DECK ✓</button>
   </div>
 </div>
 
@@ -6202,14 +7302,9 @@ function startNextBattle() {
   <div class="between-title">CINNABAR MANSION</div>
   <div class="between-subtitle" style="margin-bottom:clamp(12px,2vh,24px);">SELECT 2 POKÉMON TO FUSE</div>
   <div id="cinnabar-hand-row" style="display:flex;gap:clamp(8px,1.5vw,20px);flex-wrap:wrap;justify-content:center;align-items:flex-end;margin-bottom:clamp(12px,2vh,24px);overflow:visible;padding:10px 0;max-width:min(95vw,800px);"></div>
-  <div id="cinnabar-preview" style="display:none;flex-direction:column;align-items:center;gap:10px;margin-bottom:16px;">
-    <div style="font-family:'PokemonClassic',monospace;font-size:clamp(8px,0.9vw,11px);color:#ff8833;letter-spacing:2px;">✨ FUSION RESULT</div>
-    <div id="cinnabar-result-card" style="width:clamp(90px,10vw,130px);"></div>
-    <div id="cinnabar-result-name" style="font-family:'PokemonClassic',monospace;font-size:clamp(9px,0.95vw,13px);color:#ffdd66;letter-spacing:2px;"></div>
-  </div>
+  <div id="cinnabar-preview" style="display:none;"></div>
   <div style="display:flex;gap:12px;margin-top:8px;align-items:center;">
-    <button id="cinnabar-fuse-btn" class="action-btn play" onclick="confirmFusion()" style="opacity:0.4;pointer-events:none;font-size:clamp(8px,0.9vw,12px);">FUSE</button>
-    <button onclick="skipCinnabar()" style="font-family:'PokemonClassic',monospace;font-size:clamp(8px,0.9vw,12px);padding:10px 20px;background:rgba(20,30,60,0.85);border:1px solid rgba(60,90,180,0.5);border-radius:6px;color:#7799bb;cursor:pointer;letter-spacing:1px;">SKIP →</button>
+    <button onclick="if(typeof SFX!=='undefined') SFX.skip(); skipCinnabar();" class="between-skip">SKIP →</button>
   </div>
 </div>
 
@@ -6217,17 +7312,17 @@ function startNextBattle() {
   <div class="between-title">DAY CARE CENTER</div>
   <div class="between-subtitle">NURTURE YOUR POKÉMON</div>
   <div class="daycare-action-row">
-    <div class="daycare-action" onclick="selectDaycareAction('release')">
+    <div class="daycare-action" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); selectDaycareAction('release');">
       <span class="daycare-action-emoji">🌿</span>
       <span class="daycare-action-name">RELEASE</span>
       <span class="daycare-action-desc">Remove a fusion card from your deck to thin it out.</span>
     </div>
-    <div class="daycare-action" onclick="selectDaycareAction('breed')">
+    <div class="daycare-action" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); selectDaycareAction('breed');">
       <span class="daycare-action-emoji">🥚</span>
       <span class="daycare-action-name">BREEDING</span>
       <span class="daycare-action-desc">Duplicate a fusion card — get an extra copy.</span>
     </div>
-    <div class="daycare-action" onclick="selectDaycareAction('training')">
+    <div class="daycare-action" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); selectDaycareAction('training');">
       <span class="daycare-action-emoji">⭐</span>
       <span class="daycare-action-name">TRAINING</span>
       <span class="daycare-action-desc">Give a card XP. At 3 XP it evolves into a stronger fusion.</span>
@@ -6237,7 +7332,7 @@ function startNextBattle() {
     <div id="daycare-picker-label">Select a card:</div>
     <div id="daycare-cards-row"></div>
   </div>
-  <button class="between-skip" onclick="skipDaycare()">SKIP →</button>
+  <button class="between-skip" onclick="if(typeof SFX!=='undefined') SFX.skip(); skipDaycare();">SKIP →</button>
 </div>
 
 
@@ -6247,10 +7342,10 @@ function startNextBattle() {
     <div id="dv-title">YOUR DECK</div>
     <div id="dv-count">0 cards</div>
     <div id="dv-sort-row">
-      <button class="dv-sort-btn active" id="dv-sort-species" onclick="dvSetSort('species')">SPECIES</button>
-      <button class="dv-sort-btn" id="dv-sort-type" onclick="dvSetSort('type')">TYPE</button>
+      <button class="dv-sort-btn active" id="dv-sort-species" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); dvSetSort('species');">SPECIES</button>
+      <button class="dv-sort-btn" id="dv-sort-type" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); dvSetSort('type');">TYPE</button>
     </div>
-    <button id="dv-close" onclick="closeDeckViewer()">✕ CLOSE</button>
+    <button id="dv-close" onclick="if(typeof SFX!=='undefined') SFX.back(); closeDeckViewer();">✕ CLOSE</button>
   </div>
   <div id="dv-grid-wrap"><div id="dv-grid"></div></div>
 </div>
@@ -6259,9 +7354,9 @@ function startNextBattle() {
 <!-- ── DECK DETAIL SCREEN ── -->
 <div id="deck-detail-screen">
   <div id="dds-header">
-    <button id="dds-back-btn" onclick="closeDeckDetail()">← BACK</button>
+    <button id="dds-back-btn" onclick="if(typeof SFX!=='undefined') SFX.back(); closeDeckDetail();">← BACK</button>
     <div id="dds-deck-name">DECK</div>
-    <button id="dds-begin-btn" onclick="confirmStarterDeck()">BEGIN YOUR JOURNEY!</button>
+    <button id="dds-begin-btn" onclick="if(typeof SFX!=='undefined') SFX.starterChoose(); confirmStarterDeck();">BEGIN YOUR JOURNEY!</button>
   </div>
   <div id="dds-body">
     <div id="dds-info">
