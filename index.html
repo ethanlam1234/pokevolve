@@ -1366,13 +1366,22 @@ html { overflow: hidden; }
     display:inline-flex !important; align-items:center !important; justify-content:center !important;
   }
   #route-btn-row #route-confirm-btn {
-    order:1 !important; margin:0 !important; flex:2 !important;
+    order:1 !important; margin:0 !important; flex:0 1 auto !important;
+    width:auto !important; min-width:0 !important;
     display:inline-flex !important; align-items:center !important; justify-content:center !important;
   }
   .between-skip {
-    order:2 !important; margin:0 !important; flex:1 !important;
+    order:2 !important; margin:0 !important; flex:0 1 auto !important;
+    width:auto !important; min-width:0 !important;
     display:inline-flex !important; align-items:center !important; justify-content:center !important;
+    margin-bottom:6px !important;
   }
+  #route-btn-row { gap:16px !important; justify-content:center !important; }
+  #route-view-deck-btn { flex:0 1 auto !important; width:auto !important; }
+  /* Portrait: square image */
+  #rp-portrait-img-wrap { width:48px !important; min-width:48px !important; aspect-ratio:1/1 !important; }
+  /* Music button: position below portrait in top-left */
+  #rotom-widget { bottom:auto !important; top:auto !important; }
   #rp-trainer-name  { font-size:8px !important; }
   #rp-trainer-hp    { font-size:7px !important; }
   #rp-hero-power    { padding:6px 8px !important; }
@@ -1810,7 +1819,7 @@ void main(){
     <div style="font-size:20px;letter-spacing:3px;color:#ffdd66;">ROTATE YOUR DEVICE</div>
   </div>
   <!-- Step 2: fullscreen (tap anywhere) -->
-  <div id="rot-step2" style="display:none;position:relative;z-index:1;flex-direction:column;align-items:center;gap:16px;">
+  <div id="rot-step2" style="display:none;position:relative;z-index:1;flex-direction:column;align-items:center;gap:16px;margin-top:-30vh;">
     <div style="font-size:20px;letter-spacing:3px;color:#ffdd66;animation:fullscreenPulse 1.4s ease infinite;">GO FULL SCREEN</div>
     <div style="font-size:9px;color:#aabbcc;letter-spacing:1px;margin-top:4px;">(TAP THE SCREEN)</div>
   </div>
@@ -1841,18 +1850,13 @@ function checkOrientationStep() {
     document.getElementById('rot-step1').style.display='flex';
     document.getElementById('rot-step2').style.display='none';
   } else {
-    // Landscape — attempt fullscreen immediately, no tap needed
-    tryFullscreen();
-    // tryFullscreen hides overlay on success; only show step2 if it fails
-    setTimeout(()=>{
-      if(!isFullscreen()) {
-        overlay.style.display='flex';
-        document.getElementById('rot-step1').style.display='none';
-        document.getElementById('rot-step2').style.display='flex';
-        const gw2 = document.getElementById('gameWrap');
-        if(gw2) gw2.style.visibility='hidden';
-      }
-    }, 500);
+    // Landscape — just show the game, attempt fullscreen silently
+    overlay.style.display = 'none';
+    if(gw) gw.style.visibility = '';
+    // Try fullscreen silently — works if user has interacted, silent fail if not
+    const el2 = document.documentElement;
+    const req2 = el2.requestFullscreen || el2.webkitRequestFullscreen || el2.mozRequestFullScreen;
+    if(req2) req2.call(el2).catch(()=>{});
   }
 }
 function tryFullscreen() {
@@ -3416,22 +3420,38 @@ function _runFusionCore(cardA, cardB, rA, rB, allWraps, elA, elB) {
 
   // ══ Reveal: transition from black silhouette to full colour ═
   function getDominantColor(imgEl, callback) {
-    try {
-      const canvas = document.createElement('canvas');
-      const size = 32;
-      canvas.width = canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(imgEl, 0, 0, size, size);
-      const data = ctx.getImageData(0, 0, size, size).data;
-      let r=0,g=0,b=0,count=0;
-      for(let i=0;i<data.length;i+=4){
-        const a=data[i+3];
-        if(a<80) continue; // skip transparent
-        r+=data[i]; g+=data[i+1]; b+=data[i+2]; count++;
-      }
-      if(!count){ callback(null); return; }
-      callback([Math.round(r/count), Math.round(g/count), Math.round(b/count)]);
-    } catch(e){ callback(null); }
+    // Load a fresh copy with crossOrigin to allow canvas sampling
+    const src = imgEl.src || imgEl.currentSrc;
+    if(!src) { callback(null); return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const size = 48;
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, size, size);
+        const data = ctx.getImageData(0, 0, size, size).data;
+        // Weighted: more saturated pixels count more
+        let r=0,g=0,b=0,weight=0;
+        for(let i=0;i<data.length;i+=4){
+          const a=data[i+3];
+          if(a<60) continue;
+          const rv=data[i], gv=data[i+1], bv=data[i+2];
+          // Saturation weight: how colourful is this pixel?
+          const mx=Math.max(rv,gv,bv), mn=Math.min(rv,gv,bv);
+          const sat = mx>0 ? (mx-mn)/mx : 0;
+          const w = 0.2 + sat*2.5; // plain grey counts less
+          r+=rv*w; g+=gv*w; b+=bv*w; weight+=w;
+        }
+        if(!weight){ callback(null); return; }
+        callback([Math.round(r/weight), Math.round(g/weight), Math.round(b/weight)]);
+      } catch(e){ callback(null); }
+    };
+    img.onerror = ()=>callback(null);
+    // Add cache-bust param to force CORS fetch (avoid opaque cache)
+    img.src = src.includes('?') ? src : src + '?cors=1';
   }
 
   function evoReveal() {
@@ -3631,15 +3651,21 @@ function rotomLoad(idx, autoplay) {
 }
 
 function rotomUpdateUI() {
-  const t = document.getElementById('rotom-song-title');
-  const n = document.getElementById('rotom-song-num');
-  const b = document.getElementById('rotom-play-btn');
+  const t   = document.getElementById('rotom-song-title');
+  const n   = document.getElementById('rotom-song-num');
+  const b   = document.getElementById('rotom-play-btn');
   const ind = document.getElementById('rotom-play-indicator');
+  const ws  = document.getElementById('rotom-widget-status');
+  const w1  = document.getElementById('rotom-wave1');
+  const w2  = document.getElementById('rotom-wave2');
+  const w3  = document.getElementById('rotom-wave3');
   if(t) { t.textContent = ROTOM_TRACKS[_rotomIdx].title; t.style.transform='translateX(0)'; rotomStartMarquee(); }
-  if(n) n.textContent = `\u266a ${String(_rotomIdx+1).padStart(2,'0')} / ${ROTOM_TRACKS.length}`;
-  if(b) b.textContent = _rotomPlaying ? '\u275a\u275a' : '\u25b6';
-  if(b) b.style.textShadow = _rotomPlaying ? '0 0 6px #44ee66' : '0 0 4px #888';
+  if(n) n.textContent = '\u266a ' + String(_rotomIdx+1).padStart(2,'0') + ' / ' + ROTOM_TRACKS.length;
+  if(b) { b.textContent = _rotomPlaying ? '\u275a\u275a' : '\u25b6'; b.style.textShadow = _rotomPlaying ? '0 0 6px #44ee66' : 'none'; }
   if(ind) { ind.textContent = _rotomPlaying ? '\u25b6' : '\u275a\u275a'; ind.style.color = _rotomPlaying ? '#44ee66' : '#3366aa'; }
+  if(ws) { ws.textContent = _rotomPlaying ? 'ON' : 'OFF'; ws.style.color = _rotomPlaying ? '#44ddff' : '#3366aa'; ws.style.textShadow = _rotomPlaying ? '0 0 6px rgba(60,180,255,0.4)' : 'none'; }
+  const wc = _rotomPlaying ? '#44aaff' : '#1a3366';
+  if(w1) w1.setAttribute('fill',wc); if(w2) w2.setAttribute('fill',wc); if(w3) w3.setAttribute('fill',wc);
 }
 
 let _marqueeId = null;
@@ -3710,14 +3736,26 @@ function showRotomRadio() {
   const el=document.getElementById('rotom-widget');
   if(el) {
     el.style.display='block';
-    // Position just above the hd-row (bottom-left)
-    const hdRow = document.getElementById('hd-row');
-    if(hdRow) {
-      const r = hdRow.getBoundingClientRect();
-      el.style.left = r.left + 'px';
-      el.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+    const isMobile = Math.min(window.screen.width, window.screen.height) < 600;
+    if(isMobile) {
+      // On mobile: position just below the run-panel (top-left area)
+      const rp = document.getElementById('run-panel');
+      if(rp) {
+        const r = rp.getBoundingClientRect();
+        el.style.left = r.left + 'px';
+        el.style.top = (r.bottom + 5) + 'px';
+        el.style.bottom = 'auto';
+      }
+    } else {
+      // Desktop: above the hd-row (bottom-left)
+      const hdRow = document.getElementById('hd-row');
+      if(hdRow) {
+        const r = hdRow.getBoundingClientRect();
+        el.style.left = r.left + 'px';
+        el.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+        el.style.top = 'auto';
+      }
     }
-
   }
   if(!_rotomAudio) { rotomLoad(_rotomIdx, true); _rotomPlaying=true; }
 }
@@ -6994,6 +7032,7 @@ function openShop() {
   ['hand-container','game-hud','deck-ours','balatro-bottom','run-panel','hd-row','hands-panel','gold-display'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
+  if(typeof hideRotomRadio==='function') hideRotomRadio();
   // Keep owned-items-panel visible in shop (top-right items display)
   const oip = document.getElementById('owned-items-panel');
   if(oip) { oip.style.display=''; updateRunPanel(); }
@@ -7299,7 +7338,7 @@ function startNextBattle() {
       <button id="route-view-deck-btn" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); openDeckViewer();">VIEW DECK</button>
       <button class="between-skip" onclick="if(typeof SFX!=='undefined') SFX.skip(); skipRoute();">SKIP →</button>
     </div>
-    <button id="route-confirm-btn" onclick="if(typeof SFX!=='undefined') SFX.confirm(); confirmRoutePick();">ADD TO DECK ✓</button>
+    <button id="route-confirm-btn" onclick="if(typeof SFX!=='undefined') SFX.confirm(); confirmRoutePick();">ADD TO DECK</button>
   </div>
 </div>
 
