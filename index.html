@@ -840,14 +840,14 @@ html { overflow: hidden; }
   background:transparent; display:block; z-index:1;
 }
 .card-visual:hover { transform:translateY(-10px) scale(1.06) rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)); border-color:rgba(255,210,80,0.6); box-shadow:0 12px 26px rgba(0,0,0,0.95); z-index:10; transition:transform 0.08s ease, border-color 0.15s !important; }
-.card-visual.cv-selected { border-color:rgba(100,180,255,0.9) !important; box-shadow:0 0 0 2px rgba(80,150,255,0.8),0 0 22px rgba(80,140,255,0.45),0 8px 24px rgba(0,0,0,0.9) !important; transform:scale(1.06) !important; filter:brightness(1.08) !important; z-index:10 !important; }
+.card-visual.cv-selected { border-color:rgba(120,200,255,0.95) !important; box-shadow:0 0 0 3px rgba(80,160,255,0.7),0 0 28px rgba(60,140,255,0.5),0 0 60px rgba(40,100,255,0.2) !important; transform:scale(1.05) !important; filter:brightness(1.12) saturate(1.1) !important; z-index:10 !important; transition:all 0.18s cubic-bezier(0.2,1.2,0.3,1) !important; }
 
 /* ── DECK VIEWER SCREEN ── */
 #deck-viewer {
   position:fixed; inset:0; z-index:1500; display:none;
   flex-direction:column; align-items:center; justify-content:flex-start;
   padding:0;
-  background:transparent; overflow:hidden;
+  background:rgba(4,6,18,0.88); overflow:hidden;
   font-family:'PokemonClassic',monospace;
   pointer-events:all;
 }
@@ -4372,4 +4372,3136 @@ function evaluateHand(cards) {
   const maxShared = Math.max(0, ...Object.values(dexCount));
 
   // Count how many CARDS share a given dex number (not raw occurrences)
-  // cardDexShar
+  // cardDexShare[d] = number of cards that contain dex number d
+  const cardDexShare = {};
+  dexPairs.forEach(pair => {
+    const seen = new Set();
+    pair.forEach(d => { if(d && !seen.has(d)) { seen.add(d); cardDexShare[d] = (cardDexShare[d]||0)+1; } });
+  });
+  const maxCardShare = Math.max(0, ...Object.values(cardDexShare));
+
+  // ── SPECIES ARMY: 5 cards all share a dex number ────────────
+  if(n >= 5 && maxCardShare >= 5) return {name:'Species Army', mult:8, chips:800};
+  // ── SPECIES SQUAD: 4+ cards share a dex number ──────────────
+  if(n >= 4 && maxCardShare >= 4) return {name:'Species Squad', mult:7, chips:700};
+  // ── SPECIES TRIO: 3+ cards share a dex number ───────────────
+  if(n >= 3 && maxCardShare >= 3) return {name:'Species Trio', mult:5, chips:400};
+  // ── SPECIES PAIR: 2+ cards share a dex number ───────────────
+  if(n >= 2 && maxCardShare >= 2) return {name:'Species Pair', mult:3, chips:200};
+
+  // ── FUSION MIRROR (same two pokemon reversed) ────────────────
+  if(n >= 2) {
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++) {
+      const [a1,a2]=dexPairs[i], [b1,b2]=dexPairs[j];
+      if(a1===b2 && a2===b1 && a1!==0) return {name:'Fusion Mirror', mult:6, chips:600};
+    }
+  }
+
+  // ── CONNECTION LOOP (chain that loops back) ──────────────────
+  if(n >= 3) {
+    const tryLoop = (cardList) => {
+      const pairList = cardList.map(cardDexNums);
+      const used = new Array(cardList.length).fill(false);
+      const chain = [0]; used[0] = true;
+      const build = () => {
+        if(chain.length === cardList.length) {
+          const last = pairList[chain[chain.length-1]];
+          const first = pairList[chain[0]];
+          return last.some(d => first.includes(d));
+        }
+        const cur = pairList[chain[chain.length-1]];
+        for(let i=0;i<cardList.length;i++){
+          if(used[i]) continue;
+          if(cur.some(d => pairList[i].includes(d))) {
+            used[i]=true; chain.push(i);
+            if(build()) return true;
+            chain.pop(); used[i]=false;
+          }
+        }
+        return false;
+      };
+      return build();
+    };
+    if(n>=5 && tryLoop(cards)) return {name:'Connection Loop', mult:7, chips:700};
+  }
+
+  // ── FUSION NETWORK (all 5 connected through shared pokemon) ─
+  if(n>=5) {
+    const pairList = cards.map(cardDexNums);
+    // Check if all cards are connected (graph reachability)
+    const adj = Array.from({length:n},()=>new Set());
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++) {
+      if(pairList[i].some(d => pairList[j].includes(d))) { adj[i].add(j); adj[j].add(i); }
+    }
+    const visited=new Set([0]);
+    const queue=[0];
+    while(queue.length){const cur=queue.shift();adj[cur].forEach(nb=>{if(!visited.has(nb)){visited.add(nb);queue.push(nb);}});}
+    if(visited.size===n) return {name:'Fusion Network', mult:7, chips:700};
+  }
+
+  // ── LEGENDARY TEAM ───────────────────────────────────────────
+  if(n>=5 && cards.every(c => cardDexNums(c).some(d=>LEGENDARY_DEX.has(d)))) return {name:'Legendary Team', mult:8, chips:900};
+
+  // Species already handled above
+
+  // ── DUAL TYPE TEAM ──────────────────────────────────────────
+  if(n>=5) {
+    const t1=types[0], t2=type2s[0];
+    if(cards.every(c=>c.type1===t1 && c.type2===t2)) return {name:'Dual Type Team', mult:7, chips:600};
+  }
+
+  // ── TYPE TEAM (all same primary type) ───────────────────────
+  if(n>=5 && types.every(t=>t===types[0])) return {name:'Type Team', mult:5, chips:400};
+
+  // ── MONO TYPE MIX ───────────────────────────────────────────
+  if(n>=5 && [...new Set([...types,...type2s])].filter(Boolean).every(t=>t===types[0]))
+    return {name:'Mono Type Mix', mult:4, chips:350};
+
+  // ── RAINBOW TEAM (all 5 different primary types) ────────────
+  if(n>=5 && new Set(types).size===5) return {name:'Rainbow Team', mult:4, chips:350};
+
+  // ── STARTER TEAM ────────────────────────────────────────────
+  if(n>=3) {
+    const hasGrass=cards.some(c=>cardDexNums(c).some(d=>STARTER_GRASS_FAM.has(d)));
+    const hasFire= cards.some(c=>cardDexNums(c).some(d=>STARTER_FIRE_FAM.has(d)));
+    const hasWater=cards.some(c=>cardDexNums(c).some(d=>STARTER_WATER_FAM.has(d)));
+    if(hasGrass&&hasFire&&hasWater) return {name:'Starter Team', mult:5, chips:450};
+  }
+
+  // ── FINAL EVOLUTION TEAM ─────────────────────────────────────
+  if(n>=5 && cards.every(c=>cardDexNums(c).some(d=>FINAL_EVO_DEX.has(d)))) return {name:'Final Evolution Team', mult:4, chips:400};
+
+  // ── BABY TEAM ───────────────────────────────────────────────
+  if(n>=5 && cards.every(c=>cardDexNums(c).some(d=>BABY_DEX.has(d)))) return {name:'Baby Team', mult:3, chips:300};
+
+  // ── EVOLUTION LINE (base dex in ascending evo order in played sequence) ─
+  if(n>=3) {
+    const evoChains = [];
+    for(const fam of EVO_FAMILIES) {
+      if(fam.length < n) continue;
+      const indices = cards.map(c => {
+        const dp = cardDexNums(c);
+        return fam.findIndex(d => dp.includes(d));
+      });
+      if(indices.every(i=>i>=0) && new Set(indices).size===n) {
+        const sorted=[...indices].sort((a,b)=>a-b);
+        if(indices.every((v,i)=>v===sorted[i])) evoChains.push(true);
+      }
+    }
+    if(evoChains.length) return {name:'Evolution Line', mult:5, chips:450};
+  }
+
+  // ── EVOLUTION FAMILY ────────────────────────────────────────
+  if(n>=2) {
+    for(const fam of EVO_FAMILIES) {
+      const hits = cards.filter(c=>cardDexNums(c).some(d=>fam.includes(d)));
+      if(hits.length>=2) return {name:'Evolution Family', mult:3, chips:200};
+    }
+  }
+
+  // ── CONNECTION CHAIN ────────────────────────────────────────
+  if(n>=3) {
+    const pairList = cards.map(cardDexNums);
+    let chain=true;
+    for(let i=0;i<n-1;i++){
+      if(!pairList[i].some(d=>pairList[i+1].includes(d))){chain=false;break;}
+    }
+    if(chain) return {name:'Connection Chain', mult:4, chips:300};
+  }
+
+  // ── FUSION PAIRING (two cards share one base; other two also match) ─
+  if(n>=4) {
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++) {
+      const [a1,a2]=dexPairs[i],[b1,b2]=dexPairs[j];
+      if(a1===b1 && a2===b2) return {name:'Fusion Pairing', mult:4, chips:300};
+    }
+  }
+
+  // ── MUTATION (no shared pokemon, no shared types) ────────────
+  if(n>=5) {
+    const allDexSet = new Set(allDex.filter(Boolean));
+    const noSharedPoke = allDexSet.size === allDex.filter(Boolean).length;
+    const allTypes = [...types,...type2s].filter(Boolean);
+    const noSharedType = new Set(allTypes).size === allTypes.length;
+    if(noSharedPoke && noSharedType) return {name:'Mutation', mult:6, chips:500};
+  }
+
+  return {name:'No Hand', mult:1, chips:50};
+}
+
+// ── SCORE DISPLAY ─────────────────────────────────────────────
+function showHandScore(handName, chips, mult, totalDmg, cards) {
+  // Remove any old score overlay
+  document.getElementById('hand-score-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'hand-score-overlay';
+  overlay.style.cssText = `
+    position:fixed; left:50%; top:clamp(180px,26vh,300px); transform:translateX(-50%);
+    z-index:700; pointer-events:none;
+    display:flex; flex-direction:column; align-items:center;
+    gap:clamp(6px,1vh,12px);
+    animation:scoreOverlayIn 0.25s ease forwards;
+    white-space:nowrap; width:max-content;
+  `;
+
+  // Hand name banner
+  const nameBanner = document.createElement('div');
+  nameBanner.style.cssText = `
+    font-family:'PokemonClassic',monospace; font-size:clamp(16px,2.2vw,32px);
+    color:#ffdd66; text-shadow:2px 2px 0 #000, 0 0 24px rgba(255,200,0,0.6);
+    letter-spacing:3px; text-align:center;
+    padding:8px 28px;
+    animation:scorePop 0.35s cubic-bezier(0.2,1.4,0.3,1) forwards;
+  `;
+  nameBanner.textContent = handName.toUpperCase();
+
+  // Chips × Mult display
+  const mathRow = document.createElement('div');
+  mathRow.style.cssText = `
+    display:flex; align-items:center; gap:clamp(8px,1.2vw,18px);
+    animation:scorePop 0.35s 0.12s cubic-bezier(0.2,1.4,0.3,1) both;
+  `;
+
+  const chipsEl = document.createElement('div');
+  chipsEl.style.cssText = `font-family:'PokemonClassic',monospace;font-size:clamp(18px,2.5vw,36px);
+    color:#fff; background:#1a3366; border:2px solid #4488ff;
+    padding:6px 18px; border-radius:6px; text-shadow:0 0 12px #4488ff;`;
+  chipsEl.textContent = chips;
+
+  const multSymbol = document.createElement('div');
+  multSymbol.style.cssText = `font-family:'PokemonClassic',monospace;font-size:clamp(18px,2.5vw,36px);color:#aaa;`;
+  multSymbol.textContent = '✕';
+
+  const multEl = document.createElement('div');
+  multEl.style.cssText = `font-family:'PokemonClassic',monospace;font-size:clamp(18px,2.5vw,36px);
+    color:#fff; background:#662233; border:2px solid #ff4466;
+    padding:6px 18px; border-radius:6px; text-shadow:0 0 12px #ff4466;`;
+  multEl.textContent = mult;
+
+  const eqEl = document.createElement('div');
+  eqEl.style.cssText = `font-family:'PokemonClassic',monospace;font-size:clamp(18px,2.5vw,36px);color:#aaa;`;
+  eqEl.textContent = '=';
+
+  const totalEl = document.createElement('div');
+  totalEl.style.cssText = `font-family:'PokemonClassic',monospace;font-size:clamp(22px,3vw,44px);
+    color:#ffdd44; text-shadow:0 0 20px rgba(255,200,0,0.8); letter-spacing:2px; white-space:nowrap;`;
+  totalEl.textContent = totalDmg + ' DMG';
+  if(typeof SFX!=='undefined') { SFX.scoreChips(chips); setTimeout(()=>SFX.scoreMult(mult),chips>0?Math.min(chips/50,8)*55+30:30); }
+
+  mathRow.append(chipsEl, multSymbol, multEl, eqEl, totalEl);
+  overlay.append(nameBanner, mathRow);
+  document.body.appendChild(overlay);
+
+  // Animate in
+  const style = document.createElement('style');
+  style.textContent = `@keyframes scorePop{from{opacity:0;transform:scale(0.7) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}} @keyframes scoreOverlayIn{from{opacity:0}to{opacity:1}}`;
+  document.head.appendChild(style);
+
+  // Flash cards
+  cards.forEach((card, i) => {
+    const el = document.querySelector(`#bf-ours .pc[data-id='${card.id}']`);
+    if(el) setTimeout(() => triggerKwAnim(el, 'battlecry', ''), i * 80);
+  });
+
+  // Faded out externally by playSelectedHand after delay
+  setTimeout(() => { style.remove(); }, 4000);
+}
+
+// ── AUTO DRAW to fill hand ────────────────────────────────────
+
+async function playSelectedHand() {
+  if(typeof SFX!=='undefined') SFX.playHand();
+  if(!G.ourTurn || G.animating || G_selected.size === 0) return;
+  G.animating = true;
+
+  const selectedIndices = Array.from(G_selected).sort((a,b)=>a-b);
+  const selectedCards = selectedIndices.map(i => G.hand[i]).filter(Boolean);
+  G_selected.clear();
+  _activeHandType = null;
+  if(typeof renderHandsPanel === 'function') renderHandsPanel();
+  updateActionBar();
+
+  // Evaluate hand before animation
+  const result = evaluateHand(selectedCards);
+  const handName = result?.name || 'No Hand';
+  const chips = result?.chips || 50;
+  const mult = result?.mult || 1;
+  const totalDmg = chips * mult;
+
+  // Deduct hand, update run stats
+  G.handsLeft = Math.max(0, G.handsLeft - 1);
+  const _handNum = 4 - G.handsLeft; // which hand in this battle (1,2,3)
+  // Apply trainer modifier multiplier
+  let _modMult = 1.0;
+  if(typeof getModifierMultiplier === 'function') _modMult = getModifierMultiplier(_handNum);
+  const _isDisabled = typeof isHandTypeDisabled==='function' && isHandTypeDisabled(result?.name||'');
+  if(_isDisabled) { totalDmg = 0; showHandScore(result.name+' DISABLED', 0, 0, 0, selectedCards); }
+  else if(_modMult !== 1.0) { totalDmg = Math.round(totalDmg * _modMult); }
+  G.roundScore += totalDmg;
+  G.roundChips = chips;
+  G.roundMult = mult;
+  updateRunPanel();
+
+  // ── BALATRO PLAY ANIMATION ──────────────────────────────────
+  // 1. Grab the screen positions of each selected hand card element
+  const hcEls = [...document.querySelectorAll('#hand-container .hc')];
+  const cardGhosts = [];
+  const cardW = hcEls[0]?.offsetWidth || 120;
+  const cardH = hcEls[0]?.offsetHeight || 180;
+  const n = selectedCards.length;
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight * 0.38; // centre of played area
+
+  selectedIndices.forEach((idx, rank) => {
+    const el = hcEls[idx];
+    if(!el) return;
+    const r = el.getBoundingClientRect();
+
+    // Clone the card as a flying ghost
+    const ghost = document.createElement('div');
+    ghost.style.cssText = [
+      'position:fixed','z-index:900',
+      `width:${r.width}px`,`height:${r.height}px`,
+      `left:${r.left}px`,`top:${r.top}px`,
+      'border-radius:8px','overflow:hidden',
+      'background:#ffffff',
+      'border:2px solid rgba(50,70,140,0.8)',
+      'box-shadow:0 4px 14px rgba(0,0,0,0.8)',
+      'pointer-events:none',
+      'transition:none',
+      'will-change:transform,opacity',
+      'transform:rotate('+getComputedStyle(el).getPropertyValue('--tilt')+'deg)',
+    ].join(';');
+
+    // Copy artwork
+    const img = el.querySelector('.hc-art');
+    if(img) {
+      const gi = document.createElement('img');
+      gi.src = img.src;
+      gi.style.cssText = 'position:absolute;top:6%;bottom:10%;left:50%;transform:translateX(-50%);height:84%;width:auto;object-fit:contain;image-rendering:pixelated;';
+      ghost.appendChild(gi);
+    }
+    // Copy type badge
+    const t1 = el.querySelector('.hc-type1');
+    if(t1) { const tc=t1.cloneNode(true); ghost.appendChild(tc); }
+
+    document.body.appendChild(ghost);
+    cardGhosts.push({ ghost, rank, srcX: r.left+r.width/2, srcY: r.top+r.height/2 });
+
+    // Hide original immediately
+    el.style.opacity = '0';
+    el.style.pointerEvents = 'none';
+  });
+
+  // 2. Phase 1: cards fly up slightly and tilt to vertical (0.18s staggered)
+  await delay(20);
+  cardGhosts.forEach(({ghost}, i) => {
+    ghost.style.transition = `transform ${0.22}s cubic-bezier(0.2,0.8,0.3,1) ${i*0.04}s, box-shadow 0.2s ease`;
+    ghost.style.transform = `translateY(-22px) scale(1.08) rotate(0deg)`;
+    ghost.style.boxShadow = '0 4px 20px rgba(0,0,0,0.9),0 16px 32px rgba(0,0,0,0.8)';
+  });
+  await delay(260 + n * 40);
+
+  // 3. Phase 2: fan them out in the centre of screen (played area)
+  const spread = Math.min(cardW * 1.05, (window.innerWidth * 0.6) / Math.max(n, 1));
+  cardGhosts.forEach(({ghost, rank, srcX, srcY}, i) => {
+    const destX = cx + (i - (n-1)/2) * spread;
+    const destY = cy;
+    const dx = destX - (srcX);
+    const dy = destY - (srcY + 22); // offset for the lift
+    const tilt = (i - (n-1)/2) * 3; // slight fan
+    const delay_i = i * 60;
+    ghost.style.transition = `transform 0.42s cubic-bezier(0.22,1.0,0.36,1) ${delay_i}ms, box-shadow 0.3s ease ${delay_i}ms, opacity 0.1s ease`;
+    ghost.style.transform = `translate(${dx}px,${dy}px) scale(1.18) rotate(${tilt}deg)`;
+    ghost.style.boxShadow = '0 4px 24px rgba(0,0,0,0.95),0 20px 40px rgba(0,0,0,0.9)';
+  });
+  await delay(420 + n * 60 + 80);
+
+  // 4. Phase 3: flash white then pulse — score reveal
+  cardGhosts.forEach(({ghost}) => {
+    ghost.style.transition = 'filter 0.12s ease, transform 0.12s ease';
+    ghost.style.filter = 'brightness(3) saturate(0)';
+    ghost.style.transform = ghost.style.transform.replace(/scale\([^)]+\)/, 'scale(1.28)');
+  });
+  await delay(120);
+  cardGhosts.forEach(({ghost}) => {
+    ghost.style.transition = 'filter 0.18s ease, transform 0.18s ease';
+    ghost.style.filter = 'brightness(1.4) saturate(1.3)';
+    ghost.style.transform = ghost.style.transform.replace(/scale\([^)]+\)/, 'scale(1.12)');
+  });
+  await delay(100);
+
+  // 5. Phase 4: cards scatter/fly off screen downward
+  cardGhosts.forEach(({ghost}, i) => {
+    const scatter = (i - (n-1)/2) * 120;
+    ghost.style.transition = `transform 0.4s cubic-bezier(0.4,0,1,1) ${i*25}ms, opacity 0.25s ease ${i*25+60}ms`;
+    ghost.style.transform = ghost.style.transform + ` translateY(200px) translateX(${scatter}px) scale(0.4)`;
+    ghost.style.opacity = '0';
+  });
+  // Show score slightly before cards fully gone (120ms into scatter)
+  await delay(120);
+  showHandScore(handName, chips, mult, totalDmg, []);
+  await delay(280 + n * 25 + 60);  // wait for scatter to finish
+  cardGhosts.forEach(({ghost}) => ghost.remove());
+  await delay(2200);  // score visible for 2.2s
+  document.getElementById('hand-score-overlay')?.remove();
+
+  // Apply to game state AFTER animation
+  selectedCards.forEach(card => {
+    const handIdx = G.hand.findIndex(c => c === card);
+    if(handIdx > -1) G.hand.splice(handIdx, 1);
+    // Don't put played cards on board — they just deal damage and go away
+  });
+
+  // Deal damage
+  if(typeof SFX!=='undefined' && totalDmg>0) setTimeout(()=>SFX.damageHit(totalDmg), 400);
+  G.trainerHp = Math.max(0, G.trainerHp - totalDmg);
+  updatePortraits();
+
+  // damage number spawned after score overlay disappears
+
+  // Spawn damage number now that score overlay is removed
+  // Spawn damage number over the trainer portrait
+  const dmgEl2 = document.createElement('div');
+  const portraitWrap = document.getElementById('rp-portrait-img-wrap');
+  const pRect = portraitWrap ? portraitWrap.getBoundingClientRect() : null;
+  const dmgLeft = pRect ? (pRect.left + pRect.width/2) : window.innerWidth*0.1;
+  const dmgTop  = pRect ? (pRect.top  + pRect.height*0.4) : window.innerHeight*0.2;
+  dmgEl2.style.cssText = `position:fixed;left:${dmgLeft}px;top:${dmgTop}px;font-family:'PokemonClassic',monospace;font-weight:bold;font-size:clamp(24px,3.5vw,52px);color:#ff2222;text-shadow:2px 2px 0 #000,0 0 16px rgba(255,40,0,0.8);z-index:800;pointer-events:none;transform:translateX(-50%);animation:floatDmg 1.4s ease forwards;`;
+  dmgEl2.textContent = '-'+totalDmg;
+  document.body.appendChild(dmgEl2);
+  setTimeout(()=>dmgEl2.remove(), 1500);
+  document.getElementById('hand-score-overlay')?.remove();
+  await delay(300);
+
+  if(G.trainerHp <= 0) {
+    // Trainer defeated — keep G.animating = true so ALL UI stays locked
+    // No hand select, no discard, no deck viewer, no hand chips until next battle
+    renderHand(); // re-render hand (cards are gone) but buttons stay disabled via G.animating
+    setTimeout(advanceTrainer, 400);
+    return;
+  }
+
+  G.animating = false;
+  renderHand();
+  autoFillHand(() => { renderHand(); checkAutoEndTurn(); });
+}
+
+
+function updateItemsFade() {
+  const list = document.getElementById('owned-items-list');
+  const ft   = document.getElementById('items-fade-top');
+  const fb   = document.getElementById('items-fade-bottom');
+  if(!list || !ft || !fb) return;
+  const scrollTop = list.scrollTop;
+  const maxScroll = list.scrollHeight - list.clientHeight;
+  ft.style.opacity = scrollTop > 4 ? '1' : '0';
+  fb.style.opacity = (maxScroll - scrollTop) > 4 ? '1' : '0';
+}
+
+function renderOwnedItemsPanel() {
+  const panel = document.getElementById('owned-items-panel');
+  if(!panel) return;
+  // Remove all chips except the label
+  [...panel.querySelectorAll('.owned-item-chip')].forEach(c=>c.remove());
+  G_items.forEach((item, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'owned-item-chip';
+    chip.style.animationDelay = (i * 0.05) + 's';
+    chip.textContent = item.emoji + ' ' + item.name;
+    attachPopover(chip, item.desc);
+    panel.appendChild(chip);
+  });
+}
+
+
+// ══ BETWEEN-BATTLE INTERLUDE SYSTEM ══════════════════════════════
+
+// Which interlude after each gym (0=route, 1=shop, 2=daycare)
+const INTERLUDE_SEQUENCE = ['cinnabar', 'route', 'cinnabar', 'shop', 'cinnabar', 'route', 'cinnabar', 'shop', 'daycare', 'cinnabar', 'route', 'shop'];
+
+// Kanto routes with actual Pokémon and locations
+const KANTO_ROUTES = [
+  {
+    name: 'ROUTE 1', subtitle: 'PALLET → VIRIDIAN',
+    pokemon: [1,4,7,16,19,56] // Bulbasaur, Charmander, Squirtle, Pidgey, Rattata, Mankey
+  },
+  {
+    name: 'MT. MOON', subtitle: 'CERULEAN PASSAGE',
+    pokemon: [35,39,52,54,74,81] // Clefairy, Jigglypuff, Meowth, Psyduck, Geodude, Magnemite
+  },
+  {
+    name: 'SAFARI ZONE', subtitle: 'FUCHSIA CITY',
+    pokemon: [111,115,128,131,137,147] // Rhyhorn, Kangaskhan, Tauros, Lapras, Porygon, Dratini
+  },
+  {
+    name: 'SEAFOAM ISLANDS', subtitle: 'CINNABAR PASSAGE',
+    pokemon: [86,87,124,131,144,145] // Seel, Dewgong, Jynx, Lapras, Articuno, Zapdos
+  },
+];
+
+let _routePicked = null;
+let _daycareAction = null;
+let _daycareCardIdx = null;
+
+// XP tracking for day care evolution
+const CARD_XP = {}; // cardId -> xp
+
+function getInterludeType() {
+  const idx = G.trainerIdx - 1;
+  return INTERLUDE_SEQUENCE[Math.max(0, Math.min(idx, INTERLUDE_SEQUENCE.length-1))];
+}
+
+function openInterlude() {
+  const type = getInterludeType();
+  if(type === 'shop')       openShop();
+  else if(type === 'route')    openRouteScreen();
+  else if(type === 'daycare')  openDayCareScreen();
+  else if(type === 'cinnabar') openCinnabarMansion();
+  else openShop();
+}
+
+// ─── ROUTE SCREEN ──────────────────────────────────────────────
+function openRouteScreen() {
+  hideGameUIForInterlude();
+  const routeData = KANTO_ROUTES[(G.trainerIdx - 1) % KANTO_ROUTES.length];
+  document.getElementById('route-name-display').textContent = routeData.name;
+  document.getElementById('route-sub-display').textContent  = routeData.subtitle;
+  document.getElementById('route-pick-label').textContent   = 'Pick 1 Pokémon to add to your deck';
+  const rcbReset=document.getElementById('route-confirm-btn');if(rcbReset){rcbReset.style.opacity='0.35';rcbReset.style.pointerEvents='none';rcbReset.style.filter='saturate(0)';}
+  _routePicked = null;
+  const row = document.getElementById('route-pokemon-row');
+  row.innerHTML = '';
+  // Create 5-6 fusion cards using route pokemon as bases
+  const pickedDex = routeData.pokemon.sort(()=>Math.random()-0.5).slice(0,5);
+  pickedDex.forEach((dex, i) => {
+    // 75% chance basic pokemon, 25% chance fusion
+    const useFusion = Math.random() < 0.25;
+    let card;
+    if(!useFusion && KANTO_BY_DEX[dex]) {
+      card = mkBasicCard(dex);
+    } else {
+      const candidates = FUSIONS.filter(f => {
+        const m = f.img.match(/final_(\d+)-[^_]+_(\d+)-/);
+        return m && (parseInt(m[1])===dex || parseInt(m[2])===dex);
+      });
+      const fusion = candidates.length ? candidates[Math.floor(Math.random()*candidates.length)]
+                                       : FUSIONS[Math.floor(Math.random()*FUSIONS.length)];
+      card = mkCard(fusion);
+    }
+    const wrap = makeCardVisual(card, 'width:clamp(110px,11vw,155px);aspect-ratio:2/3;animation:shopItemIn 0.4s '+(i*0.08)+'s cubic-bezier(0.15,1.1,0.35,1) both;');
+    wrap.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+    wrap.addEventListener('click', () => {
+      row.querySelectorAll('.card-visual').forEach(c=>c.classList.remove('cv-selected'));
+      wrap.classList.add('cv-selected');
+      _routePicked = card;
+      const rcb=document.getElementById('route-confirm-btn');if(rcb){rcb.style.opacity='1';rcb.style.pointerEvents='all';rcb.style.filter='none';}
+    });
+    row.appendChild(wrap);
+  });
+  // Auto-select middle card
+  const cards = row.querySelectorAll('.card-visual');
+  const midIdx = Math.floor(cards.length / 2);
+  if(cards[midIdx]) {
+    const midCard = pickedDex.map((_, i) => i === midIdx).findIndex(x=>x);
+    // Build an allCards reference to find the fusion for midIdx
+    // Just trigger click on the middle card element
+    setTimeout(() => { if(cards[midIdx]) cards[midIdx].click(); }, 50);
+  }
+  document.getElementById('route-screen').classList.add('visible');
+}
+
+function confirmRoutePick() {
+  if(!_routePicked) return;
+  if(typeof SFX!=='undefined') SFX.routePick();
+  // Store the full card object — works for both fusion and basic cards
+  G.bonusCards.push({..._routePicked, _isBonusCard:true});
+  closeInterludeScreens();
+  startNextBattle();
+}
+
+function skipRoute() {
+  if(typeof SFX!=='undefined') SFX.skip();
+  closeInterludeScreens();
+  startNextBattle();
+}
+
+// ─── DAY CARE SCREEN ───────────────────────────────────────────
+function openDayCareScreen() {
+  hideGameUIForInterlude();
+  _daycareAction = null; _daycareCardIdx = null;
+  document.getElementById('daycare-card-picker').classList.remove('visible');
+  // Restore action row and subtitle
+  const actionRow = document.querySelector('#daycare-screen .daycare-action-row');
+  const subtitle  = document.querySelector('#daycare-screen .between-subtitle');
+  if(actionRow) actionRow.style.display = '';
+  if(subtitle)  subtitle.style.display  = '';
+  document.getElementById('daycare-screen').classList.add('visible');
+}
+
+function selectDaycareAction(action) {
+  _daycareAction = action;
+  // Hide the 3 action buttons and subtitle
+  const actionRow = document.querySelector('#daycare-screen .daycare-action-row');
+  const subtitle  = document.querySelector('#daycare-screen .between-subtitle');
+  if(actionRow) actionRow.style.display = 'none';
+  if(subtitle)  subtitle.style.display  = 'none';
+  const labels = {
+    release:  'Select a card to RELEASE from your deck:',
+    breed:    'Select a card to DUPLICATE:',
+    training: 'Select a card to TRAIN (+XP → evolve):',
+  };
+  document.getElementById('daycare-picker-label').textContent = labels[action] || '';
+  const row = document.getElementById('daycare-cards-row');
+  row.innerHTML = '';
+  // Show ALL unique fusions in deck
+  const seen = new Set();
+  const uniqueCards = [...G.deck, ...G.bonusCards.map(f=>({name:f.name,fusionImg:f.img,img:f.img,type1:getPokeTypes(f.name)[0],type2:getPokeTypes(f.name)[1],...mkCard(f)}))].filter(c=>{if(seen.has(c.name)) return false; seen.add(c.name); return true;}).slice(0,10);
+  uniqueCards.forEach((card, i) => {
+    const el = makeCardVisual(card, 'width:clamp(90px,9vw,130px);aspect-ratio:2/3;');
+    // XP bar overlay
+    const xpBar = document.createElement('div'); xpBar.className='dc-xp-bar';
+    const xpFill = document.createElement('div'); xpFill.className='dc-xp-fill';
+    const xp = CARD_XP[card.name]||0;
+    xpFill.style.width = Math.min(100, xp*(100/3))+'%';
+    xpBar.appendChild(xpFill); el.appendChild(xpBar);
+    // XP label
+    if(xp>0){const xl=document.createElement('div');xl.style.cssText='position:absolute;top:4px;right:4px;background:rgba(255,200,0,0.85);color:#000;font-family:"PokemonClassic",monospace;font-size:8px;padding:1px 4px;border-radius:3px;z-index:12;';xl.textContent='XP:'+xp+'/3';el.appendChild(xl);}
+    el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+    el.addEventListener('click', () => {
+      row.querySelectorAll('.card-visual').forEach(c=>c.classList.remove('cv-selected'));
+      el.classList.add('cv-selected');
+      _daycareCardIdx = i;
+      confirmDaycareAction(card);
+    });
+    row.appendChild(el);
+  });
+  document.getElementById('daycare-card-picker').classList.add('visible');
+}
+
+function confirmDaycareAction(card) {
+  if(!_daycareAction || !card) return;
+  if(_daycareAction === 'release') {
+    // Remove one copy from deck
+    const idx = G.deck.findIndex(c=>c.name===card.name);
+    if(idx>-1) G.deck.splice(idx,1);
+    const bi = G.bonusCards.findIndex(f=>f.name===card.name);
+    if(bi>-1) G.bonusCards.splice(bi,1);
+  } else if(_daycareAction === 'breed') {
+    const f = FUSIONS.find(f=>f.name===card.name)||FUSIONS[0];
+    if(typeof SFX!=='undefined') SFX.purchase();
+    G.bonusCards.push(f);
+    G.deck.push({...mkCard(f)}); shuffle(G.deck);
+  } else if(_daycareAction === 'training') {
+    CARD_XP[card.name] = (CARD_XP[card.name]||0) + 1;
+    // After 3 XP: find a stronger fusion (different cards from the same family)
+    if(CARD_XP[card.name] >= 3) {
+      delete CARD_XP[card.name];
+      // Give a rarer fusion as evolution reward
+      const evolved = FUSIONS.filter(f=>f.baseAtk+f.baseHp > (card.atk||1)+(card.hp||1)).sort(()=>Math.random()-0.5)[0] || FUSIONS[0];
+      G.bonusCards.push(evolved);
+      G.deck.push({...mkCard(evolved)}); shuffle(G.deck);
+    }
+  }
+  setTimeout(()=>{
+    closeInterludeScreens();
+    startNextBattle();
+  }, 600);
+}
+
+function skipDaycare() {
+  if(typeof SFX!=='undefined') SFX.skip();
+  closeInterludeScreens();
+  startNextBattle();
+}
+
+function closeInterludeScreens() {
+  document.getElementById('route-screen')?.classList.remove('visible');
+  document.getElementById('daycare-screen')?.classList.remove('visible');
+  document.getElementById('shop-screen')?.classList.add('hidden');
+  document.getElementById('cinnabar-screen')?.classList.remove('visible');
+}
+
+function hideGameUIForInterlude() {
+  if(typeof hideRotomRadio==='function') hideRotomRadio();
+  if(typeof hideTrainerDialogue==='function') hideTrainerDialogue();
+  _popoverEnabled = false; hideItemPopover();
+  ['hand-container','game-hud','deck-ours','balatro-bottom','run-panel','hd-row','owned-items-panel','hands-panel','gold-display'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  document.getElementById('bf-ours') && (document.getElementById('bf-ours').innerHTML='');
+  document.getElementById('bf-theirs') && (document.getElementById('bf-theirs').innerHTML='');
+}
+
+
+// ── Shared visual card builder (same look as hand cards) ──────────
+function makeCardVisual(card, sizeCss) {
+  const el = document.createElement('div');
+  el.className = 'card-visual';
+  // Idle float animation vars (same stagger logic as hand cards)
+  const tilt = (Math.random()-0.5)*4;
+  const floatDur = 2.8 + Math.random()*1.2;
+  const floatDelay = -(Math.random()*floatDur);
+  el.style.setProperty('--tilt', tilt+'deg');
+  el.style.setProperty('--float-dur', floatDur.toFixed(2)+'s');
+  el.style.setProperty('--float-delay', floatDelay.toFixed(2)+'s');
+  el.classList.add('cv-floating');
+  if(sizeCss) el.style.cssText += sizeCss;
+
+  const art = document.createElement('img');
+  art.className = 'cv-art'; art.draggable = false;
+  removeWhiteBg(card.fusionImg||card.img, url=>{art.src=url;});
+  el.appendChild(art);
+
+  if(card.type1) { const t=typeBadge(card.type1,'hc-type1'); el.appendChild(t); }
+  if(card.type2) { const t=typeBadge(card.type2,'hc-type2'); el.appendChild(t); }
+
+  // Hover sound on every card in the game
+  el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+
+  return el;
+}
+
+// ── DECK VIEWER ───────────────────────────────────────────────────
+let _dvSort = 'species';
+
+const DV_HIDE_IDS = [
+  'run-panel','hd-row','hands-panel','hand-container','balatro-bottom',
+  'owned-items-panel','deck-ours','game-hud',
+  'route-screen','daycare-screen','shop-screen','route-map-screen','cinnabar-screen',
+  'rotom-widget','gold-display'
+];
+
+function openDeckViewer() {
+  // Allow from interlude screens regardless of G.animating
+  const routeVisible   = document.getElementById('route-screen')?.classList.contains('visible');
+  const daycareVisible = document.getElementById('daycare-screen')?.classList.contains('visible');
+  const cinnabarVisible= document.getElementById('cinnabar-screen')?.classList.contains('visible');
+  const shopVisible    = document.getElementById('shop-screen') && !document.getElementById('shop-screen').classList.contains('hidden');
+  const inInterlude = routeVisible || daycareVisible || cinnabarVisible || shopVisible;
+  if(G && G.animating && !inInterlude) return;
+  const viewer = document.getElementById('deck-viewer');
+  if(!viewer) return;
+  DV_HIDE_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) {
+      el.dataset.dvWasHidden = el.style.display;
+      el.dataset.dvHadVisible = el.classList.contains('visible') ? '1' : '';
+      el.style.display = 'none';
+      el.classList.remove('visible');
+    }
+  });
+  // Force the viewer visible with explicit display style (belt + suspenders)
+  viewer.style.display = 'flex';
+  viewer.classList.add('open');
+  renderDeckViewer();
+}
+
+function closeDeckViewer() {
+  const viewer = document.getElementById('deck-viewer');
+  if(!viewer) return;
+  viewer.classList.remove('open');
+  viewer.style.display = '';
+  DV_HIDE_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el && el.dataset.dvWasHidden !== undefined) {
+      const prev = el.dataset.dvWasHidden;
+      if(prev && prev !== 'none') el.style.display = prev;
+      else el.style.display = '';
+      // Restore visible class if it had one
+      if(el.dataset.dvHadVisible === '1') el.classList.add('visible');
+      delete el.dataset.dvWasHidden;
+      delete el.dataset.dvHadVisible;
+    }
+  });
+}
+
+function renderDeckViewer() {
+  // Ensure grid is inside scroll wrapper
+  const grid = document.getElementById('dv-grid');
+  const count = document.getElementById('dv-count');
+  if(!grid) return;
+  grid.innerHTML = '';
+  const all = [...G.deck, ...G.hand];
+  if(count) count.textContent = all.length + ' cards';
+  // Sort
+  let sorted = [...all];
+  if(_dvSort === 'species') {
+    sorted.sort((a,b)=>{
+      const da=parseInt(a.dexA||0), db=parseInt(b.dexA||0);
+      return da-db;
+    });
+  } else if(_dvSort === 'type') {
+    sorted.sort((a,b)=>(a.type1||'').localeCompare(b.type1||''));
+  }
+  // Set sort buttons
+  document.querySelectorAll('.dv-sort-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('dv-sort-'+_dvSort)?.classList.add('active');
+
+  sorted.forEach((card, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'dv-card-slot';
+    slot.style.setProperty('--sd', (i*0.02)+'s');
+    const cv = makeCardVisual(card, 'width:100%;height:100%;');
+    cv.style.cursor = 'default';
+    // hover already wired inside makeCardVisual
+    slot.appendChild(cv);
+    grid.appendChild(slot);
+  });
+}
+
+function dvSetSort(mode) {
+  _dvSort = mode;
+  renderDeckViewer();
+}
+
+
+// ── AVAILABLE HANDS PANEL ─────────────────────────────────────────
+// All 20 hand types with their scoring
+const ALL_HAND_TYPES = [
+  {name:'Species Pair',       mult:3,  chips:200,  minCards:2, emoji:'👥'},
+  {name:'Species Trio',       mult:5,  chips:400,  minCards:3, emoji:'👥'},
+  {name:'Species Squad',      mult:7,  chips:700,  minCards:4, emoji:'👥'},
+  {name:'Species Army',       mult:8,  chips:800,  minCards:5, emoji:'⚡'},
+  {name:'Type Team',          mult:5,  chips:400,  minCards:5, emoji:'🔥'},
+  {name:'Dual Type Team',     mult:7,  chips:600,  minCards:5, emoji:'🌊'},
+  {name:'Evolution Line',     mult:5,  chips:450,  minCards:3, emoji:'🌿'},
+  {name:'Evolution Family',   mult:3,  chips:200,  minCards:2, emoji:'🌿'},
+  {name:'Fusion Mirror',      mult:6,  chips:600,  minCards:2, emoji:'🔁'},
+  {name:'Fusion Pairing',     mult:4,  chips:300,  minCards:4, emoji:'🔗'},
+  {name:'Connection Chain',   mult:4,  chips:300,  minCards:3, emoji:'⛓'},
+  {name:'Connection Loop',    mult:7,  chips:700,  minCards:3, emoji:'🔄'},
+  {name:'Fusion Network',     mult:7,  chips:700,  minCards:5, emoji:'🌐'},
+  {name:'Mono Type Mix',      mult:4,  chips:350,  minCards:5, emoji:'🎨'},
+  {name:'Rainbow Team',       mult:4,  chips:350,  minCards:5, emoji:'🌈'},
+  {name:'Starter Team',       mult:5,  chips:450,  minCards:3, emoji:'🏆'},
+  {name:'Legendary Team',     mult:8,  chips:900,  minCards:5, emoji:'👑'},
+  {name:'Final Evolution Team',mult:4, chips:400,  minCards:5, emoji:'💎'},
+  {name:'Baby Team',          mult:3,  chips:300,  minCards:5, emoji:'🥚'},
+  {name:'Mutation',           mult:6,  chips:500,  minCards:5, emoji:'🌀'},
+];
+
+let _activeHandType = null;
+
+function getAchievableHands() {
+  // Try every combo of 2-5 cards from current 8-card hand
+  const n = G.hand.length;
+  if(!n) return new Set();
+  const achievable = new Set();
+  function combos(arr, size) {
+    const result = [];
+    function helper(start, cur) {
+      if(cur.length === size) { result.push([...cur]); return; }
+      for(let i=start;i<arr.length;i++){cur.push(arr[i]);helper(i+1,cur);cur.pop();}
+    }
+    helper(0,[]); return result;
+  }
+  const indices = Array.from({length:n},(_,i)=>i);
+  for(let sz=2;sz<=Math.min(5,n);sz++) {
+    for(const combo of combos(indices,sz)) {
+      const cards = combo.map(i=>G.hand[i]).filter(Boolean);
+      const result = evaluateHand(cards);
+      if(result && result.name && result.name !== 'No Hand') achievable.add(result.name);
+    }
+  }
+  return achievable;
+}
+
+function renderHandsPanel() {
+  const panel = document.getElementById('hands-panel');
+  if(!panel || panel.style.display === 'none') return;
+  panel.innerHTML = '';
+  const achievable = getAchievableHands();
+  if(!achievable.size) return; // nothing to show
+  ALL_HAND_TYPES.filter(ht => achievable.has(ht.name)).forEach(ht => {
+    const chip = document.createElement('div');
+    chip.className = 'hand-chip' + (_activeHandType === ht.name ? ' active' : '');
+    chip.innerHTML = `${ht.emoji} ${ht.name} <span class="hand-chip-mult">×${ht.mult}</span>`;
+    chip.title = `${ht.chips} chips × ${ht.mult} mult = ${ht.chips*ht.mult} dmg`;
+    chip.addEventListener('click', () => selectHandType(ht.name));
+    panel.appendChild(chip);
+  });
+}
+
+function selectHandType(name) {
+  if(!G.ourTurn || G.animating) return; // locked during lethal/advance
+  if(_activeHandType === name) {
+    if(typeof SFX!=='undefined') SFX.handChipDeselect();
+    _activeHandType = null;
+    G_selected.clear();
+    renderHand();
+    renderHandsPanel();
+    return;
+  }
+  if(typeof SFX!=='undefined') SFX.handChipSelect();
+  _activeHandType = name;
+  renderHandsPanel();
+  // Try to auto-select cards that form this hand
+  autoSelectForHand(name);
+}
+
+function autoSelectForHand(handName) {
+  // Try all combinations of 2-5 cards to find the best match
+  const n = Math.min(G.hand.length, 8);
+  const handDef = ALL_HAND_TYPES.find(h=>h.name===handName);
+  if(!handDef) return;
+  const maxSel = Math.min(5, n);
+  const minSel = handDef.minCards;
+
+  let bestMatch = null;
+  let bestSize = 0;
+
+  // Try combinations from largest to smallest
+  function combos(arr, size) {
+    const result = [];
+    function helper(start, current) {
+      if(current.length === size) { result.push([...current]); return; }
+      for(let i=start;i<arr.length;i++) { current.push(arr[i]); helper(i+1,current); current.pop(); }
+    }
+    helper(0,[]);
+    return result;
+  }
+
+  const indices = Array.from({length:n},(_,i)=>i);
+  for(let sz=maxSel;sz>=minSel;sz--) {
+    const combs = combos(indices, sz);
+    for(const combo of combs) {
+      const cards = combo.map(i=>G.hand[i]).filter(Boolean);
+      const result = evaluateHand(cards);
+      if(result && result.name === handName) {
+        bestMatch = combo;
+        bestSize = sz;
+        break;
+      }
+    }
+    if(bestMatch) break;
+  }
+
+  // Animate selection change: toggle classes on existing elements
+  const newSel = bestMatch ? new Set(bestMatch) : new Set();
+  const hcEls = [...document.querySelectorAll('#hand-container .hc')];
+  // Deselect cards that are no longer selected
+  G_selected.forEach(i => {
+    if(!newSel.has(i) && hcEls[i]) {
+      hcEls[i].classList.remove('selected-hand');
+      hcEls[i].style.removeProperty('--sel-ty');
+    }
+  });
+  // Select new cards with a slight delay for visual stagger
+  let delay = 0;
+  newSel.forEach(i => {
+    if(!G_selected.has(i) && hcEls[i]) {
+      setTimeout(() => {
+        if(hcEls[i]) hcEls[i].classList.add('selected-hand');
+      }, delay);
+      delay += 40;
+    }
+  });
+  G_selected = newSel;
+  updateActionBar();
+}
+
+function showHandsPanel() {
+  const panel = document.getElementById('hands-panel');
+  if(panel) panel.style.display = 'flex';
+  renderHandsPanel();
+  // Re-render after draw animation completes (8 cards × 180ms + buffer)
+  setTimeout(renderHandsPanel, 1700);
+}
+
+function hideHandsPanel() {
+  const panel = document.getElementById('hands-panel');
+  if(panel) panel.style.display = 'none';
+}
+
+
+// ── ITEM POPOVER ──────────────────────────────────────────────────
+let _popoverTimer = null;
+let _popoverEnabled = false; // only show during battle
+function showItemPopover(text, x, y) {
+  if(!_popoverEnabled) return;
+  const pop = document.getElementById('item-popover');
+  if(!pop) return;
+  pop.textContent = text;
+  // Keep popover on screen
+  const pw = 200, ph = 60;
+  const lx = Math.min(x + 12, window.innerWidth - pw - 8);
+  const ly = Math.max(y - ph - 8, 8);
+  pop.style.left = lx + 'px';
+  pop.style.top  = ly + 'px';
+  pop.classList.add('visible');
+}
+function hideItemPopover() {
+  document.getElementById('item-popover')?.classList.remove('visible');
+}
+function attachPopover(el, text) {
+  el.addEventListener('mouseenter', e => showItemPopover(text, e.clientX, e.clientY));
+  el.addEventListener('mousemove',  e => showItemPopover(text, e.clientX, e.clientY));
+  el.addEventListener('mouseleave', hideItemPopover);
+  el.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    showItemPopover(text, t.clientX, t.clientY);
+    clearTimeout(_popoverTimer);
+    _popoverTimer = setTimeout(hideItemPopover, 2500);
+  }, {passive:false});
+}
+
+function renderOppHand(animateLast) { return; }
+
+// ── DEAL FROM DECK ANIMATION ──────────────────────────────────
+// Track which hand indices are currently being animated
+const _dealAnimating = new Set();
+
+async function dealFromDeckToHand(destEl, card, side, cardTilt, cardIndex) {
+  // Mark the card index in hand so we can reveal the live element after animation
+  const cardName = card ? card.name : null;
+  if(cardIndex !== undefined) _dealAnimating.add(cardIndex);
+  await new Promise(r=>setTimeout(r,50));
+  const deckEl = document.getElementById(side==='ours'?'deck-ours':'deck-theirs');
+  if(!deckEl){ destEl.style.opacity=''; return; }
+  const isOurs = side==='ours';
+  const topCard = deckEl.querySelector('.deck-card:last-child');
+  if(topCard){ topCard.classList.add('popping'); topCard.addEventListener('animationend',()=>topCard.classList.remove('popping'),{once:true}); }
+
+  const dr = deckEl.getBoundingClientRect();
+  const deckCx = dr.left+dr.width/2, deckCy = dr.top+dr.height/2;
+  // Note: we DON'T read destEl rect here — it may become stale.
+  // We'll read it right before the arc (after the flip).
+  // Use a nominal card width for the ghost.
+  const nominalW = document.querySelector('#hand-container .hc')?.getBoundingClientRect().width || 110;
+
+  // Build ghost with full card art + 3D perspective
+  const ghostWrap = document.createElement('div');
+  ghostWrap.style.cssText = `position:fixed;left:${deckCx}px;top:${deckCy}px;z-index:999;pointer-events:none;`;
+  const ghost = document.createElement('div');
+  ghost.className = 'deal-ghost';
+  ghost.style.cssText = `position:relative;width:${nominalW}px;aspect-ratio:2/3;transform-origin:50% 110%;transform-style:preserve-3d;border-radius:8px;overflow:hidden;background:#ffffff;border:2px solid rgba(50,70,140,0.8);box-shadow:0 4px 20px rgba(0,0,0,0.85);will-change:transform,opacity;perspective:800px;`;
+
+  // Back face
+  const back = document.createElement('div');
+  back.style.cssText = `position:absolute;inset:0;border-radius:7px;background:#ffffff;backface-visibility:visible;`;
+  ghost.appendChild(back);
+
+  // Front face (card art)
+  const frontFace = document.createElement('div');
+  frontFace.style.cssText = `position:absolute;inset:0;border-radius:7px;background:#ffffff;backface-visibility:hidden;opacity:0;`;
+  if(isOurs && card){
+    const img = document.createElement('img'); img.draggable=false;
+    img.style.cssText=`position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);height:100%;width:auto;object-fit:contain;image-rendering:pixelated;`;
+    removeWhiteBg(card.fusionImg||card.img, url=>{ img.src=url; });
+    frontFace.appendChild(img);
+    if(card.type1) frontFace.appendChild(typeBadge(card.type1,'hc-type1'));
+    if(card.type2) frontFace.appendChild(typeBadge(card.type2,'hc-type2'));
+  }
+  ghost.appendChild(frontFace);
+  ghostWrap.appendChild(ghost);
+  document.body.appendChild(ghostWrap);
+
+  // Initial: at deck, face-down, rotated back
+  ghost.style.transform = `rotateY(-90deg) scale(1)`;
+  ghostWrap.style.transform = `translate(-50%,-50%)`;
+
+  const d = ms => new Promise(r=>setTimeout(r,ms));
+  const fanRot = isOurs ? (cardTilt || parseFloat(destEl.style.getPropertyValue('--tilt'))||0) : 0;
+
+  if(!isOurs){
+    ghostWrap.style.transition = `left 0.38s ease, top 0.38s ease`;
+    ghostWrap.style.left = (window.innerWidth/2)+'px';
+    ghostWrap.style.top  = '60px';
+    await d(350); ghostWrap.style.opacity='0'; await d(100); ghostWrap.remove(); return;
+  }
+
+  // Phase 1: flip from back to front — start rotating toward final fan tilt
+  ghost.style.transition = `transform 0.20s ease-in`;
+  ghost.style.transform   = `rotate(${fanRot * 0.2}deg) rotateY(0deg) scale(1.0)`;
+  await d(110);
+  frontFace.style.opacity = '1'; back.style.opacity = '0';
+
+  // Target is the live card's position (already placed by animateHandReflow)
+  const liveT = document.querySelectorAll('#hand-container .hc')[cardIndex];
+  const tR = liveT ? liveT.getBoundingClientRect() : null;
+  const handCx = tR ? tR.left + tR.width/2  : deckCx + 200;
+  const handCy = tR ? tR.top  + tR.height/2 : deckCy - 100;
+
+  // Arc animation: LEFT first, then curve UP and land in hand
+  // We use a quadratic bezier arc so the card travels in a smooth curve.
+  // Control point is above and to the left of the midpoint — creates a natural throw arc.
+  ghost.style.transition = `transform 0.42s cubic-bezier(0.2,0.8,0.3,1)`;
+  ghost.style.transform = `rotate(${fanRot}deg) scale(1.0)`;
+
+  const startLeft = parseFloat(ghostWrap.style.left);
+  const startTop  = parseFloat(ghostWrap.style.top);
+  // Control point: horizontally 80% toward destination, vertically 200px above start
+  const ctrlX = startLeft + (handCx - startLeft) * 0.5;
+  const ctrlY = Math.min(startTop, handCy) - 180; // arc peak above both points
+  const ARC_DUR = 400;
+  const ease = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease-in-out
+
+  await new Promise(resolve => {
+    const t0 = performance.now();
+    function arcFrame(now) {
+      const t = Math.min(1, (now - t0) / ARC_DUR);
+      const e = ease(t);
+      // Quadratic bezier: P = (1-e)²·start + 2(1-e)e·ctrl + e²·end
+      const inv = 1 - e;
+      const x = inv*inv*startLeft + 2*inv*e*ctrlX + e*e*handCx;
+      const y = inv*inv*startTop  + 2*inv*e*ctrlY  + e*e*handCy;
+      ghostWrap.style.left = x + 'px';
+      ghostWrap.style.top  = y + 'px';
+      if(t < 1) requestAnimationFrame(arcFrame);
+      else resolve();
+    }
+    requestAnimationFrame(arcFrame);
+  });
+
+  // Phase 3: snap reveal — remove ghost, show live card instantly
+  if(cardIndex !== undefined) _dealAnimating.delete(cardIndex);
+  const liveHcEls2 = document.querySelectorAll('#hand-container .hc');
+  const liveCard = (cardIndex !== undefined) ? liveHcEls2[cardIndex] : null;
+  if(liveCard) {
+    liveCard.style.setProperty('--dx', '0px');
+    liveCard.style.visibility = '';
+    liveCard.style.pointerEvents = '';
+  }
+  ghostWrap.remove();
+}
+
+// ── COORDINATE FIX FOR PORTRAIT MODE ─────────────────────────
+function fixCoords(clientX, clientY) {
+  if(window.matchMedia('(orientation: portrait)').matches) {
+    return { x: clientY, y: window.innerWidth - clientX };
+  }
+  return { x: clientX, y: clientY };
+}
+
+// ── HAND DRAG ─────────────────────────────────────────────────
+let hDrag = null;
+function startHandDrag(e, cardIdx) {
+  if(!G.ourTurn||G.animating) return;
+  const card=G.hand[cardIdx]; if(!card) return;
+  e.preventDefault();
+  const ghost=document.createElement('div'); ghost.className='hand-ghost';
+  const art=document.createElement('img'); art.className='hc-art'; art.src=card.fusionImg||card.img;
+  const stats=document.createElement('div'); stats.className='hc-stats';
+  const a=document.createElement('span'); a.className='hc-atk'; a.textContent=card.dexA||card.atk;
+  const h=document.createElement('span'); h.className='hc-hp';  h.textContent=card.dexB||card.hp;
+  stats.append(a,h); ghost.append(art,stats);
+  const _fc0=fixCoords(e.clientX,e.clientY);
+  ghost.style.left=_fc0.x+'px'; ghost.style.top=_fc0.y+'px';
+  document.body.appendChild(ghost);
+  const origEl=document.querySelectorAll('#hand-container .hc')[cardIdx];
+  if(origEl) origEl.style.visibility='hidden';
+  hDrag={cardIdx,ghost,origEl};
+  document.addEventListener('pointermove',onHandMove,{passive:false});
+  document.addEventListener('pointerup',onHandUp);
+}
+
+function onHandMove(e) {
+  if(!hDrag) return; e.preventDefault();
+  const _fc1=fixCoords(e.clientX,e.clientY);
+  hDrag.ghost.style.left=_fc1.x+'px'; hDrag.ghost.style.top=_fc1.y+'px';
+  const bfOurs=document.getElementById('bf-ours'); if(!bfOurs) return;
+  const zr=bfOurs.getBoundingClientRect();
+  const inZone=_fc1.y>zr.top-60&&_fc1.y<zr.bottom+60;
+  const cardEls=[...bfOurs.querySelectorAll('.pc')];
+  if(inZone&&cardEls.length>0){
+    let ins=cardEls.length;
+    for(let i=0;i<cardEls.length;i++){const r=cardEls[i].getBoundingClientRect();if(_fc1.x<r.left+r.width/2){ins=i;break;}}
+    hDrag.insertPos=ins;
+    cardEls.forEach((el,i)=>{el.classList.remove('drag-push-left','drag-push-right');if(i<ins)el.classList.add('drag-push-left');else el.classList.add('drag-push-right');});
+  } else {
+    hDrag.insertPos=null;
+    cardEls.forEach(el=>el.classList.remove('drag-push-left','drag-push-right'));
+  }
+}
+
+function onHandUp(e) {
+  document.removeEventListener('pointermove',onHandMove);
+  document.removeEventListener('pointerup',onHandUp);
+  if(hDrag?.ghost) hDrag.ghost.remove();
+  if(hDrag?.origEl) hDrag.origEl.style.visibility='';
+  const bfz=document.getElementById('bf-ours');
+  if(bfz) bfz.querySelectorAll('.pc').forEach(el=>el.classList.remove('drag-push-left','drag-push-right'));
+  const ci=hDrag?.cardIdx,savedPos=hDrag?.insertPos;
+  hDrag=null;
+  if(ci===undefined||!G.ourTurn) return;
+  const card=G.hand[ci]; if(!card) return;
+  if(!bfz) return;
+  const _fc2=fixCoords(e.clientX,e.clientY);
+  const zr=bfz.getBoundingClientRect();
+  if(_fc2.y<zr.top-60||_fc2.y>zr.bottom+60) return;
+  const cardEls=[...bfz.querySelectorAll('.pc')];
+  if(cardEls.length>=6) return;
+  let ins=(savedPos!==null&&savedPos!==undefined)?savedPos:cardEls.length;
+  playCardInsert(ins,ci);
+}
+
+function playCardInsert(insertPos, cardIdx) {
+  if(!G.ourTurn||G.animating) return;
+  const src=G.hand[cardIdx]; if(!src) return;
+  if(G.ourBoard.filter(c=>c).length>=6) return;
+  const kws=src.keywords||[];
+  const canAtk=kws.includes('charge')||kws.includes('rush');
+  const card={...src, canAttack:canAtk, exhausted:!canAtk, attacksLeft:canAtk?(kws.includes('windfury')?2:1):0, divineShieldUp:kws.includes('divine_shield'), frozen:false, stealthed:kws.includes('stealth')};
+  const cards=G.ourBoard.filter(c=>c);
+  cards.splice(insertPos,0,card);
+  G.ourBoard=[...cards,...new Array(6-cards.length).fill(null)];
+  G.hand.splice(cardIdx,1);
+  renderAll();
+  setTimeout(checkAutoEndTurn,500);
+  const summon=()=>{
+    const ne=document.querySelector(`#bf-ours .pc[data-id='${card.id}']`); if(!ne) return;
+    if(kws.includes('charge'))      triggerKwAnim(ne,'charge','⚡ CHARGE!');
+    else if(kws.includes('rush'))   triggerKwAnim(ne,'rush','🏃 RUSH!');
+    else                            {ne.classList.add('summoning');setTimeout(()=>ne.classList.remove('summoning'),350);}
+    if(kws.includes('taunt'))       setTimeout(()=>triggerKwAnim(ne,'taunt','🛡 TAUNT'),180);
+    if(kws.includes('divine_shield'))setTimeout(()=>triggerKwAnim(ne,'divine_shield','✨ DIVINE SHIELD'),200);
+    if(kws.includes('reborn'))      setTimeout(()=>triggerKwAnim(ne,'reborn','👼 REBORN'),260);
+    if(kws.includes('battlecry'))   setTimeout(()=>enterBcMode(card,kws.includes('silence')?'silence':'damage'),50);
+  };
+  setTimeout(summon,10);
+}
+
+// ── BATTLECRY ──────────────────────────────────────────────────
+let bcHandlers=[];
+function enterBcMode(sourceCard, type) {
+  const boardIdx=G.ourBoard.findIndex(c=>c&&c.id===sourceCard.id);
+  G.bcPending={sourceCard,type,boardIdx};
+  const hint=document.getElementById('bc-hint');
+  if(hint){hint.textContent=type==='silence'?'SILENCE — click any minion  |  ESC to cancel':'BATTLECRY — deal 2 dmg to a target  |  ESC to cancel';hint.classList.add('show');}
+  document.querySelectorAll('#bf-theirs .pc,#bf-ours .pc').forEach(el=>{
+    el.classList.add(el.dataset.side==='theirs'?'bc-target-enemy':'bc-target-ally');
+    const h=()=>onBcClick(el); bcHandlers.push({el,h}); el.addEventListener('pointerup',h,{once:true});
+  });
+}
+function onBcClick(el) {
+  cancelBc(false);
+  const side=el.dataset.side,idx=+el.dataset.idx;
+  const board=side==='ours'?G.ourBoard:G.theirBoard;
+  const t=board[idx]; if(!t) return;
+  const type=G.bcPending?.type||'damage'; G.bcPending=null;
+  if(type==='silence'){t.keywords=[];t.divineShieldUp=false;t.frozen=false;t.stealthed=false;}
+  else{if(t.divineShieldUp){t.divineShieldUp=false;}else{t.hp-=2;if(t.keywords?.includes('poisonous'))t.hp=-999;if(t.hp<=0)board[idx]=null;}}
+  renderAll();
+}
+function cancelBc(clearPending=true){
+  const pending=G.bcPending;
+  if(clearPending) G.bcPending=null;
+  document.getElementById('bc-hint')?.classList.remove('show');
+  document.querySelectorAll('.bc-target-ally,.bc-target-enemy').forEach(el=>{el.classList.remove('bc-target-ally','bc-target-enemy');});
+  bcHandlers.forEach(({el,h})=>el.removeEventListener('pointerup',h)); bcHandlers=[];
+  if(clearPending&&pending&&pending.boardIdx>=0){
+    const card=pending.sourceCard,boardIdx=pending.boardIdx;
+    const pcEl=document.querySelector(`#bf-ours .pc[data-id='${card.id}']`);
+    const handContainer=document.getElementById('hand-container');
+    if(pcEl){
+      const er=pcEl.getBoundingClientRect();
+      const ghost=document.createElement('div');
+      ghost.style.cssText=`position:fixed;pointer-events:none;z-index:999;width:${er.width}px;aspect-ratio:2/3;border-radius:8px;overflow:hidden;background:#0a0a18;border:2px solid #334466;box-shadow:0 4px 16px rgba(0,0,0,0.8);left:${er.left+er.width/2}px;top:${er.top+er.height/2}px;transform:translate(-50%,-50%) scale(1);transition:none;opacity:0.95`;
+      const img=document.createElement('img'); img.style.cssText='width:100%;height:82%;object-fit:contain;image-rendering:pixelated;background:#0a0a18;padding-top:8px';
+      removeWhiteBg(card.fusionImg||card.img,url=>{img.src=url;}); ghost.appendChild(img); document.body.appendChild(ghost);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        ghost.style.transition='left 0.38s cubic-bezier(0.3,0.8,0.3,1),top 0.38s cubic-bezier(0.3,0.8,0.3,1),transform 0.38s ease,opacity 0.1s ease 0.3s';
+        ghost.style.left=(window.innerWidth/2)+'px'; ghost.style.top=(window.innerHeight-60)+'px';
+        ghost.style.transform='translate(-50%,-50%) scale(0.8) rotate(5deg)'; ghost.style.opacity='0';
+        setTimeout(()=>ghost.remove(),500);
+      }));
+    }
+    if(boardIdx>=0) G.ourBoard[boardIdx]=null;
+    G.ourBoard=[...G.ourBoard.filter(c=>c),...new Array(6).fill(null)];
+    G.hand.push(card);
+    setTimeout(()=>renderAll(),420);
+  }
+}
+
+// ═══ MANA ═══════════════════════════════════════════════════════
+function renderMana() {
+  const hud=document.getElementById('game-hud'); if(hud) hud.style.display='flex';
+  const row=document.getElementById('mana-row'); row.innerHTML='';
+  for(let i=0;i<G.maxMana;i++){const g=document.createElement('div');g.className='mana-gem '+(i<G.ourMana?'full':'empty');row.appendChild(g);}
+  const mcl=document.getElementById('mana-count-label'); if(mcl) mcl.textContent=G.ourMana+'/'+G.maxMana;
+  const oc=document.getElementById('deck-ours-count'); const tc=document.getElementById('deck-theirs-count');
+  if(oc) oc.textContent=G.deck.length+'/'+(G.deck.length+G.hand.length+G.ourBoard.filter(c=>c).length);
+  if(tc) tc.textContent=(G.theirDeck?.length||0)+' cards';
+  const od=document.getElementById('deck-ours'); const td=document.getElementById('deck-theirs');
+  if(od) od.style.opacity=G.deck.length?'1':'0.25';
+  if(td) td.style.opacity=(G.theirDeck?.length||0)?'1':'0.25';
+}
+
+// ═══ DRAG TO ATTACK ══════════════════════════════════════════════
+function onOurDown(e, srcIdx) {
+  if(!G.ourTurn||G.animating) return;
+  const card=G.ourBoard[srcIdx]; if(!card||card.exhausted||!card.canAttack) return;
+  e.preventDefault();
+  const el=e.currentTarget; el.setPointerCapture(e.pointerId);
+  G.drag={srcIdx,srcEl:el,pointerId:e.pointerId};
+  el.classList.add('selected-attacker'); setArrow(true);
+  const hasTaunt=G.theirBoard.some(c=>c&&c.taunt);
+  document.querySelectorAll('#bf-theirs .pc').forEach(te=>{
+    const ti=+te.dataset.idx; if(!hasTaunt||G.theirBoard[ti]?.taunt) te.classList.add('valid-target');
+  });
+  const tt=document.getElementById('trainer-target');
+  if(tt&&!hasTaunt){ tt.classList.add('active'); tt.addEventListener('pointerenter',()=>tt.classList.add('hovered')); tt.addEventListener('pointerleave',()=>tt.classList.remove('hovered')); tt.addEventListener('pointerup',onTrainerTargetUp); }
+  el.addEventListener('pointermove',onDragMove,{passive:false});
+  el.addEventListener('pointerup',onDragUp);
+  el.addEventListener('pointercancel',cancelDrag);
+}
+
+function onDragMove(e) {
+  if(!G.drag) return; e.preventDefault();
+  const wrap=document.getElementById('gameWrap'); const wr=wrap.getBoundingClientRect();
+  const _fc3=fixCoords(e.clientX,e.clientY);
+  const tx=(_fc3.x-wr.left)/wr.width*100, ty=(_fc3.y-wr.top)/wr.height*100;
+  const sc=getCenter(G.drag.srcEl); drawArrow(sc.x,sc.y,tx,ty);
+}
+
+function onDragUp(e) {
+  if(!G.drag) return;
+  const srcIdx=G.drag.srcIdx;
+  const _fc4=fixCoords(e.clientX,e.clientY);
+  try{G.drag.srcEl.releasePointerCapture(G.drag.pointerId);}catch(_){}
+  let tIdx=-1;
+  document.querySelectorAll('#bf-theirs .pc').forEach(el=>{
+    const r=el.getBoundingClientRect();
+    if(_fc4.x>=r.left&&_fc4.x<=r.right&&_fc4.y>=r.top&&_fc4.y<=r.bottom) tIdx=+el.dataset.idx;
+  });
+  cleanupDrag(); if(tIdx===-1) return;
+  const hasTaunt=G.theirBoard.some(c=>c&&c.taunt);
+  if(hasTaunt&&!G.theirBoard[tIdx]?.taunt) return;
+  executeAttack(srcIdx,tIdx);
+}
+
+function onTheirEnter(el, idx) { if(!G.drag) return; const hasTaunt=G.theirBoard.some(c=>c&&c.taunt); if(hasTaunt&&!G.theirBoard[idx]?.taunt) return; el.classList.add('valid-target'); }
+function onTheirUp(tIdx) { if(!G.drag) return; const srcIdx=G.drag.srcIdx; cleanupDrag(); const hasTaunt=G.theirBoard.some(c=>c&&c.taunt); if(hasTaunt&&!G.theirBoard[tIdx]?.taunt) return; executeAttack(srcIdx,tIdx); }
+function cancelDrag() { const tt=document.getElementById('trainer-target'); if(tt){tt.classList.remove('hovered');tt.removeEventListener('pointerup',onTrainerTargetUp);}cleanupDrag(); }
+
+function onTrainerTargetUp() {
+  if(!G.drag) return; const srcIdx=G.drag.srcIdx; cleanupDrag(); attackTrainer(srcIdx);
+}
+
+async function attackTrainer(srcIdx) {
+  const src=G.ourBoard[srcIdx]; if(!src||!src.canAttack) return;
+  const sEl=document.querySelector(`#bf-ours .pc[data-idx='${srcIdx}']`);
+  if(sEl){
+    const wrap0=document.getElementById('gameWrap'),wr0=wrap0.getBoundingClientRect();
+    const sc=getCenter(sEl);
+    const dx=(50-sc.x)*wr0.width/100,dy=(6-sc.y)*wr0.height/100;
+    sEl.style.transition='transform 0.18s cubic-bezier(0.2,0.8,0.3,1.0)';
+    sEl.style.transform=`translate(${dx*0.85}px,${dy*0.85}px) scale(1.18)`;
+    sEl.style.zIndex='50';
+    await delay(160);
+    sEl.style.transition='transform 0.18s cubic-bezier(0.3,0,0.5,1)';
+    sEl.style.transform=''; sEl.style.zIndex=''; await delay(180); sEl.style.transition='';
+  }
+  src.canAttack=false; src.exhausted=true;
+  src.attacksLeft=(src.attacksLeft||1)-1;
+  if(src.attacksLeft>0){src.canAttack=true;src.exhausted=false;}
+  G.trainerHp=Math.max(0,G.trainerHp-src.atk);
+  const wrap=document.getElementById('gameWrap'),wr=wrap.getBoundingClientRect();
+  spawnDmg(wrap,wr,{getBoundingClientRect:()=>({left:wr.left+wr.width*0.5,width:0,top:wr.top+wr.height*0.06})},src.atk,'#ff4444');
+  updateTrainerTarget(); renderAll();
+  if(G.trainerHp<=0) setTimeout(advanceTrainer,600);
+}
+
+async function advanceTrainer() {
+  if(typeof SFX!=='undefined') SFX.victory();
+  const t=getCurrentTrainer();
+  G.trainerIdx = G.trainerIdx + 1;
+  G.gold = (G.gold||0) + 4 + Math.floor(G.trainerIdx/3);
+  await delay(500);
+  if(G.trainerIdx >= BATTLE_SEQUENCE.length){ G.trainerIdx = BATTLE_SEQUENCE.length-1; setTimeout(returnToMap,800); return; }
+  setTimeout(openInterlude, 800);
+}
+
+function setTrainerPortrait(trainer) {
+  const imgWrap = document.getElementById('rp-portrait-img-wrap');
+  const tcImg   = document.getElementById('tc-opp-img');
+
+  // Hide the image box entirely if no image — never show an empty square
+  if(imgWrap) imgWrap.style.display = trainer.img ? '' : 'none';
+
+  if(tcImg && trainer.img){
+    tcImg.style.opacity='0';
+    tcImg.style.transition='none';
+    const newSrc = trainer.img;
+    if(tcImg.src !== newSrc) {
+      tcImg.onload = () => {
+        tcImg.style.transition='opacity 0.3s ease'; tcImg.style.opacity='1'; tcImg.onload=null;
+        setTimeout(()=>{ if(typeof showTrainerDialogue==='function') showTrainerDialogue(trainer.name); }, 600);
+      };
+      tcImg.onerror = () => {
+        // Image failed — hide the wrap
+        if(imgWrap) imgWrap.style.display='none';
+        tcImg.onerror=null;
+        setTimeout(()=>{ if(typeof showTrainerDialogue==='function') showTrainerDialogue(trainer.name); }, 400);
+      };
+      tcImg.src = newSrc;
+    } else {
+      tcImg.style.transition='opacity 0.3s ease'; tcImg.style.opacity='1';
+      setTimeout(()=>{ if(typeof showTrainerDialogue==='function') showTrainerDialogue(trainer.name); }, 700);
+    }
+  } else if(tcImg) {
+    // No image — trigger dialogue after a short pause
+    tcImg.src = '';
+    setTimeout(()=>{ if(typeof showTrainerDialogue==='function') showTrainerDialogue(trainer.name); }, 500);
+  }
+  // Update name + HP in panel
+  const tcName=document.getElementById('tc-opp-name'); if(tcName) tcName.textContent=trainer.name.toUpperCase();
+  const trainerName=document.getElementById('rp-trainer-name'); if(trainerName) trainerName.textContent=trainer.name.toUpperCase();
+  const trainerHpEl=document.getElementById('rp-trainer-hp'); if(trainerHpEl) trainerHpEl.textContent='❤️ '+trainer.hp+' / '+trainer.hp;
+  const hpBar=document.getElementById('rp-hp-bar'); if(hpBar) hpBar.style.width='100%';
+  // Hero power
+  const tcEmoji=document.getElementById('tc-opp-hp-emoji'); if(tcEmoji) tcEmoji.textContent=trainer.hpEmoji||'⚔️';
+  const tcHpName=document.getElementById('tc-opp-hp-name'); if(tcHpName) tcHpName.textContent=(trainer.hpName||'Power').toUpperCase();
+  const tcHpDesc=document.getElementById('tc-opp-hp-desc'); if(tcHpDesc) tcHpDesc.textContent=trainer.hpDesc||'';
+  // Trigger gym color change
+  if(window._balatroBg) window._balatroBg.setGym(G.trainerIdx);
+  updateRunPanel();
+}
+
+function updateTrainerTarget() {
+  const tt=document.getElementById('trainer-target'); if(tt) tt.classList.remove('active','hovered');
+}
+
+function cleanupDrag() {
+  if(!G.drag) return;
+  const{srcEl,pointerId}=G.drag;
+  srcEl.classList.remove('selected-attacker');
+  srcEl.removeEventListener('pointermove',onDragMove);
+  srcEl.removeEventListener('pointerup',onDragUp);
+  srcEl.removeEventListener('pointercancel',cancelDrag);
+  try{srcEl.releasePointerCapture(pointerId);}catch(_){}
+  G.drag=null; setArrow(false);
+  document.querySelectorAll('.valid-target').forEach(e=>e.classList.remove('valid-target'));
+  const tt=document.getElementById('trainer-target'); if(tt){tt.classList.remove('hovered');tt.removeEventListener('pointerup',onTrainerTargetUp);}
+}
+
+// ── ARROW ─────────────────────────────────────────────────────
+function setArrow(on){['drag-path','drag-head','drag-src-ring'].forEach(id=>{document.getElementById(id).style.display=on?'':'none';});if(!on){const p=document.getElementById('drag-path');const h=document.getElementById('drag-head');if(p)p.setAttribute('d','');if(h)h.setAttribute('points','');}}
+function drawArrow(x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);if(len<1)return;const mx=x1+dx*0.45,my=y1+dy*0.45-6;document.getElementById('drag-path').setAttribute('d',`M${x1},${y1} Q${mx},${my} ${x2},${y2}`);document.getElementById('drag-src-ring').setAttribute('cx',x1);document.getElementById('drag-src-ring').setAttribute('cy',y1);const ang=Math.atan2(y2-my,x2-mx),sz=2.2;const pts=[[x2,y2],[x2-sz*Math.cos(ang-0.5),y2-sz*Math.sin(ang-0.5)],[x2-sz*Math.cos(ang+0.5),y2-sz*Math.sin(ang+0.5)]].map(p=>p.join(',')).join(' ');document.getElementById('drag-head').setAttribute('points',pts);}
+function getCenter(el){const wrap=document.getElementById('gameWrap');const wr=wrap.getBoundingClientRect(),er=el.getBoundingClientRect();return{x:(er.left+er.width/2-wr.left)/wr.width*100,y:(er.top+er.height/2-wr.top)/wr.height*100};}
+
+// ── KEYWORD ANIMATION ─────────────────────────────────────────
+function triggerKwAnim(el,key,label){
+  if(!el) return;
+  const cls='kw-anim-'+key;
+  el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+  el.addEventListener('animationend',()=>el.classList.remove(cls),{once:true});
+  const wrap=document.getElementById('gameWrap');
+  if(wrap&&label){
+    const pop=document.createElement('div'); pop.className='kw-popup'; pop.textContent=label;
+    const er=el.getBoundingClientRect(),wr=wrap.getBoundingClientRect();
+    pop.style.left=((er.left+er.width/2-wr.left)/wr.width*100)+'%';
+    pop.style.top=((er.top+er.height/2-wr.top)/wr.height*100)+'%';
+    wrap.appendChild(pop); setTimeout(()=>pop.remove(),1200);
+  }
+}
+
+// ═══ EXECUTE ATTACK ══════════════════════════════════════════════
+async function executeAttack(srcIdx,tIdx){
+  if(G.animating) return; G.animating=true;
+  const src=G.ourBoard[srcIdx],tgt=G.theirBoard[tIdx];
+  if(!src||!tgt){G.animating=false;return;}
+  if(src.frozen){src.frozen=false;G.animating=false;renderAll();return;}
+  if(tgt.stealthed){G.animating=false;return;}
+  const sEl=document.querySelector(`#bf-ours .pc[data-idx='${srcIdx}']`);
+  const tEl=document.querySelector(`#bf-theirs .pc[data-idx='${tIdx}']`);
+  if(!sEl||!tEl){G.animating=false;return;}
+  const sc=getCenter(sEl),tc=getCenter(tEl);
+  const wrap=document.getElementById('gameWrap'),wr=wrap.getBoundingClientRect();
+  const dx=(tc.x-sc.x)*wr.width/100,dy=(tc.y-sc.y)*wr.height/100;
+  sEl.classList.add('attacking');
+  sEl.style.transition='transform 0.14s cubic-bezier(0.2,0.8,0.3,1.0)';
+  sEl.style.transform=`translate(${dx}px,${dy}px) scale(1.15)`;
+  sEl.style.zIndex='50'; src.stealthed=false;
+  await delay(140);
+  tEl.classList.add('hit');
+  let tgtDmg=0,srcDmg=0;
+  if(tgt.divineShieldUp){tgt.divineShieldUp=false;spawnDmg(wrap,wr,tEl,'✨','#ffff66');}
+  else{tgt.hp-=src.atk;tgtDmg=src.atk;spawnDmg(wrap,wr,tEl,src.atk,'#ff4444');}
+  if(src.divineShieldUp){src.divineShieldUp=false;spawnDmg(wrap,wr,sEl,'✨','#ffff66');}
+  else{src.hp-=tgt.atk;srcDmg=tgt.atk;spawnDmg(wrap,wr,sEl,tgt.atk,'#ff8888');}
+  if(tgt.divineShieldUp===false&&tgtDmg===0) triggerKwAnim(tEl,'divine_shield_block','✨ DIVINE SHIELD');
+  if(src.keywords?.includes('poisonous')&&tgtDmg>0){tgt.hp=-999;triggerKwAnim(sEl,'poisonous','☠️ POISONOUS');}
+  if(tgt.keywords?.includes('poisonous')&&srcDmg>0){src.hp=-999;triggerKwAnim(tEl,'poisonous','☠️ POISONOUS');}
+  if(src.keywords?.includes('freeze')){tgt.frozen=true;triggerKwAnim(tEl,'freeze','❄️ FROZEN');}
+  if(tgt.keywords?.includes('freeze')){src.frozen=true;triggerKwAnim(sEl,'freeze','❄️ FROZEN');}
+  if(src.keywords?.includes('lifesteal')&&tgtDmg>0){G.trainerHp=Math.min(G.trainerMaxHp,G.trainerHp+tgtDmg);triggerKwAnim(sEl,'lifesteal','💉 LIFESTEAL');}
+  if(src.keywords?.includes('windfury')&&src.attacksLeft>1) triggerKwAnim(sEl,'windfury','💨 WINDFURY');
+  src.attacksLeft=(src.attacksLeft||1)-1;
+  if(src.attacksLeft>0){src.canAttack=true;src.exhausted=false;}else{src.canAttack=false;src.exhausted=true;}
+  await delay(90);
+  sEl.style.transition='transform 0.18s cubic-bezier(0.3,0.0,0.5,1.0)';
+  sEl.style.transform=''; await delay(200);
+  sEl.classList.remove('attacking');sEl.style.zIndex='';sEl.style.transition='';tEl.classList.remove('hit');
+  const deaths=[];
+  if(src.hp<=0) deaths.push({el:sEl,side:'ours',idx:srcIdx,card:src});
+  if(tgt.hp<=0) deaths.push({el:tEl,side:'theirs',idx:tIdx,card:tgt});
+  deaths.forEach(d=>{if(d.card.keywords?.includes('deathrattle'))d.el.classList.add('kw-anim-deathrattle');else d.el.classList.add('dying');});
+  if(deaths.length) await delay(480);
+  for(const d of deaths){
+    if(d.card.keywords?.includes('deathrattle')){const e=d.side==='ours'?G.theirBoard:G.ourBoard;e.forEach(c=>{if(c)c.hp-=1;});}
+    if(d.side==='ours')G.ourBoard[d.idx]=null;else G.theirBoard[d.idx]=null;
+    if(d.card.keywords?.includes('reborn')){const rb={...d.card,hp:1,keywords:d.card.keywords.filter(k=>k!=='reborn'),canAttack:false,exhausted:true,id:Math.random().toString(36).slice(2)};const brd=d.side==='ours'?G.ourBoard:G.theirBoard;const sl=brd.findIndex(c=>!c);if(sl>-1)brd[sl]=rb;}
+  }
+  G.ourBoard=[...G.ourBoard.filter(c=>c&&c.hp>0),...new Array(6).fill(null)];
+  G.theirBoard=[...G.theirBoard.filter(c=>c&&c.hp>0),...new Array(4).fill(null)];
+  if(G.trainerHp > 0) G.animating=false; renderAll(); checkGameEnd();
+  setTimeout(autoAttackTrainerIfOpen,200);
+  setTimeout(checkAutoEndTurn,300);
+}
+
+async function opponentAttack(tIdx,oIdx){
+  G.animating=true;
+  const tc=G.theirBoard[tIdx],oc=G.ourBoard[oIdx];
+  if(!tc||!oc){G.animating=false;return;}
+  const tEl=document.querySelector(`#bf-theirs .pc[data-idx='${tIdx}']`);
+  const oEl=document.querySelector(`#bf-ours .pc[data-idx='${oIdx}']`);
+  if(!tEl||!oEl){G.animating=false;return;}
+  const wrap=document.getElementById('gameWrap'),wr=wrap.getBoundingClientRect();
+  const tC=getCenter(tEl),oC=getCenter(oEl);
+  const dx=(oC.x-tC.x)*wr.width/100,dy=(oC.y-tC.y)*wr.height/100;
+  tEl.style.transition='transform 0.14s cubic-bezier(0.2,0.8,0.3,1.0)';
+  tEl.style.transform=`translate(${dx}px,${dy}px) scale(1.15)`;
+  tEl.style.zIndex='50'; tc.stealthed=false;
+  await delay(140);
+  oEl.classList.add('hit');
+  let tcDmg=0,ocDmg=0;
+  if(oc.divineShieldUp){oc.divineShieldUp=false;spawnDmg(wrap,wr,oEl,'✨','#ffff66');}
+  else{oc.hp-=tc.atk;ocDmg=tc.atk;spawnDmg(wrap,wr,oEl,tc.atk,'#ff2222');}
+  if(tc.divineShieldUp){tc.divineShieldUp=false;spawnDmg(wrap,wr,tEl,'✨','#ffff66');}
+  else{tc.hp-=oc.atk;tcDmg=oc.atk;spawnDmg(wrap,wr,tEl,oc.atk,'#ff8888');}
+  if(tc.keywords?.includes('poisonous')&&ocDmg>0)oc.hp=-999;
+  if(oc.keywords?.includes('poisonous')&&tcDmg>0)tc.hp=-999;
+  if(tc.keywords?.includes('freeze'))oc.frozen=true;
+  if(oc.keywords?.includes('freeze'))tc.frozen=true;
+  await delay(90);
+  tEl.style.transition='transform 0.18s cubic-bezier(0.3,0.0,0.5,1.0)';
+  tEl.style.transform='';tEl.style.zIndex='';
+  await delay(200);tEl.style.transition='';oEl.classList.remove('hit');
+  const deaths=[];
+  if(tc.hp<=0)deaths.push({el:tEl,side:'theirs',idx:tIdx,card:tc});
+  if(oc.hp<=0)deaths.push({el:oEl,side:'ours',idx:oIdx,card:oc});
+  deaths.forEach(d=>d.el.classList.add('dying'));
+  if(deaths.length)await delay(480);
+  for(const d of deaths){
+    if(d.card.keywords?.includes('deathrattle')){const e=d.side==='theirs'?G.ourBoard:G.theirBoard;e.forEach(c=>{if(c)c.hp-=1;});}
+    if(d.side==='theirs')G.theirBoard[d.idx]=null;else G.ourBoard[d.idx]=null;
+    if(d.card.keywords?.includes('reborn')){const rb={...d.card,hp:1,keywords:d.card.keywords.filter(k=>k!=='reborn'),canAttack:false,exhausted:true,id:Math.random().toString(36).slice(2)};const brd=d.side==='theirs'?G.theirBoard:G.ourBoard;const sl=brd.findIndex(c=>!c);if(sl>-1)brd[sl]=rb;}
+  }
+  G.ourBoard=[...G.ourBoard.filter(c=>c&&c.hp>0),...new Array(6).fill(null)];
+  G.theirBoard=[...G.theirBoard.filter(c=>c&&c.hp>0),...new Array(4).fill(null)];
+  // Don't unlock UI if trainer is already dead — keep locked until advanceTrainer
+  if(G.trainerHp > 0) G.animating=false;
+}
+
+function spawnDmg(wrap,wr,el,dmg,color){
+  const er=el.getBoundingClientRect();
+  const d=document.createElement('div'); d.className='dmg-num'; d.textContent='-'+dmg; d.style.color=color;
+  d.style.left=((er.left+er.width/2-wr.left)/wr.width*100)+'%';
+  d.style.top=((er.top-wr.top)/wr.height*100)+'%';
+  wrap.appendChild(d); setTimeout(()=>d.remove(),1000);
+}
+
+// ═══ AUTO-ATTACK TRAINER ════════════════════════════════════════
+async function autoAttackTrainerIfOpen(){
+  if(!G.ourTurn||G.animating) return;
+  if(G.theirBoard.some(c=>c)) return;
+  const attackers=G.ourBoard.map((c,i)=>({c,i})).filter(({c})=>c&&c.canAttack&&!c.exhausted&&!c.frozen);
+  if(!attackers.length) return;
+  G.animating=true;
+  const queue=[];
+  for(const{c,i}of attackers){const hits=c.attacksLeft||1;for(let h=0;h<hits;h++)queue.push({c,i});}
+  for(const{c,i}of queue){
+    if(c.exhausted||c.frozen) continue;
+    const sEl=document.querySelector(`#bf-ours .pc[data-idx='${i}']`);
+    if(sEl){
+      const wrap=document.getElementById('gameWrap'),wr=wrap.getBoundingClientRect();
+      const sc=getCenter(sEl);
+      const dx=(50-sc.x)*wr.width/100,dy=(6-sc.y)*wr.height/100;
+      sEl.style.transition='transform 0.18s cubic-bezier(0.2,0.8,0.3,1.0)';
+      sEl.style.transform=`translate(${dx*0.85}px,${dy*0.85}px) scale(1.15)`;
+      sEl.style.zIndex='50'; await delay(160);
+    }
+    G.trainerHp=Math.max(0,G.trainerHp-c.atk);
+    const wrap2=document.getElementById('gameWrap'),wr2=wrap2.getBoundingClientRect();
+    spawnDmg(wrap2,wr2,{getBoundingClientRect:()=>({left:wr2.left+wr2.width*0.5,width:0,top:wr2.top+wr2.height*0.06})},c.atk,'#ff4444');
+    if(sEl){
+      const sEl2=document.querySelector(`#bf-ours .pc[data-idx='${i}']`);
+      if(sEl2){sEl2.style.transition='transform 0.18s cubic-bezier(0.3,0,0.5,1)';sEl2.style.transform='';await delay(200);sEl2.style.transition='';sEl2.style.zIndex='';}
+    }
+    c.attacksLeft=(c.attacksLeft||1)-1;
+    if(c.attacksLeft>0){c.canAttack=true;c.exhausted=false;}else{c.canAttack=false;c.exhausted=true;}
+    renderAll();updatePortraits();await delay(180);
+    if(G.trainerHp<=0) break;
+  }
+  if(G.trainerHp > 0) G.animating=false; renderAll(); updatePortraits();
+  if(G.trainerHp<=0) setTimeout(advanceTrainer,400);
+}
+
+// ═══ TURN SYSTEM ═══════════════════════════════════════════════
+async function endTurn(){
+  if(!G.ourTurn||G.animating) return;
+  if(G.bcPending) cancelBc();
+  G.ourTurn=false; hideCardTooltip();
+  const fuseEl=document.getElementById('fuse-lbl'); if(fuseEl){fuseEl.textContent="OPP TURN";fuseEl.style.opacity='0.5';}
+  const endBtn=document.getElementById('end-turn-btn'); if(endBtn){endBtn.classList.add('opponent-turn');endBtn.textContent="OPP TURN";}
+  // turn suppressed
+  await delay(1500);
+  checkGameEnd();
+  G.ourTurn=true;G.ourMana=G.maxMana;G.heroPowerUsed=false;
+  // Refill hand to 8 on new turn
+  G_selected.clear();
+  await new Promise(res => autoFillHand(res));
+  G.ourBoard.forEach(c=>{if(c){if(c.frozen){c.frozen=false;c.canAttack=false;c.exhausted=true;}else{c.canAttack=true;c.exhausted=false;c.attacksLeft=c.keywords?.includes('windfury')?2:1;}}});
+  if(endBtn){endBtn.classList.remove('opponent-turn');endBtn.textContent="END TURN";}
+  const fl2=document.getElementById('fuse-lbl'); if(fl2){fl2.textContent='END TURN';fl2.style.opacity='';}
+  renderAll();
+}
+
+async function animateOppPlay(card){}
+
+// ── HERO POWER (player's removed; opp's kept for future use) ──
+function useHeroPower(){ /* Player hero power removed */ }
+function useOppHeroPower(){
+  const trainer=getCurrentTrainer();
+  const board=G.theirBoard.filter(c=>c);
+  const ourBoard=G.ourBoard.filter(c=>c);
+  switch(G.trainerIdx){
+    case 0: if(!board.length)return;{const t=board[Math.floor(Math.random()*board.length)];t.maxHp+=2;t.hp+=2;}break;
+    case 1: G.ourBoard.forEach(c=>{if(c){if(c.divineShieldUp)c.divineShieldUp=false;else c.hp-=1;}});G.ourBoard=[...G.ourBoard.filter(c=>c&&c.hp>0),...new Array(6).fill(null)];break;
+    case 2: if(!board.length)return;{const t=board[Math.floor(Math.random()*board.length)];t.atk+=1;}break;
+    case 3: if(!board.length)return;{const injured=board.filter(c=>c.hp<c.maxHp);const pool=injured.length?injured:board;const t=pool[Math.floor(Math.random()*pool.length)];t.hp=Math.min(t.hp+4,t.maxHp);}break;
+    case 4: G.ourBoard.forEach(c=>{if(c){if(c.divineShieldUp)c.divineShieldUp=false;else c.hp-=1;}});G.ourBoard=[...G.ourBoard.filter(c=>c&&c.hp>0),...new Array(6).fill(null)];break;
+    case 5: if(G.theirDeck.length){G.theirHand.push({...G.theirDeck.shift()});renderOppHand(true);}break;
+    case 6: if(ourBoard.length){const t=ourBoard[Math.floor(Math.random()*ourBoard.length)];if(t.divineShieldUp)t.divineShieldUp=false;else{t.hp-=2;if(t.hp<=0){const ti=G.ourBoard.indexOf(t);G.ourBoard[ti]=null;G.ourBoard=[...G.ourBoard.filter(c=>c),...new Array(6).fill(null)];}}}break;
+    case 7: if(!board.length)return;board.forEach(c=>c.atk+=1);break;
+  }
+  renderAll();updatePortraits();
+}
+
+
+function updateRunPanel() {
+  const panel = document.getElementById('run-panel');
+  if(!panel || panel.style.display === 'none') return;
+  const trainer = getCurrentTrainer() || TRAINERS[0];
+  // Portrait
+  const trainerName = document.getElementById('rp-trainer-name');
+  const trainerHpEl = document.getElementById('rp-trainer-hp');
+  const hpBar       = document.getElementById('rp-hp-bar');
+  if(trainerName) trainerName.textContent = trainer.name.toUpperCase();
+  if(trainerHpEl) trainerHpEl.textContent = '❤️ ' + G.trainerHp + ' / ' + G.trainerMaxHp;
+  if(hpBar)       hpBar.style.width = Math.max(0, (G.trainerHp / G.trainerMaxHp) * 100) + '%';
+  // Hands / Discards
+  const handsEl    = document.getElementById('rp-hands');
+  const discardsEl = document.getElementById('rp-discards');
+  if(handsEl)    handsEl.textContent    = G.handsLeft;
+  showRotomRadio();
+  if(discardsEl) discardsEl.textContent = G.discardsLeft;
+  // Gold display above deck
+  const goldDisp = document.getElementById('gold-display');
+  if(goldDisp) { goldDisp.textContent = '$' + (G.gold || 0); goldDisp.style.display='block'; }
+}
+
+function initHpTooltips(){
+  const tt=document.getElementById('hp-tooltip'); if(!tt) return;
+  function showHpTip(name,desc,cost,el){
+    document.getElementById('hpt-name').textContent=name;
+    document.getElementById('hpt-desc').textContent=desc;
+    document.getElementById('hpt-cost').textContent='Power: '+cost+' chips';
+    tt.classList.add('show');
+    const rect=el.getBoundingClientRect();
+    tt.style.left=Math.min(rect.right+10,window.innerWidth-tt.offsetWidth-8)+'px';
+    tt.style.top=Math.max(4,rect.top-tt.offsetHeight/2)+'px';
+    function move(ev){
+      tt.style.left=Math.min(ev.clientX+14,window.innerWidth-tt.offsetWidth-8)+'px';
+      tt.style.top=Math.max(4,ev.clientY-10-tt.offsetHeight)+'px';
+    }
+    el.addEventListener('pointermove',move);
+    el.addEventListener('pointerleave',()=>{tt.classList.remove('show');el.removeEventListener('pointermove',move);},{once:true});
+  }
+  const oppBtn=document.getElementById('tc-opp-hp-btn');
+  if(oppBtn){
+    oppBtn.style.pointerEvents='all';
+    oppBtn.style.cursor='help';
+    oppBtn.addEventListener('pointerenter',()=>{
+      const t=getCurrentTrainer()||TRAINERS[0];
+      showHpTip(t.hpName||'Hero Power', t.hpDesc||'', t.hpCost||2, oppBtn);
+    });
+  }
+}
+
+function updatePortraits(){
+  const t=getCurrentTrainer()||TRAINERS[0];
+  const trainerHpEl2=document.getElementById('rp-trainer-hp'); if(trainerHpEl2) trainerHpEl2.textContent='❤️ '+G.trainerHp+' / '+G.trainerMaxHp;
+  const hpBar2=document.getElementById('rp-hp-bar'); if(hpBar2) hpBar2.style.width=Math.max(0,(G.trainerHp/G.trainerMaxHp)*100)+'%';
+  updateRunPanel();
+  const oppName=document.getElementById('tc-opp-name'); if(oppName) oppName.textContent=(t.name||'TRAINER').toUpperCase();
+  const oppHpTxt=document.getElementById('tc-opp-hp-txt'); if(oppHpTxt) oppHpTxt.textContent='❤️ '+G.trainerHp;
+  const hpBtn=document.getElementById('hp-bottom'); if(hpBtn){if(G.heroPowerUsed||!G.ourTurn)hpBtn.classList.add('used');else hpBtn.classList.remove('used');}
+  const hpTop=document.getElementById('hp-top'); if(hpTop) hpTop.style.opacity=G.ourTurn?'1':'0.5';
+}
+
+// ═══ AUTO END TURN ═══════════════════════════════════════════════
+function checkAutoEndTurn(){
+  if(!G.ourTurn||G.animating||!G.ourBoard) return;
+  const hasAttacker=G.ourBoard.some(c=>c&&c.canAttack&&!c.exhausted&&!c.frozen);
+  const canPlayCard=G.hand.some(c=>c.cost<=G.ourMana);
+  if(!hasAttacker&&!canPlayCard){
+    setTimeout(()=>{if(G.ourTurn&&!G.animating) endTurn();},900);
+  }
+}
+
+function checkGameEnd(){
+  if(G.trainerHp<=0){setTimeout(advanceTrainer,600);return;}
+  const usDead=!G.ourBoard.some(c=>c)&&!G.hand.length&&!G.deck.length;
+  if(usDead) setTimeout(()=>announceText('YOU LOSE! 💀',3000),300);
+}
+
+function announceText(txt,ms){
+  const el=document.getElementById('turn-announce');
+  el.textContent=txt;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),ms);
+}
+
+// ═══ STARTER START ════════════════════════════════════════════
+window.addEventListener('resize',positionMidLine);
+document.addEventListener('DOMContentLoaded',()=>{
+  if(!SHOW_ASSETS){
+    ['.layer','.corner-clip','.corner-box','.corner-overlay',
+     '.portrait-clip','.portrait-box','.portrait-hit',
+     '.move-label','.cutscene','.loading-screen'].forEach(sel=>{
+      document.querySelectorAll(sel).forEach(el=>{
+        el.style.visibility='hidden';el.style.pointerEvents='none';
+      });
+    });
+    const ls=document.getElementById('loadScreen'); if(ls) ls.style.display='none';
+  }
+  // initStarterDeckScreen called below after STARTER_DECKS is defined
+  if(SHOW_ASSETS) startLoading();
+});
+</script>
+
+<script>
+// ═══ STARTER SCREEN ══════════════════════════════════════════════
+let starterState = { chosen: null, cards: [] };
+
+function initStarterScreen() {
+  const screen = document.getElementById('starter-screen');
+  if (!screen) return;
+  screen.classList.remove('hidden', 'exiting');
+
+  // Particle canvas — pixel squares
+  let particles = document.getElementById('starter-particles');
+  if (!particles) { particles = document.createElement('div'); particles.id = 'starter-particles'; document.body.appendChild(particles); }
+  particles.innerHTML = '';
+  for (let i = 0; i < 38; i++) {
+    const sp = document.createElement('div'); sp.className = 'sp';
+    const size = 3 + Math.random() * 7;
+    const colors = ['#ffdd66','#ff9933','#ff5577','#aa66ff','#44ccff','#88ff88','#ffffff'];
+    sp.style.cssText = [
+      `width:${size}px`, `height:${size}px`,
+      `left:${Math.random()*100}%`, `top:${Math.random()*100}%`,
+      `background:${colors[Math.floor(Math.random()*colors.length)]}`,
+      `animation-duration:${3+Math.random()*6}s`,
+      `animation-delay:${Math.random()*5}s`,
+      `opacity:0`
+    ].join(';');
+    particles.appendChild(sp);
+  }
+
+  // Pick 3 random fusion cards as starter choices
+  const pool = [...FUSIONS].sort(() => Math.random() - 0.5).slice(0, 3);
+  starterState.cards = pool.map(f => {
+    const c = mkCard(f);
+    // Force each starter to have a keyword
+    if (!c.keywords.length) c.keywords = [KW_POOL[Math.floor(Math.random()*KW_POOL.length)].key];
+    return c;
+  });
+
+  const arc = document.getElementById('starter-arc-wrap');
+  if (!arc) return;
+  arc.innerHTML = '';
+
+  starterState.cards.forEach((card, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'starter-hc-wrap';
+    wrap.style.setProperty('--dd', '0.55s');
+    wrap.style.setProperty('--dl', (0.08 + i * 0.14) + 's');
+
+    // Build a hand card element
+    const hc = document.createElement('div');
+    hc.className = 'hc';
+    hc.style.cssText = 'width:100%;height:100%;margin:0;transform:none!important;flex:none;border-radius:8px;pointer-events:none;box-shadow:0 6px 24px rgba(0,0,0,0.9);border-color:#556677;';
+
+    const art = document.createElement('img'); art.className = 'hc-art'; art.draggable = false;
+    removeWhiteBg(card.fusionImg || card.img, url => { art.src = url; });
+    hc.appendChild(art);
+
+    // Pokedex number badges — black text, white pill
+    const atk = document.createElement('span'); atk.className = 'hc-atk'; atk.textContent = card.dexA || card.atk;
+    const hp  = document.createElement('span'); hp.className  = 'hc-hp';  hp.textContent  = card.dexB || card.hp;
+    hc.appendChild(atk); hc.appendChild(hp);
+
+    if (card.type1) hc.appendChild(typeBadge(card.type1, 'hc-type1'));
+    if (card.type2) hc.appendChild(typeBadge(card.type2, 'hc-type2'));
+
+    // kw badge removed
+
+    // name removed
+
+    wrap.appendChild(hc);
+    wrap.addEventListener('pointerup', () => onStarterPick(i, wrap));
+    arc.appendChild(wrap);
+  });
+
+  // END TURN label: hidden during starter screen
+  const fuseLabel = document.getElementById('fuse-lbl');
+  if (fuseLabel) fuseLabel.style.display = 'none';
+
+  const endBtn = document.getElementById('end-turn-btn');
+  if (endBtn) endBtn.style.display = 'none';
+
+  // Huds hidden
+  document.getElementById('tc-opp')?.style && (document.getElementById('tc-opp').style.display = 'none');
+  document.getElementById('tc-us')?.style  && (document.getElementById('tc-us').style.display  = 'none');
+  document.getElementById('hand-container') && (document.getElementById('hand-container').style.display = 'none');
+  document.getElementById('game-hud') && (document.getElementById('game-hud').style.display = 'none');
+  document.getElementById('deck-ours') && (document.getElementById('deck-ours').style.display = 'none');
+  document.getElementById('end-turn-btn') && (document.getElementById('end-turn-btn').style.display = 'none');
+}
+
+function onStarterPick(idx, wrapEl) {
+  if (starterState.chosen !== null) return;
+  starterState.chosen = idx;
+  const card = starterState.cards[idx];
+
+  // Animate chosen card up
+  const allWraps = document.querySelectorAll('.starter-hc-wrap');
+  allWraps.forEach((w, i) => {
+    if (i === idx) {
+      w.classList.add('shc-chosen');
+      w.style.setProperty('--ctx', '0px');
+      w.style.setProperty('--cty', '-30px');
+    } else {
+      setTimeout(() => w.classList.add('shc-dismissed'), 80);
+    }
+  });
+
+  // Show confirm
+  const conf = document.getElementById('starter-confirm');
+  if (conf) {
+    document.getElementById('starter-confirm-name').textContent = card.name.toUpperCase();
+    conf.classList.add('show');
+  }
+
+  // Burst particles
+  const rect = wrapEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  for (let i = 0; i < 22; i++) {
+    const p = document.createElement('div'); p.className = 'burst-particle';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 120;
+    const colors = ['#ffdd66','#ff9933','#ff5577','#aa66ff','#44ccff','#88ff88'];
+    p.style.cssText = [
+      `left:${cx}px`, `top:${cy}px`,
+      `background:${colors[i % colors.length]}`,
+      `width:${4+Math.random()*6}px`, `height:${4+Math.random()*6}px`,
+      `--tx:${Math.cos(angle)*dist}px`, `--ty:${Math.sin(angle)*dist}px`,
+      `--dur:${0.5+Math.random()*0.5}s`
+    ].join(';');
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1100);
+  }
+}
+
+function confirmStarter() {
+  if (starterState.chosen === null) return;
+  const card = starterState.cards[starterState.chosen];
+  const screen = document.getElementById('starter-screen');
+  const particles = document.getElementById('starter-particles');
+
+  // Fade out confirm
+  const conf = document.getElementById('starter-confirm');
+  if (conf) conf.classList.remove('show');
+
+  // Exit animation
+  if (screen) screen.classList.add('exiting');
+  if (particles) { particles.style.transition = 'opacity 0.4s'; particles.style.opacity = '0'; }
+
+  setTimeout(() => {
+    if (screen) screen.classList.add('hidden');
+    if (particles) particles.remove();
+    beginBattle(card);
+  }, 850);
+}
+
+// Store starter card for deck building
+let _starterCard = null;
+// applyStarterClass replaced by deck builder
+
+function beginBattle(starterCard) {
+  _starterCard = starterCard;
+
+  // Show game UI
+  const fuseLabel = document.getElementById('fuse-lbl');
+  if (fuseLabel) { fuseLabel.style.display = 'flex'; fuseLabel.textContent = 'END TURN'; }
+
+  const endBtn = document.getElementById('end-turn-btn');
+  if (endBtn) endBtn.style.display = 'none'; // shown after game starts
+
+  document.getElementById('tc-opp') && (document.getElementById('tc-opp').style.display = 'flex');
+  document.getElementById('tc-us')  && (document.getElementById('tc-us').style.display  = 'flex');
+  document.getElementById('hand-container') && (document.getElementById('hand-container').style.display = 'flex');
+  document.getElementById('game-hud') && (document.getElementById('game-hud').style.display = 'flex');
+  document.getElementById('deck-ours') && (document.getElementById('deck-ours').style.display = 'flex');
+  const bb = document.getElementById('balatro-bottom');
+  if(bb) bb.style.display='flex';
+  const rp = document.getElementById('run-panel');
+  if(rp){ rp.style.display='flex'; setTimeout(updateRunPanel, 200); }
+  const gdEl=document.getElementById('gold-display'); if(gdEl) gdEl.style.display='block';
+  const hdr = document.getElementById('hd-row');
+  if(hdr) hdr.style.display='flex';
+  _popoverEnabled = true;
+  showHandsPanel();
+  const oip = document.getElementById('owned-items-panel');
+  if(oip){ oip.style.display='flex'; renderOwnedItemsPanel(); }
+
+  initGame();
+  initHpTooltips();
+}
+</script>
+
+<script>
+// ═══ STARTER DECK SYSTEM ═══════════════════════════════════════
+function fusionsByDex(dexNums) {
+  return FUSIONS.filter(f => {
+    const m = f.img.match(/final_(\d+)-[^_]+_(\d+)-/);
+    if(!m) return false;
+    const a=parseInt(m[1]), b=parseInt(m[2]);
+    return dexNums.some(d=>d===a||d===b);
+  });
+}
+
+// Helper: build a 52-card deck from weighted pool
+
+
+// ── POKÉMON TRAIT TABLE ───────────────────────────────────────
+// Each entry: [trait_type, value, description]
+const POKEMON_TRAITS = {
+  'Bulbasaur':   ['Growth',      2,    '+2 Mult permanently when scored'],
+  'Ivysaur':     ['Growth',      3,    '+3 Mult permanently when scored'],
+  'Venusaur':    ['Growth',      5,    '+5 Mult permanently when scored'],
+  'Charmander':  ['Aggressive',  15,   '+15 Chips'],
+  'Charmeleon':  ['Aggressive',  30,   '+30 Chips'],
+  'Charizard':   ['Powerhouse',  8,    '+8 Mult'],
+  'Squirtle':    ['Defensive',   1,    '+1 Hand size'],
+  'Wartortle':   ['Defensive',   2,    '+2 Hand size'],
+  'Blastoise':   ['Support',     15,   'Other played cards gain +15 Chips'],
+  'Caterpie':    ['Swarm',       10,   '+10 Chips per duplicate Pokémon'],
+  'Metapod':     ['Defensive',   25,   'Reduce boss penalties by 25%'],
+  'Butterfree':  ['Support',     2,    'Other cards gain +2 Mult'],
+  'Weedle':      ['Swarm',       10,   '+10 Chips per matching species'],
+  'Kakuna':      ['Defensive',   15,   '+15% chance to avoid negative effects'],
+  'Beedrill':    ['Swarm',       20,   '+20 Chips per matching Pokémon'],
+  'Pidgey':      ['Aggressive',  10,   '+10 Chips'],
+  'Pidgeotto':   ['Aggressive',  25,   '+25 Chips'],
+  'Pidgeot':     ['Powerhouse',  7,    '+7 Mult'],
+  'Rattata':     ['Aggressive',  10,   '+10 Chips'],
+  'Raticate':    ['Aggressive',  25,   '+25 Chips'],
+  'Spearow':     ['Aggressive',  15,   '+15 Chips'],
+  'Fearow':      ['Powerhouse',  6,    '+6 Mult'],
+  'Ekans':       ['Trickster',   10,   '10% retrigger chance'],
+  'Arbok':       ['Trickster',   20,   '20% retrigger chance'],
+  'Pikachu':     ['Growth',      1,    '+1 Chip every scored hand'],
+  'Raichu':      ['Powerhouse',  6,    '+6 Mult'],
+  'Sandshrew':   ['Defensive',   25,   '+25 Chips'],
+  'Sandslash':   ['Defensive',   50,   '+50 Chips'],
+  'Nidoran-F':   ['Growth',      1,    '+1 Mult every round'],
+  'Nidorina':    ['Growth',      2,    '+2 Mult every round'],
+  'Nidoqueen':   ['Support',     3,    'Other cards gain +3 Mult'],
+  'Nidoran-M':   ['Aggressive',  20,   '+20 Chips'],
+  'Nidorino':    ['Aggressive',  35,   '+35 Chips'],
+  'Nidoking':    ['Powerhouse',  9,    '+9 Mult'],
+  'Clefairy':    ['Support',     15,   '+15 Chips to all cards'],
+  'Clefable':    ['Mystic',      1.25, 'X1.25 Mult'],
+  'Vulpix':      ['Trickster',   15,   '15% chance to duplicate effect'],
+  'Ninetales':   ['Mystic',      1.35, 'X1.35 Mult'],
+  'Jigglypuff':  ['Support',     1,    '+1 Hand size'],
+  'Wigglytuff':  ['Support',     2,    '+2 Hand size'],
+  'Zubat':       ['Swarm',       10,   '+10 Chips per matching type'],
+  'Golbat':      ['Swarm',       25,   '+25 Chips per matching type'],
+  'Oddish':      ['Growth',      1,    '+1 Mult per round'],
+  'Gloom':       ['Growth',      2,    '+2 Mult per round'],
+  'Vileplume':   ['Support',     25,   'Buff all Grass cards +25 Chips'],
+  'Paras':       ['Swarm',       10,   '+10 Chips per duplicate'],
+  'Parasect':    ['Swarm',       25,   '+25 Chips per duplicate'],
+  'Venonat':     ['Trickster',   10,   '10% retrigger'],
+  'Venomoth':    ['Trickster',   25,   '25% retrigger'],
+  'Diglett':     ['Swarm',       15,   '+15 Chips per matching species'],
+  'Dugtrio':     ['Swarm',       40,   '+40 Chips per matching species'],
+  'Meowth':      ['Wealth',      1,    '+$1 when scored'],
+  'Persian':     ['Wealth',      2,    '+$2 when scored'],
+  'Psyduck':     ['Mystic',      1.1,  'X1.1 Mult'],
+  'Golduck':     ['Mystic',      1.25, 'X1.25 Mult'],
+  'Mankey':      ['Aggressive',  20,   '+20 Chips'],
+  'Primeape':    ['Powerhouse',  7,    '+7 Mult'],
+  'Growlithe':   ['Aggressive',  25,   '+25 Chips'],
+  'Arcanine':    ['Powerhouse',  10,   '+10 Mult'],
+  'Poliwag':     ['Growth',      1,    '+1 Mult per round'],
+  'Poliwhirl':   ['Growth',      2,    '+2 Mult per round'],
+  'Poliwrath':   ['Powerhouse',  8,    '+8 Mult'],
+  'Abra':        ['Mystic',      1.15, 'X1.15 Mult'],
+  'Kadabra':     ['Mystic',      1.3,  'X1.3 Mult'],
+  'Alakazam':    ['Mystic',      1.5,  'X1.5 Mult'],
+  'Machop':      ['Aggressive',  25,   '+25 Chips'],
+  'Machoke':     ['Aggressive',  45,   '+45 Chips'],
+  'Machamp':     ['Powerhouse',  12,   '+12 Mult'],
+  'Bellsprout':  ['Growth',      1,    '+1 Mult per round'],
+  'Weepinbell':  ['Growth',      2,    '+2 Mult per round'],
+  'Victreebel':  ['Powerhouse',  8,    '+8 Mult'],
+  'Tentacool':   ['Defensive',   15,   '+15 Chips'],
+  'Tentacruel':  ['Support',     25,   'Buff Water cards +25 Chips'],
+  'Geodude':     ['Defensive',   30,   '+30 Chips'],
+  'Graveler':    ['Defensive',   50,   '+50 Chips'],
+  'Golem':       ['Defensive',   80,   '+80 Chips'],
+  'Ponyta':      ['Aggressive',  25,   '+25 Chips'],
+  'Rapidash':    ['Powerhouse',  7,    '+7 Mult'],
+  'Slowpoke':    ['Defensive',   1,    '+1 Hand size'],
+  'Slowbro':     ['Support',     3,    '+3 Mult to other cards'],
+  'Magnemite':   ['Adaptive',    0,    'Counts as Electric or Steel'],
+  'Magneton':    ['Adaptive',    0,    'Counts as 2 types'],
+  "Farfetch'd":  ['Trickster',   20,   '20% chance copy effect'],
+  'Doduo':       ['Swarm',       15,   '+15 Chips'],
+  'Dodrio':      ['Swarm',       40,   '+40 Chips'],
+  'Seel':        ['Defensive',   25,   '+25 Chips'],
+  'Dewgong':     ['Defensive',   60,   '+60 Chips'],
+  'Grimer':      ['Trickster',   15,   '15% retrigger'],
+  'Muk':         ['Trickster',   30,   '30% retrigger'],
+  'Shellder':    ['Defensive',   30,   '+30 Chips'],
+  'Cloyster':    ['Defensive',   75,   '+75 Chips'],
+  'Gastly':      ['Trickster',   15,   '15% retrigger'],
+  'Haunter':     ['Trickster',   25,   '25% retrigger'],
+  'Gengar':      ['Trickster',   40,   '40% retrigger'],
+  'Onix':        ['Defensive',   100,  '+100 Chips'],
+  'Drowzee':     ['Mystic',      1.15, 'X1.15 Mult'],
+  'Hypno':       ['Mystic',      1.35, 'X1.35 Mult'],
+  'Krabby':      ['Aggressive',  25,   '+25 Chips'],
+  'Kingler':     ['Powerhouse',  8,    '+8 Mult'],
+  'Voltorb':     ['Trickster',   15,   '15% retrigger'],
+  'Electrode':   ['Trickster',   35,   '35% retrigger'],
+  'Exeggcute':   ['Support',     10,   '+10 Chips to all cards'],
+  'Exeggutor':   ['Mystic',      1.3,  'X1.3 Mult'],
+  'Cubone':      ['Growth',      2,    '+2 Mult per round'],
+  'Marowak':     ['Powerhouse',  8,    '+8 Mult'],
+  'Hitmonlee':   ['Aggressive',  50,   '+50 Chips'],
+  'Hitmonchan':  ['Support',     20,   'Buff adjacent cards +20 Chips'],
+  'Lickitung':   ['Support',     1,    '+1 Hand size'],
+  'Koffing':     ['Trickster',   20,   '20% retrigger'],
+  'Weezing':     ['Trickster',   35,   '35% retrigger'],
+  'Rhyhorn':     ['Defensive',   50,   '+50 Chips'],
+  'Rhydon':      ['Powerhouse',  10,   '+10 Mult'],
+  'Chansey':     ['Wealth',      3,    '+$3 when scored'],
+  'Tangela':     ['Growth',      2,    '+2 Mult per round'],
+  'Kangaskhan':  ['Support',     20,   'Buff all cards +20 Chips'],
+  'Horsea':      ['Growth',      1,    '+1 Mult per round'],
+  'Seadra':      ['Powerhouse',  7,    '+7 Mult'],
+  'Goldeen':     ['Aggressive',  20,   '+20 Chips'],
+  'Seaking':     ['Powerhouse',  6,    '+6 Mult'],
+  'Staryu':      ['Adaptive',    0,    'Counts as any type'],
+  'Starmie':     ['Adaptive',    0,    'Counts as any type + retrigger'],
+  'Mr. Mime':    ['Trickster',   25,   '25% copy effect'],
+  'Scyther':     ['Powerhouse',  10,   '+10 Mult'],
+  'Jynx':        ['Mystic',      1.25, 'X1.25 Mult'],
+  'Electabuzz':  ['Powerhouse',  8,    '+8 Mult'],
+  'Magmar':      ['Powerhouse',  8,    '+8 Mult'],
+  'Pinsir':      ['Powerhouse',  10,   '+10 Mult'],
+  'Tauros':      ['Aggressive',  50,   '+50 Chips'],
+  'Magikarp':    ['Growth',      5,    '+5 Chips every round'],
+  'Gyarados':    ['Powerhouse',  15,   '+15 Mult'],
+  'Lapras':      ['Support',     2,    '+2 Hand size'],
+  'Ditto':       ['Adaptive',    0,    'Counts as any Pokémon'],
+  'Eevee':       ['Adaptive',    0,    'Counts as any evolution'],
+  'Vaporeon':    ['Support',     30,   'Buff Water cards +30 Chips'],
+  'Jolteon':     ['Powerhouse',  10,   '+10 Mult'],
+  'Flareon':     ['Powerhouse',  10,   '+10 Mult'],
+  'Porygon':     ['Adaptive',    0,    'Copies one trait'],
+  'Omanyte':     ['Ancient',     50,   '+50 Chips'],
+  'Omastar':     ['Ancient',     100,  '+100 Chips'],
+  'Kabuto':      ['Ancient',     50,   '+50 Chips'],
+  'Kabutops':    ['Ancient',     120,  '+120 Chips'],
+  'Aerodactyl':  ['Ancient',     150,  '+150 Chips'],
+  'Snorlax':     ['Defensive',   100,  '+100 Chips'],
+  'Articuno':    ['Legendary',   1.5,  'X1.5 Mult'],
+  'Zapdos':      ['Legendary',   1.5,  'X1.5 Mult'],
+  'Moltres':     ['Legendary',   1.5,  'X1.5 Mult'],
+  'Dratini':     ['Growth',      2,    '+2 Mult per round'],
+  'Dragonair':   ['Growth',      4,    '+4 Mult per round'],
+  'Dragonite':   ['Powerhouse',  15,   '+15 Mult'],
+  'Mewtwo':      ['Legendary',   2.0,  'X2 Mult'],
+  'Mew':         ['Legendary',   1.75, 'X1.75 Mult'],
+};
+
+const TRAIT_COLORS = {
+  'Growth':      '#44cc44',
+  'Aggressive':  '#ff4422',
+  'Powerhouse':  '#ff6600',
+  'Defensive':   '#3399ff',
+  'Support':     '#dd88ff',
+  'Swarm':       '#ffaa00',
+  'Trickster':   '#cc44cc',
+  'Mystic':      '#7755ff',
+  'Wealth':      '#ffdd00',
+  'Adaptive':    '#44dddd',
+  'Ancient':     '#aa8833',
+  'Legendary':   '#ff4499',
+};
+
+function getCardTraits(card) {
+  // Returns array of trait objects for a card (up to 2 for fusion)
+  const traits = [];
+  if(card.dexA && KANTO_BY_DEX[parseInt(card.dexA)]) {
+    const name = KANTO_BY_DEX[parseInt(card.dexA)].name;
+    if(POKEMON_TRAITS[name]) traits.push({name, ...Object.fromEntries([['type',POKEMON_TRAITS[name][0]],['value',POKEMON_TRAITS[name][1]],['desc',POKEMON_TRAITS[name][2]]])});
+  }
+  if(card.dexB && KANTO_BY_DEX[parseInt(card.dexB)]) {
+    const name = KANTO_BY_DEX[parseInt(card.dexB)].name;
+    if(POKEMON_TRAITS[name]) traits.push({name, ...Object.fromEntries([['type',POKEMON_TRAITS[name][0]],['value',POKEMON_TRAITS[name][1]],['desc',POKEMON_TRAITS[name][2]]])});
+  }
+  // Also check by card name for basic cards
+  if(!traits.length && POKEMON_TRAITS[card.name]) {
+    const t = POKEMON_TRAITS[card.name];
+    traits.push({name:card.name, type:t[0], value:t[1], desc:t[2]});
+  }
+  return traits.slice(0, 2);
+}
+
+function renderTraitBadges(card, container) {
+  const traits = getCardTraits(card);
+  if(!traits.length) return;
+  traits.forEach(t => {
+    const badge = document.createElement('span');
+    badge.style.cssText = `display:inline-block;font-family:'PokemonClassic',monospace;font-size:6px;
+      padding:1px 4px;border-radius:3px;letter-spacing:0.5px;color:#fff;white-space:nowrap;
+      background:${TRAIT_COLORS[t.type]||'#555'};opacity:0.9;margin:1px;`;
+    badge.textContent = t.type.toUpperCase();
+    badge.title = t.desc;
+    container.appendChild(badge);
+  });
+}
+
+// ── Kanto Pokémon data (dex 1–151) ────────────────────────────────
+const KANTO_POKEMON = [
+  // [dex, name, type1, type2 (null if none), hasEvolution (true = not final)]
+  [1,'Bulbasaur','Grass','Poison',true],[2,'Ivysaur','Grass','Poison',true],[3,'Venusaur','Grass','Poison',false],
+  [4,'Charmander','Fire',null,true],[5,'Charmeleon','Fire',null,true],[6,'Charizard','Fire','Flying',false],
+  [7,'Squirtle','Water',null,true],[8,'Wartortle','Water',null,true],[9,'Blastoise','Water',null,false],
+  [10,'Caterpie','Bug',null,true],[11,'Metapod','Bug',null,true],[12,'Butterfree','Bug','Flying',false],
+  [13,'Weedle','Bug','Poison',true],[14,'Kakuna','Bug','Poison',true],[15,'Beedrill','Bug','Poison',false],
+  [16,'Pidgey','Normal','Flying',true],[17,'Pidgeotto','Normal','Flying',true],[18,'Pidgeot','Normal','Flying',false],
+  [19,'Rattata','Normal',null,true],[20,'Raticate','Normal',null,false],
+  [21,'Spearow','Normal','Flying',true],[22,'Fearow','Normal','Flying',false],
+  [23,'Ekans','Poison',null,true],[24,'Arbok','Poison',null,false],
+  [25,'Pikachu','Electric',null,true],[26,'Raichu','Electric',null,false],
+  [27,'Sandshrew','Ground',null,true],[28,'Sandslash','Ground',null,false],
+  [29,'Nidoran-F','Poison',null,true],[30,'Nidorina','Poison',null,true],[31,'Nidoqueen','Poison','Ground',false],
+  [32,'Nidoran-M','Poison',null,true],[33,'Nidorino','Poison',null,true],[34,'Nidoking','Poison','Ground',false],
+  [35,'Clefairy','Normal','Fairy',true],[36,'Clefable','Normal','Fairy',false],
+  [37,'Vulpix','Fire',null,true],[38,'Ninetales','Fire',null,false],
+  [39,'Jigglypuff','Normal','Fairy',true],[40,'Wigglytuff','Normal','Fairy',false],
+  [41,'Zubat','Poison','Flying',true],[42,'Golbat','Poison','Flying',false],
+  [43,'Oddish','Grass','Poison',true],[44,'Gloom','Grass','Poison',true],[45,'Vileplume','Grass','Poison',false],
+  [46,'Paras','Bug','Grass',true],[47,'Parasect','Bug','Grass',false],
+  [48,'Venonat','Bug','Poison',true],[49,'Venomoth','Bug','Poison',false],
+  [50,'Diglett','Ground',null,true],[51,'Dugtrio','Ground',null,false],
+  [52,'Meowth','Normal',null,true],[53,'Persian','Normal',null,false],
+  [54,'Psyduck','Water',null,true],[55,'Golduck','Water',null,false],
+  [56,'Mankey','Fighting',null,true],[57,'Primeape','Fighting',null,false],
+  [58,'Growlithe','Fire',null,true],[59,'Arcanine','Fire',null,false],
+  [60,'Poliwag','Water',null,true],[61,'Poliwhirl','Water',null,true],[62,'Poliwrath','Water','Fighting',false],
+  [63,'Abra','Psychic',null,true],[64,'Kadabra','Psychic',null,true],[65,'Alakazam','Psychic',null,false],
+  [66,'Machop','Fighting',null,true],[67,'Machoke','Fighting',null,true],[68,'Machamp','Fighting',null,false],
+  [69,'Bellsprout','Grass','Poison',true],[70,'Weepinbell','Grass','Poison',true],[71,'Victreebel','Grass','Poison',false],
+  [72,'Tentacool','Water','Poison',true],[73,'Tentacruel','Water','Poison',false],
+  [74,'Geodude','Rock','Ground',true],[75,'Graveler','Rock','Ground',true],[76,'Golem','Rock','Ground',false],
+  [77,'Ponyta','Fire',null,true],[78,'Rapidash','Fire',null,false],
+  [79,'Slowpoke','Water','Psychic',true],[80,'Slowbro','Water','Psychic',false],
+  [81,'Magnemite','Electric','Steel',true],[82,'Magneton','Electric','Steel',false],
+  [83,"Farfetch'd",'Normal','Flying',false],
+  [84,'Doduo','Normal','Flying',true],[85,'Dodrio','Normal','Flying',false],
+  [86,'Seel','Water',null,true],[87,'Dewgong','Water','Ice',false],
+  [88,'Grimer','Poison',null,true],[89,'Muk','Poison',null,false],
+  [90,'Shellder','Water',null,true],[91,'Cloyster','Water','Ice',false],
+  [92,'Gastly','Ghost','Poison',true],[93,'Haunter','Ghost','Poison',true],[94,'Gengar','Ghost','Poison',false],
+  [95,'Onix','Rock','Ground',false],
+  [96,'Drowzee','Psychic',null,true],[97,'Hypno','Psychic',null,false],
+  [98,'Krabby','Water',null,true],[99,'Kingler','Water',null,false],
+  [100,'Voltorb','Electric',null,true],[101,'Electrode','Electric',null,false],
+  [102,'Exeggcute','Grass','Psychic',true],[103,'Exeggutor','Grass','Psychic',false],
+  [104,'Cubone','Ground',null,true],[105,'Marowak','Ground',null,false],
+  [106,'Hitmonlee','Fighting',null,false],[107,'Hitmonchan','Fighting',null,false],
+  [108,'Lickitung','Normal',null,false],
+  [109,'Koffing','Poison',null,true],[110,'Weezing','Poison',null,false],
+  [111,'Rhyhorn','Ground','Rock',true],[112,'Rhydon','Ground','Rock',false],
+  [113,'Chansey','Normal',null,false],
+  [114,'Tangela','Grass',null,false],
+  [115,'Kangaskhan','Normal',null,false],
+  [116,'Horsea','Water',null,true],[117,'Seadra','Water',null,false],
+  [118,'Goldeen','Water',null,true],[119,'Seaking','Water',null,false],
+  [120,'Staryu','Water',null,true],[121,'Starmie','Water','Psychic',false],
+  [122,'Mr. Mime','Psychic','Fairy',false],
+  [123,'Scyther','Bug','Flying',false],
+  [124,'Jynx','Ice','Psychic',false],
+  [125,'Electabuzz','Electric',null,false],
+  [126,'Magmar','Fire',null,false],
+  [127,'Pinsir','Bug',null,false],
+  [128,'Tauros','Normal',null,false],
+  [129,'Magikarp','Water',null,true],[130,'Gyarados','Water','Flying',false],
+  [131,'Lapras','Water','Ice',false],
+  [132,'Ditto','Normal',null,false],
+  [133,'Eevee','Normal',null,true],[134,'Vaporeon','Water',null,false],[135,'Jolteon','Electric',null,false],
+  [136,'Flareon','Fire',null,false],
+  [137,'Porygon','Normal',null,false],
+  [138,'Omanyte','Rock','Water',true],[139,'Omastar','Rock','Water',false],
+  [140,'Kabuto','Rock','Water',true],[141,'Kabutops','Rock','Water',false],
+  [142,'Aerodactyl','Rock','Flying',false],
+  [143,'Snorlax','Normal',null,false],
+  // Legendaries (excluded from most decks)
+  [144,'Articuno','Ice','Flying',false],[145,'Zapdos','Electric','Flying',false],[146,'Moltres','Fire','Flying',false],
+  [147,'Dratini','Dragon',null,true],[148,'Dragonair','Dragon',null,true],[149,'Dragonite','Dragon','Flying',false],
+  [150,'Mewtwo','Psychic',null,false],[151,'Mew','Psychic',null,false],
+];
+
+const LEGENDARIES = new Set([144,145,146,150,151]);
+const KANTO_BY_DEX = {};
+KANTO_POKEMON.forEach(([d,n,t1,t2,hasEvo]) => { KANTO_BY_DEX[d] = {dex:d,name:n,type1:t1,type2:t2,hasEvo}; });
+
+// Make a card from a basic Kanto sprite (not a fusion)
+function mkBasicCard(dexNum) {
+  const pk = KANTO_BY_DEX[dexNum];
+  if(!pk) return null;
+  const sprite = `https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/sprites/${dexNum}.png`;
+  const cost = Math.floor(Math.random()*4)+1;
+  return {
+    name: pk.name,
+    img: sprite,
+    fusionImg: sprite,
+    atk: Math.floor(Math.random()*4)+1,
+    hp: Math.floor(Math.random()*4)+2,
+    maxHp: 3,
+    cost,
+    keywords: assignKeywords(cost, false),
+    dexA: String(dexNum),
+    dexB: null,
+    type1: pk.type1,
+    type2: pk.type2,
+    canAttack:false, exhausted:true,
+    divineShieldUp: false,
+    attacksLeft:0, frozen:false, stealthed:false,
+    id: Math.random().toString(36).slice(2),
+  };
+}
+
+// ── Species Mastery deck ────────────────────────────────────────
+function buildSpeciesDeck() {
+  const nonLeg = KANTO_POKEMON.filter(([d])=>!LEGENDARIES.has(d));
+  const basics = nonLeg.filter(([d,n,t1,t2,hasEvo]) => {
+    // Prefer basic (stage 1) Pokémon - dex numbers that have an evolution
+    return hasEvo;
+  });
+  const sh = arr => { for(let i=arr.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
+
+  // Pick 3 partner Pokémon
+  const partners = sh([...basics]).slice(0,3);
+  const deck = [];
+  // Partner copies: 4+4+3
+  const counts = [4,4,3];
+  partners.forEach(([d],i) => {
+    for(let c=0;c<counts[i];c++) { const card=mkBasicCard(d); if(card) deck.push(card); }
+  });
+  // 4 supporters × 2 copies
+  const partnerDexes = new Set(partners.map(([d])=>d));
+  const supporters = sh(basics.filter(([d])=>!partnerDexes.has(d))).slice(0,4);
+  supporters.forEach(([d]) => {
+    for(let c=0;c<2;c++) { const card=mkBasicCard(d); if(card) deck.push(card); }
+  });
+  // Fill remaining 11 slots with random basics
+  const usedDexes = new Set([...partnerDexes, ...supporters.map(([d])=>d)]);
+  const fillers = sh(nonLeg.filter(([d])=>!usedDexes.has(d))).slice(0,11);
+  fillers.forEach(([d]) => { const card=mkBasicCard(d); if(card) deck.push(card); });
+  return sh(deck).slice(0,30);
+}
+
+// ── Type Specialist deck ────────────────────────────────────────
+function buildTypeDeck() {
+  const types = ['Fire','Water','Grass','Electric','Psychic','Ice','Fighting','Poison','Ground','Flying','Bug','Rock','Ghost','Normal','Dragon'];
+  const chosenType = types[Math.floor(Math.random()*types.length)];
+  const nonLeg = KANTO_POKEMON.filter(([d])=>!LEGENDARIES.has(d));
+  const primary = nonLeg.filter(([d,n,t1,t2])=>t1===chosenType||t2===chosenType);
+  const secondary = nonLeg.filter(([d,n,t1,t2])=>t1!==chosenType&&t2!==chosenType&&primary.length>0);
+  const sh = arr => { for(let i=arr.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
+  const deck = [];
+  // 24 from primary type (max 4 copies each)
+  const primPool = sh([...primary]);
+  let added = 0;
+  const copyCounts = {};
+  while(added < 24 && primPool.length > 0) {
+    const [d] = primPool[added % primPool.length];
+    copyCounts[d] = (copyCounts[d]||0)+1;
+    if(copyCounts[d] <= 4) { const card=mkBasicCard(d); if(card){deck.push(card);added++;} }
+    if(added >= primPool.length * 4) break; // safety
+    if(Object.values(copyCounts).every(c=>c>=4)) break;
+    added++;
+  }
+  // Pad primary if needed
+  primPool.forEach(([d]) => { while(deck.length < 24 && (copyCounts[d]||0) < 4) { copyCounts[d]=(copyCounts[d]||0)+1; const c=mkBasicCard(d); if(c) deck.push(c); } });
+  // 6 from secondary (sharing a secondary type with primary)
+  const secCounts = {};
+  sh([...secondary]).slice(0,6).forEach(([d]) => { const c=mkBasicCard(d); if(c) deck.push(c); });
+  return sh(deck.slice(0,30));
+}
+
+// ── Evolution Engineer deck ─────────────────────────────────────
+function buildEvolutionDeck() {
+  // All evo families (first stage → second stage, never final)
+  const families = [
+    [1,2],[4,5],[7,8],[10,11],[13,14],[16,17],[19],[21],[23],
+    [25],[27],[29,30],[32,33],[35],[37],[39],[41],[43,44],[46],
+    [48],[50],[52],[54],[56],[58],[60,61],[63,64],[66,67],[69,70],
+    [72],[74,75],[77],[79],[81],[84],[86],[88],[90],[92,93],
+    [96],[98],[100],[102],[104],[109],[111],[116],[118],[120],
+    [129],[133],[138],[140],[147,148],
+  ];
+  const sh = arr => { for(let i=arr.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
+  const chosen = sh([...families]).slice(0,10);
+  const deck = [];
+  chosen.forEach(stages => {
+    if(stages.length >= 2) {
+      // 2 of first stage + 1 of second stage
+      const c1=mkBasicCard(stages[0]); const c2=mkBasicCard(stages[0]);
+      const c3=mkBasicCard(stages[1]);
+      if(c1) deck.push(c1); if(c2) deck.push(c2); if(c3) deck.push(c3);
+    } else {
+      // 3 of first stage
+      for(let i=0;i<3;i++){const c=mkBasicCard(stages[0]); if(c) deck.push(c);}
+    }
+  });
+  return sh(deck).slice(0,30);
+}
+
+function buildDeckOf(coreDexNums, fillDexNums, target) {
+  target = target || 30;
+  const core = fusionsByDex(coreDexNums);
+  // If core is empty fall back to random FUSIONS
+  const corePool = core.length ? core : FUSIONS.slice(0,20);
+  const fillPool = (fillDexNums && fillDexNums.length) ? fusionsByDex(fillDexNums) : corePool;
+  const pool = [...corePool];
+  fillPool.forEach(f=>{ if(f && !pool.find(p=>p.name===f.name)) pool.push(f); });
+  // Pad with repeats of core cards (shuffle names slightly each copy)
+  let i=0;
+  while(pool.length < target) {
+    const base = corePool[i % corePool.length];
+    if(base) pool.push({...base});
+    i++;
+  }
+  return shuffle(pool.slice(0, target)).map(f=>mkCard(f));
+}
+
+const STARTER_DECKS = [
+  {
+    id:'type', name:'TYPE TECHNICIAN', difficulty:'Beginner', emoji:'🔥', accent:'#ff6633',
+    subtitle:'Master a single type',
+    ability:'Consistent type-hand scoring every round',
+    weakness:'Harder to hit rare high-scoring hands',
+    handFocus:'Type Team / Dual Type Team',
+    buildDeck: buildTypeDeck,
+  },
+  {
+    id:'species', name:'SPECIES SPECIALIST', difficulty:'Normal', emoji:'⚡', accent:'#ffdd00',
+    subtitle:'Repeated species = explosive scoring',
+    ability:'Species Pair/Trio/Squad hands scale massively',
+    weakness:'Vulnerable if a boss punishes your main species',
+    handFocus:'Species Pair / Trio / Army',
+    buildDeck: buildSpeciesDeck,
+  },
+  {
+    id:'evolution', name:'EVOLUTION ENGINEER', difficulty:'Expert', emoji:'🌿', accent:'#44dd66',
+    subtitle:'Build chains, evolve your strategy',
+    ability:'Evolution combos unlock powerful scaling',
+    weakness:'Slow early game — needs setup turns',
+    handFocus:'Evolution Line / Evolution Family',
+    buildDeck: buildEvolutionDeck,
+  },
+];
+
+let G_starterDeckId = null;
+let _selectedDeckEl = null;
+
+function initStarterDeckScreen() {
+  // Start music on first user interaction
+  document.addEventListener('click', ()=>{
+    if(!_rotomAudio) { rotomLoad(_rotomIdx, true); _rotomPlaying=true; }
+  }, {once:true});
+  document.body.classList.add('game-active');
+  // Use Erika's grass palette for starter screen
+  if(window._balatroBg) window._balatroBg.setGym(3);
+  const screen = document.getElementById('starter-screen');
+  if(!screen) return;
+  screen.classList.remove('hidden','exiting');
+  document.getElementById('starter-main-title').textContent = 'RIFTBORN';
+  document.getElementById('starter-sub').textContent = 'CHOOSE YOUR STARTER DECK';
+  // Hide confirm until deck selected
+  const cb=document.getElementById('starter-confirm-btn');
+  if(cb) cb.classList.remove('ready');
+  // Particles
+  let particles = document.getElementById('starter-particles');
+  if(!particles){particles=document.createElement('div');particles.id='starter-particles';document.body.appendChild(particles);}
+  particles.innerHTML='';
+  for(let i=0;i<38;i++){const sp=document.createElement('div');sp.className='sp';const sz=3+Math.random()*7;const cols=['#ffdd66','#ff9933','#ff5577','#aa66ff','#44ccff','#88ff88','#fff'];sp.style.cssText=[`width:${sz}px`,`height:${sz}px`,`left:${Math.random()*100}%`,`top:${Math.random()*100}%`,`background:${cols[Math.floor(Math.random()*cols.length)]}`,`animation-duration:${3+Math.random()*6}s`,`animation-delay:${Math.random()*5}s`,`opacity:0`].join(';');particles.appendChild(sp);}
+  const arc=document.getElementById('starter-arc-wrap');
+  if(!arc) return;
+  arc.innerHTML='';
+  STARTER_DECKS.forEach((deck,i)=>{
+    // Build a pile element
+    const pile=document.createElement('div');
+    pile.className='deck-pile-chooser';
+    pile.style.animationDelay=(i*0.08)+'s';
+    // Single card — no stack behind it
+    const stack=document.createElement('div');
+    stack.className='dpc-stack';
+    const deckFusions = deck.buildDeck().slice(0,1);
+    const bc=document.createElement('div');
+    bc.className='dpc-card dpc-top';
+    bc.style.zIndex=1;
+    // Float animation phase offset per deck
+    bc.style.setProperty('--float-dur', (3.0 + i*0.22).toFixed(2)+'s');
+    bc.style.setProperty('--float-delay', (-i*0.6).toFixed(2)+'s');
+    const bImg=document.createElement('img');
+    bImg.draggable=false;
+    const bFusion = deckFusions[0];
+    removeWhiteBg(bFusion.fusionImg||bFusion.img, url=>{ bImg.src=url; });
+    bc.appendChild(bImg);
+    stack.appendChild(bc);
+    pile.appendChild(stack);
+    // Label — wrap at first space
+    const label=document.createElement('div');
+    label.className='dpc-label';
+    const words=deck.name.split(' ');
+    if(words.length>=2){label.innerHTML=words[0]+'<br>'+words.slice(1).join(' ');}
+    else{label.textContent=deck.name;}
+    pile.appendChild(label);
+    pile.addEventListener('click',()=>{ if(typeof SFX!=='undefined') SFX.uiClick(); openDeckDetail(deck.id, pile); });
+    pile.addEventListener('mouseenter',()=>{ if(typeof SFX!=='undefined') SFX.hover(); });
+    arc.appendChild(pile);
+  });
+  // Hide game UI
+  ['hand-container','game-hud','deck-ours','end-turn-btn','balatro-bottom','run-panel','hd-row','owned-items-panel','hands-panel'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+}
+
+function openDeckDetail(deckId, pileEl) {
+  G_starterDeckId = deckId;
+  const deck = STARTER_DECKS.find(d=>d.id===deckId);
+  if(!deck) return;
+  // Burst particles on pile
+  const rect = pileEl.getBoundingClientRect();
+  const cx = rect.left+rect.width/2, cy=rect.top+rect.height/2;
+  for(let i=0;i<14;i++){const p=document.createElement('div');p.className='burst-particle';const angle=Math.random()*Math.PI*2,dist=40+Math.random()*70;const cols=['#ffdd66','#ff9933','#ff5577','#aa66ff','#44ccff','#88ff88'];p.style.cssText=[`left:${cx}px`,`top:${cy}px`,`background:${cols[i%cols.length]}`,`width:${3+Math.random()*4}px`,`height:${3+Math.random()*4}px`,`--tx:${Math.cos(angle)*dist}px`,`--ty:${Math.sin(angle)*dist}px`,`--dur:${0.4+Math.random()*0.3}s`].join(';');document.body.appendChild(p);setTimeout(()=>p.remove(),800);}
+  // Build detail screen
+  const dds = document.getElementById('deck-detail-screen');
+  if(!dds) return;
+  // Hide the pile chooser screen behind
+  const starterScr = document.getElementById('starter-screen');
+  if(starterScr) starterScr.style.visibility = 'hidden';
+  document.getElementById('dds-deck-name').textContent = deck.name;
+  document.getElementById('dds-subtitle').textContent = deck.subtitle;
+  document.getElementById('dds-focus').textContent = deck.handFocus;
+  document.getElementById('dds-bonus').textContent = deck.ability;
+  document.getElementById('dds-risk').textContent  = deck.weakness;
+  // Render deck cards
+  const cardsWrap = document.getElementById('dds-cards');
+  cardsWrap.innerHTML = '';
+  const cards = deck.buildDeck();
+  cards.forEach((card, i) => {
+    const slot = document.createElement('div');
+    slot.className='dds-card-slot';
+    slot.style.setProperty('--sd', (i*0.03)+'s');
+    const cv = makeCardVisual(card, 'width:100%;height:100%;');
+    cv.style.cursor='default';
+    slot.appendChild(cv);
+    cardsWrap.appendChild(slot);
+  });
+  dds.classList.add('open');
+}
+
+function closeDeckDetail() {
+  document.getElementById('deck-detail-screen')?.classList.remove('open');
+  G_starterDeckId = null;
+  // Restore pile chooser
+  const starterScr = document.getElementById('starter-screen');
+  if(starterScr) starterScr.style.visibility = 'visible';
+}
+
+function selectStarterDeck(deckId,el){ G_starterDeckId=deckId; }
+
+function confirmStarterDeck(){
+  if(!G_starterDeckId) return;
+  // Close detail screen
+  document.getElementById('deck-detail-screen')?.classList.remove('open');
+  const screen=document.getElementById('starter-screen');
+  const particles=document.getElementById('starter-particles');
+  if(screen) screen.classList.add('exiting');
+  if(particles){particles.style.transition='opacity 0.4s';particles.style.opacity='0';}
+  setTimeout(()=>{
+    if(screen) screen.classList.add('hidden');
+    if(particles) particles.remove();
+    beginBattleWithDeck(G_starterDeckId);
+  },700);
+}
+
+function beginBattleWithDeck(deckId){
+  const deckDef=STARTER_DECKS.find(d=>d.id===deckId);
+  if(!deckDef) return;
+  G.bonusCards=[];
+  G._starterDeckCards=deckDef.buildDeck();
+  ['hand-container','game-hud','deck-ours','balatro-bottom'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='flex';});
+  const bb=document.getElementById('balatro-bottom');if(bb)bb.style.display='flex';
+  const rp=document.getElementById('run-panel');if(rp){rp.style.display='flex';setTimeout(updateRunPanel,200);}
+  // gold is inside owned-items-panel
+  const hdr=document.getElementById('hd-row');if(hdr)hdr.style.display='flex';
+  const oip=document.getElementById('owned-items-panel');if(oip){oip.style.display='flex';}
+  _popoverEnabled = true;
+  renderOwnedItemsPanel();
+  showHandsPanel();
+  initGame();
+  initHpTooltips();
+}
+
+// beginBattleWithDeck and other functions defined above
+// initStarterDeckScreen() called below, after the HTML element is in the DOM
+</script>
+
+<div id="starter-screen">
+  <div id="starter-header">
+    <div id="starter-main-title">RIFTBORN</div>
+    <div id="starter-sub">CHOOSE YOUR STARTER DECK</div>
+  </div>
+  <div id="starter-arc-wrap"></div>
+  <!-- confirm button only shown from deck detail screen -->
+</div>
+
+<div id="starter-particles"></div>
+
+<script>
+// Now the DOM element exists — safe to call
+initStarterDeckScreen();
+
+// Autoplay music immediately — browsers may block, fallback to first interaction
+(function tryAutoplay() {
+  let started = false;
+  function startMusic() {
+    if(started) return;
+    if(!_rotomAudio) rotomLoad(_rotomIdx, false);
+    _rotomAudio.play().then(() => {
+      started = true;
+      _rotomPlaying = true;
+      rotomUpdateUI();
+    }).catch(() => {}); // Browser blocked silently
+  }
+  // 1. Try immediately
+  setTimeout(startMusic, 200);
+  // 2. Try after a short delay (some browsers allow after page settles)
+  setTimeout(startMusic, 1500);
+  // 3. Guaranteed unlock on first interaction
+  ['pointerdown','touchstart','mousedown','keydown'].forEach(e =>
+    document.addEventListener(e, function f() {
+      startMusic();
+      document.removeEventListener(e, f);
+    }, {passive:true})
+  );
+})();
+</script>
+
+<script>
+// ═══ ROUTE MAP ═══════════════════════════════════════════════════
+const MAP_NODES = [
+  { id:'brock',    label:'BROCK',    type:'gym', trainerIdx:0, x:50, y:88, unlocked:true, beaten:false },
+  { id:'misty',    label:'MISTY',    type:'gym', trainerIdx:1, x:30, y:72, unlocked:false, beaten:false },
+  { id:'surge',    label:'SURGE',    type:'gym', trainerIdx:2, x:68, y:72, unlocked:false, beaten:false },
+  { id:'erika',    label:'ERIKA',    type:'gym', trainerIdx:3, x:22, y:55, unlocked:false, beaten:false },
+  { id:'koga',     label:'KOGA',     type:'gym', trainerIdx:4, x:78, y:55, unlocked:false, beaten:false },
+  { id:'sabrina',  label:'SABRINA',  type:'gym', trainerIdx:5, x:35, y:38, unlocked:false, beaten:false },
+  { id:'blaine',   label:'BLAINE',   type:'gym', trainerIdx:6, x:65, y:38, unlocked:false, beaten:false },
+  { id:'giovanni', label:'GIOVANNI', type:'gym', trainerIdx:7, x:50, y:18, unlocked:false, beaten:false },
+];
+
+const MAP_EDGES = [
+  ['brock','misty'], ['brock','surge'],
+  ['misty','erika'], ['surge','koga'],
+  ['erika','sabrina'], ['koga','blaine'],
+  ['sabrina','giovanni'], ['blaine','giovanni'],
+];
+
+let currentMapNode = null;
+
+function openRouteMap() {
+  const screen = document.getElementById('route-map-screen');
+  if (!screen) return;
+  screen.classList.remove('hidden');
+  renderRouteMap();
+}
+
+function returnToMap() {
+  // Mark current gym beaten, unlock next gyms
+  const beaten = MAP_NODES.find(n => n.trainerIdx === G.trainerIdx);
+  if (beaten) { beaten.beaten = true; beaten.unlocked = true; }
+  MAP_EDGES.forEach(([a, b]) => {
+    if (a === beaten?.id) { const nb = MAP_NODES.find(n => n.id === b); if (nb) nb.unlocked = true; }
+    if (b === beaten?.id) { const na = MAP_NODES.find(n => n.id === a); if (na) na.unlocked = true; }
+  });
+  hideGameUI();
+  openRouteMap();
+}
+
+function hideGameUI() {
+  document.getElementById('hand-container') && (document.getElementById('hand-container').style.display = 'none');
+  document.getElementById('game-hud') && (document.getElementById('game-hud').style.display = 'none');
+  document.getElementById('deck-ours') && (document.getElementById('deck-ours').style.display = 'none');
+  document.getElementById('tc-opp') && (document.getElementById('tc-opp').style.display = 'none');
+  document.getElementById('tc-us')  && (document.getElementById('tc-us').style.display  = 'none');
+  document.getElementById('fuse-lbl') && (document.getElementById('fuse-lbl').style.display = 'none');
+  document.getElementById('bf-ours') && (document.getElementById('bf-ours').innerHTML = '');
+  document.getElementById('bf-theirs') && (document.getElementById('bf-theirs').innerHTML = '');
+}
+
+function renderRouteMap() {
+  const mapEl = document.getElementById('rms-map');
+  if (!mapEl) return;
+  const W = window.innerWidth, H = window.innerHeight * 0.82;
+  mapEl.style.height = H + 'px';
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  let svg = document.getElementById('rms-svg');
+  if (!svg) { svg = document.createElementNS(svgNS, 'svg'); svg.id = 'rms-svg'; svg.setAttribute('xmlns', svgNS); mapEl.appendChild(svg); }
+  svg.setAttribute('viewBox', `0 0 100 100`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.style.width = '100%'; svg.style.height = '100%';
+  svg.innerHTML = '';
+
+  // Draw edges
+  MAP_EDGES.forEach(([a, b]) => {
+    const na = MAP_NODES.find(n => n.id === a), nb = MAP_NODES.find(n => n.id === b);
+    if (!na || !nb) return;
+    const line = document.createElementNS(svgNS, 'line');
+    line.setAttribute('x1', na.x); line.setAttribute('y1', na.y);
+    line.setAttribute('x2', nb.x); line.setAttribute('y2', nb.y);
+    const unlocked = na.beaten || nb.beaten || na.unlocked || nb.unlocked;
+    line.setAttribute('stroke', unlocked ? 'rgba(100,180,255,0.5)' : 'rgba(80,80,120,0.3)');
+    line.setAttribute('stroke-width', '0.5');
+    line.setAttribute('stroke-dasharray', unlocked ? 'none' : '1,1');
+    svg.appendChild(line);
+  });
+
+  // Draw nodes
+  MAP_NODES.forEach(node => {
+    const g = document.createElementNS(svgNS, 'g');
+    g.setAttribute('class', 'rms-node' + (node.locked ? ' locked' : '') + (node.beaten ? ' beaten' : ''));
+    g.setAttribute('transform', `translate(${node.x},${node.y})`);
+    g.style.cursor = node.unlocked && !node.beaten ? 'pointer' : 'default';
+
+    const circle = document.createElementNS(svgNS, 'circle');
+    circle.setAttribute('class', 'rms-node-circle');
+    circle.setAttribute('r', '4.5');
+    circle.setAttribute('fill', node.beaten ? '#334' : (node.unlocked ? '#224466' : '#1a1a2a'));
+    circle.setAttribute('stroke', node.beaten ? '#445566' : (node.unlocked ? '#44aaff' : '#334'));
+    circle.setAttribute('stroke-width', '0.5');
+    g.appendChild(circle);
+
+    const trainer = TRAINERS[node.trainerIdx];
+    const emoji = document.createElementNS(svgNS, 'text');
+    emoji.setAttribute('text-anchor', 'middle'); emoji.setAttribute('dominant-baseline', 'middle');
+    emoji.setAttribute('font-size', '4'); emoji.setAttribute('y', '0.3');
+    emoji.textContent = node.beaten ? '✓' : (trainer?.hpEmoji || '⚔️');
+    emoji.style.userSelect = 'none';
+    g.appendChild(emoji);
+
+    const lbl = document.createElementNS(svgNS, 'text');
+    lbl.setAttribute('text-anchor', 'middle'); lbl.setAttribute('y', '7');
+    lbl.setAttribute('font-size', '2.2'); lbl.setAttribute('fill', node.unlocked ? '#aaccff' : '#445566');
+    lbl.setAttribute('font-family', 'PokemonClassic,monospace');
+    lbl.textContent = node.label;
+    lbl.style.userSelect = 'none';
+    g.appendChild(lbl);
+
+    if (node.unlocked && !node.beaten) {
+      g.addEventListener('click', () => { if(typeof SFX!=='undefined') SFX.uiClick(); selectMapNode(node); });
+      g.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+      g.addEventListener('pointerenter', () => {
+        document.getElementById('rms-info').textContent =
+          (trainer?.name || node.label) + ' — ' + (trainer?.hpDesc || '') + '  HP: ' + (trainer?.hp || '?');
+      });
+      g.addEventListener('pointerleave', () => { document.getElementById('rms-info').textContent = ''; });
+    }
+    svg.appendChild(g);
+  });
+}
+
+function selectMapNode(node) {
+  currentMapNode = node;
+  G.trainerIdx = node.trainerIdx;
+  const screen = document.getElementById('route-map-screen');
+  if (screen) screen.classList.add('hidden');
+  openShop();
+}
+
+// ═══ SHOP ════════════════════════════════════════════════════════
+let shopCards = [];
+let _shopActiveTab = 'All';
+
+function openShop() {
+  if(typeof SFX!=='undefined') SFX.shopOpen();
+  _popoverEnabled = false; hideItemPopover();
+  ['hand-container','game-hud','deck-ours','balatro-bottom','run-panel','hd-row','hands-panel','gold-display'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  if(typeof hideRotomRadio==='function') hideRotomRadio();
+  // Keep owned-items-panel visible in shop (top-right items display)
+  const oip = document.getElementById('owned-items-panel');
+  if(oip) { oip.style.display=''; updateRunPanel(); }
+  document.getElementById('bf-ours') && (document.getElementById('bf-ours').innerHTML='');
+  document.getElementById('bf-theirs') && (document.getElementById('bf-theirs').innerHTML='');
+  const screen = document.getElementById('shop-screen');
+  if (screen) screen.classList.remove('hidden');
+  _shopItemPool = getShopItems();
+  // Mystery Egg: auto-add a fusion card
+  if(G_items.some(i=>i.id==='mystery_egg')) {
+    const bonus = FUSIONS[Math.floor(Math.random()*FUSIONS.length)];
+    G.bonusCards.push(bonus); G.deck.push({...mkCard(bonus)}); shuffle(G.deck);
+  }
+  renderShop();
+}
+
+function renderShop() {
+  const goldEl = document.getElementById('shop-gold');
+  if(goldEl) goldEl.textContent = 'GOLD: $' + (G.gold||0);
+  // Items grid
+  const grid = document.getElementById('shop-items-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  _shopItemPool.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.className = 'shop-item';
+    el.style.setProperty('--sd', (i*0.07)+'s');
+    const canAfford = (G.gold||0) >= item.cost;
+    const owned = G_items.some(x=>x.id===item.id);
+    if(owned) el.classList.add('purchased');
+    else if(!canAfford) el.classList.add('cant-afford');
+    el.innerHTML = `
+      <span class="shop-item-tag">${item.category}</span>
+      <span class="shop-item-emoji">${item.emoji}</span>
+      <span class="shop-item-name">${item.name}</span>
+      <span class="shop-item-desc">${item.desc}</span>
+      <span class="shop-item-cost ${canAfford?'affordable':'expensive'}">$${item.cost}</span>
+    `;
+    if(!owned && canAfford) {
+      el.addEventListener('click', () => buyItem(item, el));
+      el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+      el.addEventListener('touchend', (e) => { e.preventDefault(); buyItem(item, el); }, {passive:false});
+    }
+    attachPopover(el, item.desc);
+    grid.appendChild(el);
+  });
+  // Owned items (in-shop display)
+  renderOwnedItemsInShop();
+}
+
+function buyItem(item, el) {
+  if((G.gold||0) < item.cost) { if(typeof SFX!=='undefined') SFX.error(); return; }
+  if(typeof SFX!=='undefined') SFX.purchase();
+  G.gold = (G.gold||0) - item.cost;
+  G_items.push(item);
+  applyItemEffect(item);
+  el.classList.add('purchased');
+  el.classList.remove('cant-afford');
+  el.querySelector('.shop-item-cost').textContent = '✓ OWNED';
+  const goldEl = document.getElementById('shop-gold');
+  if(goldEl) goldEl.textContent = 'GOLD: $' + G.gold;
+  renderOwnedItemsInShop();
+}
+
+function renderShopCards() {
+  const sec = document.getElementById('shop-cards');
+  if(!sec) return;
+  sec.innerHTML = '';
+  shopCards = [...FUSIONS].sort(()=>Math.random()-0.5).slice(0,3).map(mkCard);
+  const label = document.createElement('div');
+  label.id = 'shop-cards-label'; label.textContent = 'ADD A CARD TO DECK';
+  sec.appendChild(label);
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:clamp(10px,2vw,24px);justify-content:center;margin-top:10px;';
+  shopCards.forEach((card, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'shop-hc-wrap';
+    wrap.style.setProperty('--sd', (i*0.1)+'s');
+    const hc = document.createElement('div');
+    hc.className = 'hc';
+    hc.style.cssText = 'width:100%;height:100%;margin:0;transform:none!important;flex:none;border-radius:8px;pointer-events:none;box-shadow:0 6px 24px rgba(0,0,0,0.9);';
+    const art = document.createElement('img'); art.className='hc-art'; art.draggable=false;
+    removeWhiteBg(card.fusionImg||card.img, url=>{art.src=url;});
+    hc.appendChild(art);
+    if(card.type1) hc.appendChild(typeBadge(card.type1,'hc-type1'));
+    if(card.type2) hc.appendChild(typeBadge(card.type2,'hc-type2'));
+    // Price tag
+    const price = document.createElement('div');
+    price.style.cssText = 'position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-family:"PokemonClassic",monospace;font-size:clamp(10px,1.1vw,15px);color:#ffcc22;white-space:nowrap;';
+    price.textContent = '$3';
+    wrap.appendChild(hc); wrap.appendChild(price);
+    wrap.addEventListener('pointerup', ()=>selectShopCard(i, wrap));
+    row.appendChild(wrap);
+  });
+  sec.appendChild(row);
+}
+
+function renderOwnedItemsInShop() {
+  // Items shown in top-right owned-items-panel — don't duplicate below leave button
+  document.getElementById('shop-owned')?.remove();
+  updateRunPanel(); // refresh top-right panel
+}
+
+function selectShopCard(idx, wrapEl) {
+  const card = shopCards[idx]; if(!card) return;
+  if((G.gold||0) < 3) { return; } // costs $3
+  G.gold = (G.gold||0) - 3;
+  wrapEl.classList.add('shop-selected');
+  const fusionData = FUSIONS.find(f=>f.name===card.name)||FUSIONS[0];
+  G.bonusCards.push(fusionData);
+  G.deck.push({...mkCard(fusionData)}); shuffle(G.deck);
+  const goldEl = document.getElementById('shop-gold');
+  if(goldEl) goldEl.textContent = 'GOLD: $' + G.gold;
+}
+
+function shopSkip() {
+  // Re-enable popovers when returning to battle
+  _popoverEnabled = false;
+  startNextBattle();
+}
+
+
+// ═══ ITEM SHOP SYSTEM ════════════════════════════════════════════
+const SHOP_ITEMS = [
+  // ── Species Mastery ──
+  { id:'lucky_egg',    name:"Lucky Egg",    emoji:'🥚', cost:4, category:'Species',   desc:'Whenever you play your Partner Pokémon: +1 permanent Mult.' },
+  { id:'exp_share',    name:"Exp. Share",   emoji:'📡', cost:3, category:'Species',   desc:'Partner Pokémon scores give +5 Chips to all other Partner cards.' },
+  { id:'amulet_coin',  name:"Amulet Coin",  emoji:'🪙', cost:3, category:'Species',   desc:'Gain $1 whenever a Partner Pokémon appears in a scoring hand.' },
+  { id:'choice_band',  name:"Choice Band",  emoji:'🎀', cost:4, category:'Species',   desc:'Your strongest Partner Pokémon card scores twice.' },
+  { id:'ditto',        name:"Ditto",         emoji:'🟣', cost:5, category:'Species',   desc:'One card counts as any species for matching hands. Cannot change.' },
+  // ── Type Specialist ──
+  { id:'charcoal',     name:"Charcoal",     emoji:'🪨', cost:4, category:'Type',      desc:'Fire-type cards: +25 Mult when scoring.' },
+  { id:'mystic_water', name:"Mystic Water", emoji:'💧', cost:4, category:'Type',      desc:'Water-type cards: retrigger once when scoring.' },
+  { id:'miracle_seed', name:"Miracle Seed", emoji:'🌱', cost:4, category:'Type',      desc:'Grass-type cards: +50 Chips when scoring.' },
+  { id:'magnet',       name:"Magnet",        emoji:'🧲', cost:4, category:'Type',      desc:'Electric-type cards: +1 Mult every time played.' },
+  { id:'type_booster', name:"Type Booster", emoji:'⚡', cost:3, category:'Type',      desc:'Choose a type: cards of that type gain +15 Chips.' },
+  // ── Evolution ──
+  { id:'rare_candy',   name:"Rare Candy",   emoji:'🍬', cost:5, category:'Evolution', desc:'A Pokémon gains XP immediately: +20 Chips permanently.' },
+  { id:'exp_candy',    name:"Exp. Candy XL",emoji:'🍭', cost:6, category:'Evolution', desc:'All evolved Pokémon in your deck gain +10 Mult.' },
+  { id:'eviolite',     name:"Eviolite",     emoji:'💎', cost:4, category:'Evolution', desc:'Unevolved Pokémon gain +50 Chips when scoring.' },
+  { id:'everstone',    name:"Everstone",    emoji:'🪨', cost:2, category:'Evolution', desc:'Prevent evolution but gain +50% score bonus.' },
+  // ── Fusion Network ──
+  { id:'dna_splicer',  name:"DNA Splicer",  emoji:'🧬', cost:5, category:'Network',   desc:'Cards sharing a Pokémon gain +15 Mult.' },
+  { id:'link_cable',   name:"Link Cable",   emoji:'📎', cost:4, category:'Network',   desc:'Connected fusion chains retrigger their score.' },
+  { id:'sync',         name:"Synchronizer", emoji:'🔁', cost:5, category:'Network',   desc:'When two connected cards score, both gain permanent power.' },
+  // ── Mutation ──
+  { id:'ditto_blob',   name:"Ditto Blob",   emoji:'🟣', cost:4, category:'Mutation',  desc:'Cards with all different Pokémon: +20 Mult.' },
+  { id:'glitch',       name:"Glitch Cart.", emoji:'👾', cost:6, category:'Mutation',  desc:'Impossible combinations get bonus score.' },
+  { id:'mystery_egg',  name:"Mystery Egg",  emoji:'🥚', cost:3, category:'Mutation',  desc:'At start of shop: generate a random fusion card.' },
+  // ── Universal ──
+  { id:'poke_ball',    name:"Poké Ball",    emoji:'⚪', cost:2, category:'Universal', desc:'Start every battle with +1 discard.' },
+  { id:'great_ball',   name:"Great Ball",   emoji:'🔵', cost:3, category:'Universal', desc:'+1 hand size: draw 9 cards instead of 8.' },
+  { id:'leftovers',    name:"Leftovers",    emoji:'🍃', cost:3, category:'Universal', desc:'Gain +30 chips at the start of every round.' },
+  { id:'choice_scarf', name:"Choice Scarf", emoji:'🧣', cost:4, category:'Universal', desc:'First played card this round is retriggered.' },
+  { id:'focus_sash',   name:"Focus Sash",   emoji:'🔰', cost:4, category:'Universal', desc:'Survive one losing round: recover once per run.' },
+  { id:'life_orb',     name:"Life Orb",     emoji:'🔮', cost:5, category:'Universal', desc:'+100 Mult but lose $1 every round.' },
+  // ── Legendary ──
+  { id:'mew_dna',      name:"Mew's DNA",    emoji:'💜', cost:8, category:'Legendary', desc:'All Pokémon count as connected to each other.' },
+  { id:'mewtwo',       name:"Mewtwo Genome",emoji:'⚗️', cost:9, category:'Legendary', desc:'Double all scaling effects this run.' },
+  { id:'rainbow_wing', name:"Rainbow Wing", emoji:'🌈', cost:8, category:'Legendary', desc:'All type bonuses stack together.' },
+];
+
+let G_items = []; // owned items
+let _shopItemPool = []; // current shop items for sale
+
+function getShopItems() {
+  // Pick 4 random items not already owned
+  const owned = new Set(G_items.map(i=>i.id));
+  const pool = SHOP_ITEMS.filter(i=>!owned.has(i.id)).sort(()=>Math.random()-0.5);
+  // Weight: more universal/cheap early, legendary rare
+  const cheap = pool.filter(i=>i.cost<=4);
+  const mid   = pool.filter(i=>i.cost>4&&i.cost<=6);
+  const rare  = pool.filter(i=>i.cost>6);
+  const picks = [];
+  if(cheap.length) picks.push(cheap[0]);
+  if(cheap.length>1) picks.push(cheap[1]);
+  if(mid.length) picks.push(mid[0]);
+  if(rare.length && Math.random()<0.3) picks.push(rare[0]);
+  while(picks.length < 3 && pool.length > picks.length) {
+    const next = pool.find(p=>!picks.includes(p));
+    if(next) picks.push(next); else break;
+  }
+  return picks.slice(0,4);
+}
+
+function applyItemEffect(item) {
+  switch(item.id) {
+    case 'poke_ball':   G.discardsLeft++; break;
+    case 'great_ball':  G._handSize = (G._handSize||8)+1; break;
+    case 'leftovers':   G._chipBonus = (G._chipBonus||0)+30; break;
+    case 'life_orb':    G._multBonus = (G._multBonus||0)+100; break;
+    default: break; // passive items applied at score time
+  }
+}
+
+function startNextBattle() {
+  if(typeof resetDialogue==='function') resetDialogue();
+  if(typeof SFX!=='undefined') {
+    const t=getCurrentTrainer();
+    SFX.battleStart(t&&t.tier==='boss');
+  }
+  const shopScreen = document.getElementById('shop-screen');
+  if (shopScreen) shopScreen.classList.add('hidden');
+  // Show game UI for next battle
+  const trainer = getCurrentTrainer();
+  G.trainerHp = trainer.hp; G.trainerMaxHp = trainer.hp;
+  G.ourBoard = new Array(6).fill(null);
+  G.theirBoard = new Array(4).fill(null);
+  G.ourTurn = true; G.animating = false; G.heroPowerUsed = false; G.ourMana = 10; G.maxMana = 10;
+  G.hand = []; G.theirHand = [];
+  G.theirDeck = shuffle(FUSIONS.map(mkCard));
+  // Rebuild deck fresh each round from starter deck + bonuses
+  const starterBase = G._starterDeckCards && G._starterDeckCards.length
+    ? G._starterDeckCards.map(c=>({...c,id:Math.random().toString(36).slice(2)}))
+    : shuffle(FUSIONS.map(mkCard));
+  // bonusCards can be full card objects (_isBonusCard) or fusion objects
+  const bonusCopies = G.bonusCards.map(f =>
+    f._isBonusCard ? {...f, id:Math.random().toString(36).slice(2)} : mkCard(f)
+  );
+  G.deck = shuffle([...starterBase, ...bonusCopies]);
+  // Reset round counters
+  G.handsLeft = 3;
+  G.discardsLeft = 3;
+  G.roundScore = 0;
+  G.roundChips = 0;
+  G.roundMult = 0;
+  if (window._balatroBg) {
+    const _palTrainer = getCurrentTrainer();
+    if(_palTrainer && _palTrainer.name) window._balatroBg.setTrainer(_palTrainer.name);
+    else window._balatroBg.setGym(G.trainerIdx);
+  }
+  setTimeout(() => setTrainerPortrait(trainer), 100);
+  // Hide any stale dialogue immediately — portrait change will show fresh one
+  const _dlg = document.getElementById('trainer-dialogue');
+  if(_dlg) { _dlg.style.display='none'; _dlg.style.opacity='0'; }
+
+  document.getElementById('tc-opp') && (document.getElementById('tc-opp').style.display = 'flex');
+  document.getElementById('tc-us')  && (document.getElementById('tc-us').style.display  = 'flex');
+  document.getElementById('hand-container') && (document.getElementById('hand-container').style.display = 'flex');
+  document.getElementById('game-hud') && (document.getElementById('game-hud').style.display = 'flex');
+  document.getElementById('deck-ours') && (document.getElementById('deck-ours').style.display = 'flex');
+  const bb2 = document.getElementById('balatro-bottom');
+  if(bb2) bb2.style.display='flex';
+  const rp2 = document.getElementById('run-panel');
+  if(rp2){ rp2.style.display='flex'; setTimeout(updateRunPanel, 200); }
+  const gdEl=document.getElementById('gold-display'); if(gdEl) gdEl.style.display='block';
+  const hdr2 = document.getElementById('hd-row');
+  if(hdr2) hdr2.style.display='flex';
+  _popoverEnabled = true;
+  showHandsPanel();
+  const oip2 = document.getElementById('owned-items-panel');
+  if(oip2){ oip2.style.display='flex'; }
+  _popoverEnabled = true;
+  renderOwnedItemsPanel();
+  G.handsLeft=3; G.discardsLeft=3; G.roundScore=0; G.roundChips=0; G.roundMult=0;
+
+  const fuseLabel = document.getElementById('fuse-lbl');
+  if (fuseLabel) { fuseLabel.style.display = 'flex'; fuseLabel.textContent = 'END TURN'; }
+
+  buildUI(); renderAll();
+  G_selected.clear();
+  const DRAW = 8;
+  for (let i = 0; i < DRAW; i++) {
+    setTimeout(() => { if (G.deck.length && G.hand.length < 8) { G.hand.push({ ...G.deck.shift() }); renderHand(true); } }, 150 + i * 180);
+    setTimeout(() => { if (G.theirDeck.length) { G.theirHand.push({ ...G.theirDeck.shift() }); } }, 150 + i * 180);
+  }
+  setTimeout(() => announceText('YOUR TURN', 1400), 150 + DRAW * 180 + 100);
+  setTimeout(() => { if(typeof renderHandsPanel==='function') renderHandsPanel(); }, 150 + DRAW * 180 + 200);
+}
+</script>
+
+<!-- ROUTE MAP & SHOP SCREENS -->
+<div id="route-map-screen" class="hidden">
+  <div id="rms-header">
+    <div id="rms-title">KANTO REGION</div>
+    <div id="rms-subtitle">CHOOSE YOUR NEXT GYM</div>
+  </div>
+  <div id="rms-scroll"><div id="rms-map"><svg id="rms-svg"></svg></div></div>
+  <div id="rms-info"></div>
+</div>
+
+<div id="shop-screen" class="hidden">
+  <div id="shop-title">CELADON DEPT. STORE</div>
+  <div id="shop-subtitle">SPEND YOUR GOLD WISELY</div>
+  <div id="shop-gold">GOLD: $4</div>
+  <div id="shop-items-grid"></div>
+  <button id="shop-skip-btn" onclick="if(typeof SFX!='undefined') SFX.back(); shopSkip();" style="margin-top:20px;">LEAVE STORE →</button>
+</div>
+
+  <div class="hpt-desc" id="hpt-desc"></div>
+  <div class="hpt-cost" id="hpt-cost"></div>
+</div>
+
+
+<!-- ── ROUTE SCREEN ── -->
+<div id="route-screen" class="between-screen">
+  <div class="between-title" id="route-name-display">ROUTE 1</div>
+  <div class="between-subtitle" id="route-sub-display">PALLET → VIRIDIAN CITY</div>
+  <div id="route-pick-label">Pick 1 Pokémon to add to your deck</div>
+  <div id="route-pokemon-row"></div>
+  <div id="route-btn-row">
+    <div id="route-secondary-row">
+      <button id="route-view-deck-btn" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); openDeckViewer();">VIEW DECK</button>
+      <button class="between-skip" onclick="if(typeof SFX!=='undefined') SFX.skip(); skipRoute();">SKIP →</button>
+    </div>
+    <button id="route-confirm-btn" onclick="if(typeof SFX!=='undefined') SFX.confirm(); confirmRoutePick();">ADD TO DECK</button>
+  </div>
+</div>
+
+<!-- ── DAY CARE SCREEN ── -->
+
+<!-- ── CINNABAR MANSION SCREEN ── -->
+<div id="cinnabar-screen" class="between-screen">
+  <div class="between-title">CINNABAR MANSION</div>
+  <div class="between-subtitle" style="margin-bottom:clamp(12px,2vh,24px);">SELECT 2 POKÉMON TO FUSE</div>
+  <div id="cinnabar-hand-row" style="display:flex;gap:clamp(8px,1.5vw,20px);flex-wrap:wrap;justify-content:center;align-items:flex-end;margin-bottom:clamp(12px,2vh,24px);overflow:visible;padding:10px 0;max-width:min(95vw,800px);"></div>
+  <div id="cinnabar-preview" style="display:none;"></div>
+  <div style="display:flex;gap:12px;margin-top:8px;align-items:center;">
+    <button onclick="if(typeof SFX!=='undefined') SFX.skip(); skipCinnabar();" class="between-skip">SKIP →</button>
+  </div>
+</div>
+
+<div id="daycare-screen" class="between-screen">
+  <div class="between-title">DAY CARE CENTER</div>
+  <div class="between-subtitle">NURTURE YOUR POKÉMON</div>
+  <div class="daycare-action-row">
+    <div class="daycare-action" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); selectDaycareAction('release');">
+      <span class="daycare-action-emoji">🌿</span>
+      <span class="daycare-action-name">RELEASE</span>
+      <span class="daycare-action-desc">Remove a fusion card from your deck to thin it out.</span>
+    </div>
+    <div class="daycare-action" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); selectDaycareAction('breed');">
+      <span class="daycare-action-emoji">🥚</span>
+      <span class="daycare-action-name">BREEDING</span>
+      <span class="daycare-action-desc">Duplicate a fusion card — get an extra copy.</span>
+    </div>
+    <div class="daycare-action" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); selectDaycareAction('training');">
+      <span class="daycare-action-emoji">⭐</span>
+      <span class="daycare-action-name">TRAINING</span>
+      <span class="daycare-action-desc">Give a card XP. At 3 XP it evolves into a stronger fusion.</span>
+    </div>
+  </div>
+  <div id="daycare-card-picker">
+    <div id="daycare-picker-label">Select a card:</div>
+    <div id="daycare-cards-row"></div>
+  </div>
+  <button class="between-skip" onclick="if(typeof SFX!=='undefined') SFX.skip(); skipDaycare();">SKIP →</button>
+</div>
+
+
+<!-- ── DECK VIEWER OVERLAY ── -->
+<div id="deck-viewer">
+  <div id="dv-header">
+    <div id="dv-title">YOUR DECK</div>
+    <div id="dv-count">0 cards</div>
+    <div id="dv-sort-row">
+      <button class="dv-sort-btn active" id="dv-sort-species" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); dvSetSort('species');">SPECIES</button>
+      <button class="dv-sort-btn" id="dv-sort-type" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); dvSetSort('type');">TYPE</button>
+    </div>
+    <button id="dv-close" onclick="if(typeof SFX!=='undefined') SFX.back(); closeDeckViewer();">✕ CLOSE</button>
+  </div>
+  <div id="dv-grid-wrap"><div id="dv-grid"></div></div>
+</div>
+
+
+<!-- ── DECK DETAIL SCREEN ── -->
+<div id="deck-detail-screen">
+  <div id="dds-header">
+    <button id="dds-back-btn" onclick="if(typeof SFX!=='undefined') SFX.back(); closeDeckDetail();">← BACK</button>
+    <div id="dds-deck-name">DECK</div>
+    <button id="dds-begin-btn" onclick="if(typeof SFX!=='undefined') SFX.starterChoose(); confirmStarterDeck();">BEGIN YOUR JOURNEY!</button>
+  </div>
+  <div id="dds-body">
+    <div id="dds-info">
+      <div id="dds-subtitle" style="font-size:clamp(9px,0.95vw,13px);color:#667788;line-height:1.6;"></div>
+      <div class="dds-info-div"></div>
+      <div class="dds-info-stat">
+        <span class="dds-info-label">Hand Focus</span>
+        <span class="dds-info-val" id="dds-focus"></span>
+      </div>
+      <div class="dds-info-stat">
+        <span class="dds-info-label">Bonus</span>
+        <span class="dds-info-val green" id="dds-bonus"></span>
+      </div>
+      <div class="dds-info-stat">
+        <span class="dds-info-label">Risk</span>
+        <span class="dds-info-val red" id="dds-risk"></span>
+      </div>
+    </div>
+    <div id="dds-cards"></div>
+  </div>
+</div>
+
+
+<script>
+// ── 3D CARD TILT ON HOVER ────────────────────────────────────────
+(function(){
+  const MAX_TILT = 8; // max degrees
+  function applyTilt(el, e) {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width/2;
+    const cy = r.top  + r.height/2;
+    const dx = (e.clientX - cx) / (r.width/2);  // -1 to 1
+    const dy = (e.clientY - cy) / (r.height/2); // -1 to 1
+    // rotateY: positive = right edge comes toward viewer when cursor is right
+    // rotateX: negative = top edge comes toward viewer when cursor is at top
+    const ry =  dx * MAX_TILT;
+    const rx = -dy * MAX_TILT;
+    el.style.setProperty('--tilt3d-rx', rx.toFixed(2) + 'deg');
+    el.style.setProperty('--tilt3d-ry', ry.toFixed(2) + 'deg');
+  }
+  function resetTilt(el) {
+    el.style.setProperty('--tilt3d-rx', '0deg');
+    el.style.setProperty('--tilt3d-ry', '0deg');
+  }
+  // Apply to hand cards, field cards, and visual cards
+  function attachTilt(el) {
+    el.addEventListener('mousemove', e => applyTilt(el, e), {passive:true});
+    el.addEventListener('mouseleave', () => resetTilt(el), {passive:true});
+  }
+  // MutationObserver: auto-attach tilt to any new .hc, .pc, .card-visual
+  const obs = new MutationObserver(muts => {
+    muts.forEach(m => m.addedNodes.forEach(n => {
+      if(n.nodeType !== 1) return;
+      const matches = [
+        ...(n.classList?.contains('hc') || n.classList?.contains('pc') || n.classList?.contains('card-visual') ? [n] : []),
+        ...n.querySelectorAll('.hc,.pc,.card-visual,.dpc-top')
+      ];
+      matches.forEach(attachTilt);
+    }));
+  });
+  obs.observe(document.body, {childList:true, subtree:true});
+  // Attach to already-existing cards
+  document.querySelectorAll('.hc,.pc,.card-visual,.dpc-top').forEach(attachTilt);
+})();
+</script>
+
+</body>
+</html>
