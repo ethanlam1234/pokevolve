@@ -13,7 +13,7 @@
 body {
   background:#080c14; width:100vw; height:100vh;
   display:flex; align-items:center; justify-content:center;
-  filter: url(#crt-warp-filter) saturate(1.06) contrast(1.04);
+  filter: url(#crt-warp-filter) saturate(1.06) contrast(1.02) brightness(1.0);
   overflow:hidden;
 }
 /* Portrait handled by JS checkOrientationStep() */
@@ -266,9 +266,9 @@ html { overflow: hidden; }
 /* ── GOLD DISPLAY (above deck) ── */
 /* gold-display is the span inside owned-items-panel header */
 /* ── DEAL GHOST (deck→hand animation) ── */
-.deal-ghost { position:fixed; pointer-events:none; z-index:999; width:clamp(44px,3.8vw,62px); aspect-ratio:2/3; border-radius:6px; overflow:hidden; background:#0a0a0a; border:2px solid rgba(20,20,30,0.9); box-shadow:0 4px 20px rgba(0,0,0,0.95); transform-origin:50% 50%; will-change:transform,opacity; }
+.deal-ghost { position:fixed; pointer-events:none; z-index:999; width:clamp(44px,3.8vw,62px); aspect-ratio:2/3; border-radius:6px; overflow:hidden; background:#ffffff; border:2px solid rgba(50,70,140,0.8); box-shadow:0 4px 20px rgba(0,0,0,0.85); transform-origin:50% 50%; will-change:transform,opacity; }
 .deal-ghost::after { content:''; position:absolute; inset:3px; border-radius:4px; border:1px solid rgba(100,140,255,0.3); }
-.deal-ghost .face { position:absolute; inset:0; border-radius:5px; overflow:hidden; background:linear-gradient(160deg,#1a1a2e 0%,#0d0d1a 100%); border:none; display:none; }
+.deal-ghost .face { position:absolute; inset:0; border-radius:5px; overflow:hidden; background:#ffffff; border:none; display:none; }
 .deal-ghost .face img { position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%); height:100%; width:auto; object-fit:contain; image-rendering:pixelated; background:transparent; }
 .deal-ghost.pulling { box-shadow:0 0 0 2px #aaccff,0 0 24px #6688ff,0 4px 20px rgba(0,0,0,0.85); }
 
@@ -307,7 +307,7 @@ html { overflow: hidden; }
   flex-shrink:0;
 }
 #rp-trainer-name { font-size:clamp(11px,1.2vw,16px); color:#fff; letter-spacing:1px; text-shadow:1px 1px 0 #000; }
-#rp-trainer-hp   { font-size:clamp(9px,0.95vw,13px); color:#ff9999; letter-spacing:1px; margin-top:2px; }
+#rp-trainer-hp   { font-size:clamp(7px,0.7vw,10px); color:#ff9999; letter-spacing:0px; margin-top:2px; }
 #rp-hp-bar-wrap  { height:4px; background:rgba(255,30,30,0.15); border-radius:2px; overflow:hidden; margin-top:5px; }
 #rp-hp-bar       { height:100%; background:linear-gradient(90deg,#ff3322,#ff6644); border-radius:2px; transition:width 0.4s ease; }
 /* Hero power block */
@@ -587,11 +587,23 @@ html { overflow: hidden; }
 }
 /* 3D tilt on hover (via JS --tilt3d vars) */
 .dpc-top:hover {
-  transform: rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)) translateY(-10px) scale(1.06);
-  box-shadow:0 14px 32px rgba(0,0,0,0.95);
+  transform: rotateX(calc(var(--tilt3d-rx,0deg)*0.4)) rotateY(calc(var(--tilt3d-ry,0deg)*0.4)) translateY(-5px) scale(1.03);
+  box-shadow:0 10px 24px rgba(0,0,0,0.85);
   animation: none !important;
 }
 /* Float animation on the top card — slightly more pronounced than hand cards */
+
+@keyframes cvFloat {
+  0%   { transform: rotate(var(--tilt,0deg)) translateY(0px) scale(1.000); }
+  30%  { transform: rotate(var(--tilt,0deg)) translateY(-2px) rotateX(1deg) scale(1.005); }
+  60%  { transform: rotate(var(--tilt,0deg)) translateY(-3px) rotateX(1.5deg) scale(1.008); }
+  80%  { transform: rotate(var(--tilt,0deg)) translateY(-1px) rotateX(0.8deg) scale(1.003); }
+  100% { transform: rotate(var(--tilt,0deg)) translateY(0px) scale(1.000); }
+}
+.cv-floating {
+  animation: cvFloat var(--float-dur,3.2s) var(--float-delay,0s) ease-in-out infinite;
+  transform-origin: 50% 110%;
+}
 @keyframes dpcFloat {
   0%   { transform: translateY(0px)   rotateX(0deg)   scale(1.00); }
   30%  { transform: translateY(-5px)  rotateX(2.5deg) scale(1.02); }
@@ -1208,7 +1220,7 @@ html { overflow: hidden; }
 .shop-item {
   width:clamp(130px,13vw,180px); background:rgba(8,10,26,0.95);
   border:2px solid rgba(50,70,140,0.6); border-radius:10px;
-  padding:12px 10px; cursor:pointer; text-align:center;
+  padding:12px 10px 32px 10px; cursor:pointer; text-align:center;
   transition:transform 0.15s, border-color 0.15s, box-shadow 0.15s;
   position:relative; font-family:'PokemonClassic',monospace;
   box-shadow:0 4px 16px rgba(0,0,0,0.7);
@@ -1221,7 +1233,7 @@ html { overflow: hidden; }
 .shop-item-emoji { font-size:clamp(24px,2.8vw,40px); display:block; margin-bottom:6px; }
 .shop-item-name { font-size:clamp(8px,0.85vw,12px); color:#ccd6f0; letter-spacing:1px; display:block; margin-bottom:5px; }
 .shop-item-desc { font-size:clamp(7px,0.72vw,10px); color:#667788; line-height:1.6; display:block; margin-bottom:8px; }
-.shop-item-cost { font-size:clamp(12px,1.3vw,18px); color:#ffcc22; font-weight:bold; display:block; }
+.shop-item-cost { font-size:clamp(12px,1.3vw,18px); color:#ffcc22; font-weight:bold; display:block; position:absolute; bottom:8px; left:0; right:0; text-align:center; }
 .shop-item-cost.affordable { color:#ffcc22; }
 .shop-item-cost.expensive  { color:#886644; }
 .shop-item-tag { position:absolute; top:6px; right:6px; font-size:clamp(6px,0.62vw,8px); color:#445566; letter-spacing:1px; }
@@ -1266,12 +1278,13 @@ html { overflow: hidden; }
   #rp-portrait-overlay { flex:1 !important; padding:4px 6px !important; border-radius:0 !important; border-left:none !important; margin-left:0 !important; border-top:none !important; border-bottom:none !important; border-right:none !important; }
   #rp-hp-bar-wrap { height:3px !important; }
   /* Route buttons: horizontal on mobile */
+  /* Route buttons: View Deck(left) | ADD TO DECK(center) | Skip(right) — same line */
   #route-btn-row {
-    width:min(95vw,680px) !important;
+    display:flex !important;
     flex-direction:row !important;
     align-items:center !important;
-    justify-content:center !important;
-    flex-wrap:nowrap !important;
+    justify-content:space-between !important;
+    width:min(95vw,600px) !important;
     gap:6px !important;
     margin-top:8px !important;
     margin-bottom:0 !important;
@@ -1281,16 +1294,16 @@ html { overflow: hidden; }
     margin:0 !important; padding:0 !important;
   }
   #route-view-deck-btn {
-    order:0 !important; margin:0 !important;
-    display:inline-flex !important; align-items:center !important;
-  }
-  .between-skip {
-    order:1 !important; margin:0 !important;
-    display:inline-flex !important; align-items:center !important;
+    order:0 !important; margin:0 !important; flex:1 !important;
+    display:inline-flex !important; align-items:center !important; justify-content:center !important;
   }
   #route-btn-row #route-confirm-btn {
-    order:2 !important; margin:0 !important;
-    display:inline-flex !important; align-items:center !important;
+    order:1 !important; margin:0 !important; flex:2 !important;
+    display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  }
+  .between-skip {
+    order:2 !important; margin:0 !important; flex:1 !important;
+    display:inline-flex !important; align-items:center !important; justify-content:center !important;
   }
   #rp-trainer-name  { font-size:8px !important; }
   #rp-trainer-hp    { font-size:7px !important; }
@@ -1316,8 +1329,7 @@ html { overflow: hidden; }
   .owned-item-chip { font-size:7px !important; padding:2px 6px !important; }
 
   /* ── Score overlay mobile ── */
-  #hand-score-overlay { top:clamp(60px,10vh,120px) !important; }
-  #hand-score-overlay > div { font-size:clamp(10px,2.5vw,16px) !important; padding:4px 12px !important; }
+  #hand-score-overlay { top:clamp(40px,6vh,80px) !important; transform:translateX(-50%) scale(0.72) !important; transform-origin:top center !important; }
   /* ── Available hands panel ── */
   #hands-panel { top:4px !important; max-width:99vw !important; padding:3px 6px !important; gap:3px !important; }
   .hand-chip   { font-size:8px !important; padding:3px 8px !important; border-radius:10px !important; gap:3px !important; }
@@ -1639,13 +1651,11 @@ void main(){
   <!-- Step 1: rotate -->
   <div id="rot-step1" style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
     <div style="font-size:20px;letter-spacing:3px;color:#ffdd66;">ROTATE YOUR DEVICE</div>
-    <div style="font-size:9px;color:#8899bb;letter-spacing:2px;margin-top:2px;">RIFTBORN REQUIRES LANDSCAPE MODE</div>
   </div>
   <!-- Step 2: fullscreen (tap anywhere) -->
   <div id="rot-step2" style="display:none;position:relative;z-index:1;flex-direction:column;align-items:center;gap:16px;">
-    <div style="font-size:52px;animation:fullscreenPulse 1.4s ease infinite;display:block;">⛶</div>
-    <div style="font-size:13px;letter-spacing:2px;">GO FULL SCREEN</div>
-    <div style="font-size:9px;color:#aabbcc;letter-spacing:1px;margin-top:4px;">TAP ANYWHERE TO CONTINUE</div>
+    <div style="font-size:20px;letter-spacing:3px;color:#ffdd66;animation:fullscreenPulse 1.4s ease infinite;">GO FULL SCREEN</div>
+    <div style="font-size:9px;color:#aabbcc;letter-spacing:1px;margin-top:4px;">(TAP THE SCREEN)</div>
   </div>
 </div>
 <style>
@@ -1924,16 +1934,185 @@ function nextCardImg() {
 const FUSIONS = [{"name": "Hitmoking", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_107-hitmonchan_119-seaking_Hitmoking.png", "baseAtk": 7, "baseHp": 2, "cost": 3, "baseTaunt": false}, {"name": "Koffdily", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_109-koffing_346-cradily_Koffdily.png", "baseAtk": 1, "baseHp": 2, "cost": 8, "baseTaunt": true}, {"name": "Koffaut", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_109-koffing_360-wynaut_Koffaut.png", "baseAtk": 1, "baseHp": 5, "cost": 6, "baseTaunt": true}, {"name": "Flarloud", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_136-flareon_295-exploud_Flarloud.png", "baseAtk": 6, "baseHp": 2, "cost": 8, "baseTaunt": false}, {"name": "Omanbird", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_138-omanyte_225-delibird_Omanbird.png", "baseAtk": 5, "baseHp": 2, "cost": 4, "baseTaunt": false}, {"name": "Kakemite", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_14-kakuna_81-magnemite_Kakemite.png", "baseAtk": 6, "baseHp": 8, "cost": 8, "baseTaunt": false}, {"name": "Mewytuff", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_150-mewtwo_40-wigglytuff_Mewytuff.png", "baseAtk": 4, "baseHp": 8, "cost": 7, "baseTaunt": false}, {"name": "Typhlsea", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_157-typhlosion_116-horsea_Typhlsea.png", "baseAtk": 1, "baseHp": 8, "cost": 2, "baseTaunt": true}, {"name": "Lantasaur", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_171-lanturn_1-bulbasaur_Lantasaur.png", "baseAtk": 6, "baseHp": 8, "cost": 5, "baseTaunt": false}, {"name": "Ivyssect", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_2-ivysaur_47-parasect_Ivyssect.png", "baseAtk": 1, "baseHp": 2, "cost": 2, "baseTaunt": true}, {"name": "Piloshop", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_221-piloswine_66-machop_Piloshop.png", "baseAtk": 1, "baseHp": 8, "cost": 8, "baseTaunt": true}, {"name": "Corsroth", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_222-corsola_288-vigoroth_Corsroth.png", "baseAtk": 5, "baseHp": 2, "cost": 7, "baseTaunt": false}, {"name": "Phastar", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_231-phanpy_139-omastar_Phastar.png", "baseAtk": 5, "baseHp": 8, "cost": 3, "baseTaunt": false}, {"name": "Smootres", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_238-smoochum_146-moltres_Smootres.png", "baseAtk": 5, "baseHp": 8, "cost": 1, "baseTaunt": false}, {"name": "Tyrantini", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_248-tyranitar_147-dratini_Tyrantini.png", "baseAtk": 3, "baseHp": 8, "cost": 4, "baseTaunt": false}, {"name": "Combuyama", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_256-combusken_297-hariyama_Combuyama.png", "baseAtk": 1, "baseHp": 5, "cost": 2, "baseTaunt": true}, {"name": "Sandschic", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_27-sandshrew_255-torchic_Sandschic.png", "baseAtk": 7, "baseHp": 2, "cost": 3, "baseTaunt": false}, {"name": "Pelioom", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_279-pelipper_44-gloom_Pelioom.png", "baseAtk": 4, "baseHp": 5, "cost": 4, "baseTaunt": false}, {"name": "Shroochu", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_285-shroomish_172-pichu_Shroochu.png", "baseAtk": 7, "baseHp": 8, "cost": 2, "baseTaunt": false}, {"name": "Nincados", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_290-nincada_168-ariados_Nincados.png", "baseAtk": 3, "baseHp": 8, "cost": 3, "baseTaunt": false}, {"name": "Shedras", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_292-shedinja_46-paras_Shedras.png", "baseAtk": 7, "baseHp": 2, "cost": 3, "baseTaunt": false}, {"name": "Nidoqitar", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_31-nidoqueen_246-larvitar_Nidoqitar.png", "baseAtk": 6, "baseHp": 5, "cost": 6, "baseTaunt": false}, {"name": "Clefkern", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_35-clefairy_191-sunkern_Clefkern.png", "baseAtk": 7, "baseHp": 2, "cost": 3, "baseTaunt": false}, {"name": "Tropetchd", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_357-tropius_83-farfetchd_Tropetchd.png", "baseAtk": 5, "baseHp": 5, "cost": 1, "baseTaunt": false}, {"name": "Absgross", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_359-absol_376-metagross_Absgross.png", "baseAtk": 1, "baseHp": 5, "cost": 8, "baseTaunt": true}, {"name": "Cleffing", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_36-clefable_109-koffing_Cleffing.png", "baseAtk": 2, "baseHp": 8, "cost": 2, "baseTaunt": false}, {"name": "Regeavus", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_378-regice_200-misdreavus_Regeavus.png", "baseAtk": 6, "baseHp": 5, "cost": 3, "baseTaunt": false}, {"name": "Deoxys_duck", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_386-deoxys-normal_55-golduck_Deoxys_duck.png", "baseAtk": 1, "baseHp": 5, "cost": 2, "baseTaunt": true}, {"name": "Golzing", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_42-golbat_110-weezing_Golzing.png", "baseAtk": 2, "baseHp": 5, "cost": 1, "baseTaunt": false}, {"name": "Machqueen", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_68-machamp_31-nidoqueen_Machqueen.png", "baseAtk": 4, "baseHp": 5, "cost": 4, "baseTaunt": false}, {"name": "Weepiloud", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_70-weepinbell_295-exploud_Weepiloud.png", "baseAtk": 4, "baseHp": 2, "cost": 6, "baseTaunt": false}, {"name": "Tentaerain", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_72-tentacool_284-masquerain_Tentaerain.png", "baseAtk": 5, "baseHp": 5, "cost": 5, "baseTaunt": false}, {"name": "Tentalts", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_73-tentacruel_280-ralts_Tentalts.png", "baseAtk": 3, "baseHp": 2, "cost": 2, "baseTaunt": false}, {"name": "Magnearow", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_81-magnemite_21-spearow_Magnearow.png", "baseAtk": 6, "baseHp": 2, "cost": 7, "baseTaunt": false}, {"name": "Magnenine", "img": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_81-magnemite_59-arcanine_Magnenine.png", "baseAtk": 1, "baseHp": 5, "cost": 5, "baseTaunt": true},{"name":"Amphlord","img":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_181-ampharos_321-wailord_Amphlord.png","baseAtk":5,"baseHp":6,"cost":5,"baseTaunt":true},{"name":"Altafing","img":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_334-altaria_109-koffing_Altafing.png","baseAtk":3,"baseHp":4,"cost":3,"baseTaunt":false},{"name":"Makutail","img":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_296-makuhita_367-huntail_Makutail.png","baseAtk":4,"baseHp":3,"cost":3,"baseTaunt":false},{"name":"Medidum","img":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_308-medicham_374-beldum_Medidum.png","baseAtk":3,"baseHp":5,"cost":4,"baseTaunt":false},{"name":"Blisaldo","img":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_242-blissey_348-armaldo_Blisaldo.png","baseAtk":2,"baseHp":8,"cost":6,"baseTaunt":false},{"name":"Snubeep","img":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_209-snubbull_179-mareep_Snubeep.png","baseAtk":2,"baseHp":3,"cost":2,"baseTaunt":false},{"name":"Mr_mnea","img":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_122-mr-mime_331-cacnea_Mr_mnea.png","baseAtk":4,"baseHp":2,"cost":4,"baseTaunt":false},{"name":"Slowvyle","img":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_80-slowbro_253-grovyle_Slowvyle.png","baseAtk":3,"baseHp":5,"cost":4,"baseTaunt":false},{"name":"Regis_normal","img":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fusions/final_379-registeel_386-deoxys-normal_Regis_normal.png","baseAtk":6,"baseHp":4,"cost":6,"baseTaunt":false}];
 
 // ── TRAINER ROSTER ─────────────────────────────────────────────
+// Trainer tiers: normal → elite → rival → gym leader (boss)
+// modifier: applied at battle start, affects scoring
 const TRAINERS = [
-  { name:'Brock',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Brock.png', hp:20, hpEmoji:'🪨', hpName:'Fortify',   hpDesc:'Give a random friendly Pokemon +2 max HP.',    hpCost:2 },
-  { name:'Misty',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Misty.png',    hp:25, hpEmoji:'🌊', hpName:'Surf',      hpDesc:'Deal 1 damage to ALL enemy Pokemon.',           hpCost:2 },
-  { name:'Surge',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Surge.png',    hp:28, hpEmoji:'⚡', hpName:'Zap',       hpDesc:'Give a random friendly Pokemon +1 ATK.',        hpCost:2 },
-  { name:'Erika',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Erika.png',    hp:30, hpEmoji:'🌸', hpName:'Bloom',     hpDesc:'Heal a random friendly Pokemon for 4 HP.',      hpCost:2 },
-  { name:'Koga',     img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Koga.png',     hp:33, hpEmoji:'☠️', hpName:'Toxic',     hpDesc:'Deal 1 damage to all enemy Pokemon.',           hpCost:2 },
-  { name:'Sabrina',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Sabrina.png',  hp:35, hpEmoji:'🔮', hpName:'Foresight', hpDesc:'Draw an extra card.',                          hpCost:2 },
-  { name:'Blaine',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Blaine.png',   hp:38, hpEmoji:'🔥', hpName:'Ignite',    hpDesc:'Deal 2 damage to a random enemy Pokemon.',      hpCost:2 },
-  { name:'Giovanni', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Giovanni.png', hp:45, hpEmoji:'💀', hpName:'Dominate',  hpDesc:'Give all friendly Pokemon +1 ATK permanently.', hpCost:2 },
+  // ── NORMAL TRAINERS (tier 1) ──────────────────────────────────
+  { name:'Youngster',  img:'', hp:18, tier:'normal', hpEmoji:'🧒', hpName:'Taunt',    hpDesc:'Nothing special — just eager.',
+    modifier:'first_hand_minus20', modDesc:'First hand each battle scores -20%.' },
+  { name:'Lass',       img:'', hp:18, tier:'normal', hpEmoji:'👧', hpName:'Charm',    hpDesc:'Draw a card.',
+    modifier:'draw_minus1', modDesc:'Draw 1 fewer card on your first turn.' },
+  { name:'Bug Catcher',img:'', hp:20, tier:'normal', hpEmoji:'🐛', hpName:'Net',      hpDesc:'Disable a random opponent card.',
+    modifier:'swarm_minus20', modDesc:'Swarm/species hands score -20%.' },
+  { name:'Camper',     img:'', hp:20, tier:'normal', hpEmoji:'⛺', hpName:'Rest',     hpDesc:'Heal 3 HP.',
+    modifier:'gold_minus25', modDesc:'Earn 25% less gold after this battle.' },
+  { name:'Picnicker',  img:'', hp:20, tier:'normal', hpEmoji:'🧺', hpName:'Share',    hpDesc:'Gain $1.',
+    modifier:'daycare_cost_up', modDesc:'Day Care actions cost +1 this run.' },
+  { name:'Fisherman',  img:'', hp:22, tier:'normal', hpEmoji:'🎣', hpName:'Reel',     hpDesc:'Draw 2 cards.',
+    modifier:'water_no_bonus', modDesc:'Water Pokémon deal no bonus damage.' },
+  { name:'Sailor',     img:'', hp:22, tier:'normal', hpEmoji:'⚓', hpName:'Anchor',   hpDesc:'Give a card +1 ATK.',
+    modifier:'taunt_disabled', modDesc:'Taunt & defensive traits disabled.' },
+  { name:'Hiker',      img:'', hp:22, tier:'normal', hpEmoji:'🥾', hpName:'Climb',    hpDesc:'Gain 2 extra score.',
+    modifier:'rock_no_bonus', modDesc:'Rock/Ground Pokémon deal no bonus damage.' },
+  { name:'Bird Keeper',img:'', hp:24, tier:'normal', hpEmoji:'🦅', hpName:'Swoop',    hpDesc:'Deal 2 damage to a card.',
+    modifier:'flying_half', modDesc:'Flying Pokémon lose 50% effectiveness.' },
+  { name:'Engineer',   img:'', hp:24, tier:'normal', hpEmoji:'🔧', hpName:'Tune',     hpDesc:'Give a card +2 HP.',
+    modifier:'adaptive_disabled', modDesc:'Adaptive/Steel traits disabled.' },
+  { name:'Gambler',    img:'', hp:24, tier:'normal', hpEmoji:'🎲', hpName:'Bet',      hpDesc:'Random outcome: +/- score.',
+    modifier:'random_card_no_effect', modDesc:'One random hand card loses its bonus.' },
+  { name:'Super Nerd', img:'', hp:24, tier:'normal', hpEmoji:'🤓', hpName:'Analyze',  hpDesc:'Preview top card of deck.',
+    modifier:'fusion_quality_off', modDesc:'Fusion quality bonuses disabled.' },
+  { name:'Scientist',  img:'', hp:26, tier:'normal', hpEmoji:'🧪', hpName:'Mutate',   hpDesc:'Transform a card randomly.',
+    modifier:'unstable_no_bonus', modDesc:'Unstable fusions lose bonus effects.' },
+  { name:'Burglar',    img:'', hp:26, tier:'normal', hpEmoji:'🔦', hpName:'Steal',    hpDesc:'Steal $1 from you.',
+    modifier:'lose_gold_2', modDesc:'Lose $2 after this battle.' },
+  { name:'Juggler',    img:'', hp:26, tier:'normal', hpEmoji:'🤹', hpName:'Juggle',   hpDesc:'Shuffle 2 cards in hand.',
+    modifier:'retrigger_half', modDesc:'Retrigger chance halved this battle.' },
+  { name:'Channeler',  img:'', hp:26, tier:'normal', hpEmoji:'🔮', hpName:'Séance',   hpDesc:'Ghost effect activates.',
+    modifier:'mystic_half', modDesc:'Mystic/Ghost effects weakened by 50%.' },
+  { name:'Pokémaniac', img:'', hp:28, tier:'normal', hpEmoji:'🧠', hpName:'Obsess',   hpDesc:'Buff a random Pokémon.',
+    modifier:'evolution_minus30', modDesc:'Evolution hands score -30%.' },
+  { name:'Black Belt', img:'', hp:28, tier:'normal', hpEmoji:'🥊', hpName:'Focus',    hpDesc:'Give a card Double Strike.',
+    modifier:'powerhouse_weak', modDesc:'Powerhouse/Fighting effects weakened.' },
+  { name:'Tamer',      img:'', hp:28, tier:'normal', hpEmoji:'🦁', hpName:'Tame',     hpDesc:'Buff an opposing card.',
+    modifier:'final_evo_weak', modDesc:'Final evolutions lose 25% effectiveness.' },
+  { name:'Swimmer',    img:'', hp:28, tier:'normal', hpEmoji:'🏊', hpName:'Dive',     hpDesc:'Shuffle your hand.',
+    modifier:'each_hand_minus10', modDesc:'Each hand after the first scores -10%.' },
+  { name:'Cue Ball',   img:'', hp:30, tier:'normal', hpEmoji:'🎱', hpName:'Strike',   hpDesc:'Deal 3 damage.',
+    modifier:'aggressive_weak', modDesc:'Aggressive traits weakened this battle.' },
+  { name:'Rocket Grunt',img:'',hp:30, tier:'normal', hpEmoji:'🚀', hpName:'Enforce', hpDesc:'Disable one of your cards for 1 turn.',
+    modifier:'random_card_disabled', modDesc:'One random card is disabled this battle.' },
+
+  // ── ELITE TRAINERS (tier 2) ────────────────────────────────────
+  { name:'Ace Trainer', img:'', hp:35, tier:'elite', hpEmoji:'🏆', hpName:'Master',   hpDesc:'Boost the best hand type.',
+    modifier:'best_hand_disabled', modDesc:'Your highest-scoring hand type is disabled.' },
+  { name:'Cooltrainer', img:'', hp:35, tier:'elite', hpEmoji:'😎', hpName:'Chill',    hpDesc:'Freeze scaling for 1 turn.',
+    modifier:'scaling_frozen', modDesc:'All scaling effects frozen — growth stops.' },
+  { name:'Veteran',     img:'', hp:38, tier:'elite', hpEmoji:'🎖️', hpName:'Experience',hpDesc:'Gain a bonus item.',
+    modifier:'fusion_quality_off', modDesc:'Fusion quality bonuses disabled.' },
+  { name:'Elite Scientist',img:'',hp:40,tier:'elite',hpEmoji:'⚗️','hpName':'Formula', hpDesc:'Combine two effects.',
+    modifier:'one_trait_only', modDesc:'Only one inherited trait works per fusion.' },
+  { name:'Elite Psychic',img:'',hp:40,tier:'elite', hpEmoji:'🧿', hpName:'Amplify',   hpDesc:'XMult boosted briefly.',
+    modifier:'xmult_minus75', modDesc:'XMult effects reduced by 75%.' },
+  { name:'Elite Black Belt',img:'',hp:42,tier:'elite',hpEmoji:'🥋','hpName':'Iron Fist',hpDesc:'Powerhouse boost.',
+    modifier:'powerhouse_disabled', modDesc:'Powerhouse traits fully disabled.' },
+  { name:'Elite Breeder',img:'',hp:42,tier:'elite',hpEmoji:'🥚','hpName':'Hatch',    hpDesc:'Add an evolution card.',
+    modifier:'evolution_disabled', modDesc:'Evolution bonuses fully disabled.' },
+  { name:'Elite Executive',img:'',hp:45,tier:'elite',hpEmoji:'👔','hpName':'Order',  hpDesc:'Disrupt your items.',
+    modifier:'random_item_disabled', modDesc:'One random item disabled this battle.' },
+
+  // ── GYM LEADERS (boss tier) ────────────────────────────────────
+  { name:'Brock',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Brock.png',
+    hp:38, tier:'boss', hpEmoji:'🪨', hpName:'Fortify', hpDesc:'Give a friendly card +2 max HP.',
+    modifier:'fusion_quality_off', modDesc:'No Fusion Quality bonuses. Natural/Stable/Unstable all disabled.' },
+  { name:'Misty',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Misty.png',
+    hp:44, tier:'boss', hpEmoji:'🌊', hpName:'Surf',    hpDesc:'Deal 1 damage to ALL cards.',
+    modifier:'most_common_type_off', modDesc:'Your most common type is disabled. Punishes Type Specialist.' },
+  { name:'Lt. Surge',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Surge.png',
+    hp:48, tier:'boss', hpEmoji:'⚡', hpName:'Zap',     hpDesc:'Give a card +1 ATK.',
+    modifier:'first_card_disabled', modDesc:'First card played each hand is disabled. Forces different ordering.' },
+  { name:'Erika',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Erika.png',
+    hp:50, tier:'boss', hpEmoji:'🌸', hpName:'Bloom',   hpDesc:'Heal 4 HP.',
+    modifier:'scaling_frozen', modDesc:'No scaling allowed. Growth traits frozen, permanent gains paused.' },
+  { name:'Koga',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Koga.png',
+    hp:54, tier:'boss', hpEmoji:'☠️', hpName:'Toxic',   hpDesc:'Deal 1 damage to all cards.',
+    modifier:'decay_per_hand', modDesc:'Every hand scores 15% less than the previous. Rewards burst scoring.' },
+  { name:'Sabrina', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Sabrina.png',
+    hp:58, tier:'boss', hpEmoji:'🔮', hpName:'Foresight',hpDesc:'Draw an extra card.',
+    modifier:'best_trait_off', modDesc:'Highest scoring trait disabled. Whatever contributes most gets shut off.' },
+  { name:'Blaine',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Blaine.png',
+    hp:62, tier:'boss', hpEmoji:'🔥', hpName:'Ignite',  hpDesc:'Deal 2 damage to a random card.',
+    modifier:'max_4_cards', modDesc:'Only 4 cards may be played per hand. Huge hand restriction.' },
+  { name:'Giovanni',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Giovanni.png',
+    hp:70, tier:'boss', hpEmoji:'💀', hpName:'Dominate',hpDesc:'Give all friendly cards +1 ATK permanently.',
+    modifier:'item_and_card_off', modDesc:'One random item disabled. One random fusion card disabled.' },
 ];
+
+// ── BATTLE SEQUENCE: canonical Kanto route order ─────────────────
+function getTrainerByName(name) {
+  return TRAINERS.find(t=>t.name===name) ||
+         TRAINERS.find(t=>t.name.replace(/[^a-z]/gi,'').toLowerCase()===name.replace(/[^a-z]/gi,'').toLowerCase()) ||
+         TRAINERS.find(t=>t.tier==='normal');
+}
+function pickFrom(names) {
+  const sh = a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;};
+  // Try exact name match first, then partial match
+  const pool = names.map(n=>{
+    return TRAINERS.find(t=>t.name===n) ||
+           TRAINERS.find(t=>t.name.toLowerCase()===n.toLowerCase()) ||
+           TRAINERS.find(t=>t.tier==='normal'); // fallback to any normal trainer
+  }).filter(Boolean);
+  return sh(pool).slice(0, Math.min(pool.length, 2+Math.floor(Math.random()*2)));
+}
+function buildBattleSequence() {
+  const brock    = getTrainerByName('Brock');
+  const misty    = getTrainerByName('Misty');
+  const surge    = getTrainerByName('Lt. Surge')||getTrainerByName('Surge');
+  const erika    = getTrainerByName('Erika');
+  const koga     = getTrainerByName('Koga');
+  const sabrina  = getTrainerByName('Sabrina');
+  const blaine   = getTrainerByName('Blaine');
+  const giovanni = getTrainerByName('Giovanni');
+  const seq = [
+    // Before Brock
+    ...pickFrom(['Youngster','Bug Catcher','Lass','Camper','Picnicker']),
+    brock,
+    // Before Misty
+    ...pickFrom(['Hiker','Super Nerd','Rocket Grunt','Lass','Bug Catcher']),
+    misty,
+    // Before Surge
+    ...pickFrom(['Sailor','Fisherman','Engineer','Bird Keeper','Rocket Grunt']),
+    surge,
+    // Before Erika
+    ...pickFrom(['Hiker','Picnicker','Camper','Pokémaniac','Gambler','Rocket Grunt']),
+    erika,
+    // Before Koga
+    ...pickFrom(['Channeler','Pokémaniac','Rocket Grunt','Juggler','Burglar','Scientist']),
+    koga,
+    // Before Sabrina
+    ...pickFrom(['Black Belt','Tamer','Bird Keeper','Fisherman','Swimmer']),
+    sabrina,
+    // Before Blaine
+    ...pickFrom(['Swimmer','Burglar','Tamer','Scientist','Super Nerd','Cue Ball']),
+    blaine,
+    // Before Giovanni
+    ...pickFrom(['Ace Trainer','Cooltrainer','Black Belt','Tamer','Scientist','Rocket Grunt']),
+    giovanni,
+  ].filter(t => t && t.name); // remove any undefined entries
+  return seq;
+}
+let BATTLE_SEQUENCE = buildBattleSequence();
+function getCurrentTrainer() {
+  return BATTLE_SEQUENCE[G.trainerIdx] || BATTLE_SEQUENCE[BATTLE_SEQUENCE.length-1];
+}
+
+// Active modifier for current battle
+let G_modifier = null;
+
+function applyBattleModifier(trainer) {
+  G_modifier = trainer.modifier || null;
+  // Apply immediate effects
+  if(G_modifier === 'lose_gold_2') return; // applied post-battle
+  if(G_modifier === 'draw_minus1') { /* handled in draw logic */ }
+}
+
+function getModifierMultiplier(handNum) {
+  if(!G_modifier) return 1.0;
+  if(G_modifier === 'first_hand_minus20' && handNum === 1) return 0.8;
+  if(G_modifier === 'each_hand_minus10') return Math.max(0.3, 1.0 - (handNum-1)*0.1);
+  if(G_modifier === 'evolution_minus30') return 0.7; // checked separately per hand type
+  if(G_modifier === 'swarm_minus20') return 0.8; // checked per hand type
+  if(G_modifier === 'decay_per_hand') return Math.max(0.15, 1.0 - (handNum-1)*0.15);
+  return 1.0;
+}
+
+function isHandTypeDisabled(handName) {
+  if(!G_modifier) return false;
+  if(G_modifier === 'best_hand_disabled' && handName === G._bestHandType) return true;
+  if(G_modifier === 'evolution_disabled' && handName.includes('Evolution')) return true;
+  if(G_modifier === 'max_4_cards') return false; // handled elsewhere
+  return false;
+}
 
 let G = {
   deck:[], hand:[],
@@ -2095,10 +2274,17 @@ function initGame() {
   const DRAW=8;
   const DRAW_N=8;
   for(let i=0;i<DRAW_N;i++){
-    setTimeout(()=>{ if(G.deck.length){G.hand.push({...G.deck.shift()});renderHand(true);} }, 150+i*180);
+    setTimeout(()=>{
+      if(G.deck.length){
+        G.hand.push({...G.deck.shift()});
+        // Sort hand by current sort mode on each card addition
+        if(G_sort_mode==='type') G.hand.sort((a,b)=>(a.type1||'').localeCompare(b.type1||''));
+        else G.hand.sort((a,b)=>(parseInt(a.dexA)||0)-(parseInt(b.dexA)||0));
+        renderHand(true);
+      }
+    }, 150+i*180);
     setTimeout(()=>{ if(G.theirDeck.length){G.theirHand.push({...G.theirDeck.shift()});renderOppHand(true);} }, 150+i*180);
   }
-  // Ensure hands panel renders after all cards are in hand
   setTimeout(()=>{ if(typeof renderHandsPanel==='function') renderHandsPanel(); }, 150+DRAW_N*180+100);
 }
 // initGame draw complete
@@ -2276,6 +2462,8 @@ function renderHand(animateLast) {
 }
 
 function toggleHandSelect(idx) {
+  // Safety: clear stuck animation flags
+  if(window._reflowAnimating && !G.animating) window._reflowAnimating = false;
   if(!G.ourTurn || G.animating) return;
   const hcEls = [...document.querySelectorAll('#hand-container .hc')];
 
@@ -2374,9 +2562,9 @@ async function discardSelected() {
     if(!orig) return;
     const rect = orig.getBoundingClientRect();
     const ghost = document.createElement('div');
-    ghost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:8px;overflow:hidden;background:#0a0a18;border:2px solid rgba(50,70,140,0.5);z-index:500;pointer-events:none;perspective:600px;transform-style:preserve-3d;transform:rotate(${parseFloat(orig.style.getPropertyValue('--tilt'))||0}deg);box-shadow:0 4px 14px rgba(0,0,0,0.8);will-change:transform,opacity;`;
+    ghost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;border-radius:8px;overflow:hidden;background:#ffffff;border:2px solid rgba(50,70,140,0.8);z-index:500;pointer-events:none;perspective:600px;transform-style:preserve-3d;transform:rotate(${parseFloat(orig.style.getPropertyValue('--tilt'))||0}deg);box-shadow:0 4px 14px rgba(0,0,0,0.8);will-change:transform,opacity;`;
     const artImg = orig.querySelector('.hc-art');
-    if(artImg){ const gi=document.createElement('img');gi.src=artImg.src;gi.draggable=false;gi.style.cssText=`position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);height:100%;width:auto;object-fit:contain;image-rendering:pixelated;`;ghost.appendChild(gi); }
+    if(artImg){ const gi=document.createElement('img');gi.src=artImg.src;gi.draggable=false;gi.style.cssText=`position:absolute;top:6%;bottom:10%;left:50%;transform:translateX(-50%);height:84%;width:auto;object-fit:contain;image-rendering:pixelated;`;ghost.appendChild(gi); }
     orig.querySelectorAll('.hc-type1,.hc-type2').forEach(b=>ghost.appendChild(b.cloneNode(true)));
     document.body.appendChild(ghost);
     orig.style.opacity = '0';
@@ -2639,7 +2827,6 @@ async function animateHandReflow(deadIndices, callback) {
   newEls.forEach(el=>{
     el.style.opacity='1';
     el.style.transition='none';
-    el.style.background='#ffffff'; // force white — body filter can cause navy tint
   });
   void hc.getBoundingClientRect();
 
@@ -2771,46 +2958,264 @@ function openCinnabarMansion() {
   document.getElementById('cinnabar-screen').classList.add('visible');
 }
 
+function buildFusedCard(a, b) {
+  const aHalf = a.name.slice(0, Math.ceil(a.name.length/2));
+  const bHalf = b.name.slice(Math.floor(b.name.length/2));
+  const fusedName = (aHalf + bHalf).replace(/[^a-zA-Z\-']/g,'');
+  const traitsA = typeof getCardTraits==='function' ? getCardTraits(a) : [];
+  const traitsB = typeof getCardTraits==='function' ? getCardTraits(b) : [];
+  return {
+    name: fusedName, img: a.img, fusionImg: b.img,
+    atk: Math.max(a.atk||1, b.atk||1),
+    hp: (a.hp||2)+(b.hp||2), maxHp:(a.hp||2)+(b.hp||2),
+    cost: Math.ceil(((a.cost||2)+(b.cost||2))/2),
+    keywords:[...(a.keywords||[]),...(b.keywords||[])].slice(0,2),
+    dexA:a.dexA, dexB:b.dexA,
+    type1:a.type1, type2:b.type1!==a.type1?b.type1:(b.type2||a.type2),
+    traitA:traitsA[0]||null, traitB:traitsB[0]||null,
+    _isBonusCard:true, canAttack:false, exhausted:true, divineShieldUp:false,
+    attacksLeft:0, frozen:false, stealthed:false,
+    id:Math.random().toString(36).slice(2),
+  };
+}
+
 function updateCinnabarPreview(cards) {
-  const fuseBtn = document.getElementById('cinnabar-fuse-btn');
-  if(_cinnabarSelected.length < 2) {
-    document.getElementById('cinnabar-preview').style.display = 'none';
-    if(fuseBtn) { fuseBtn.style.opacity='0.4'; fuseBtn.style.pointerEvents='none'; }
-    return;
-  }
-  // Generate a fused card from the 2 selected basic cards
+  if(_cinnabarSelected.length < 2) return;
+  // When 2 cards selected: trigger the fusion animation immediately
   const a = cards[_cinnabarSelected[0]];
   const b = cards[_cinnabarSelected[1]];
-  const fusedName = (a.name.slice(0,3) + b.name.slice(-3)).replace(/[^a-zA-Z]/g,'');
-  const fusedCard = {
-    name: fusedName,
-    img: a.img, fusionImg: b.img, // show B as the art
-    atk: Math.max(a.atk||1, b.atk||1),
-    hp: (a.hp||2) + (b.hp||2),
-    maxHp: (a.hp||2) + (b.hp||2),
-    cost: Math.ceil(((a.cost||2) + (b.cost||2)) / 2),
-    keywords: [...(a.keywords||[]), ...(b.keywords||[])].slice(0,2),
-    dexA: a.dexA, dexB: b.dexA,
-    type1: a.type1, type2: b.type1 !== a.type1 ? b.type1 : b.type2,
-    canAttack:false, exhausted:true, divineShieldUp:false,
-    attacksLeft:0, frozen:false, stealthed:false,
-    id: Math.random().toString(36).slice(2),
-  };
-  // Combine sprites: show both pokemon sprites in the card
-  const resultWrap = document.getElementById('cinnabar-result-card');
-  resultWrap.innerHTML = '';
-  const cv = makeCardVisual(fusedCard, 'width:100%;aspect-ratio:2/3;pointer-events:none;');
-  resultWrap.appendChild(cv);
-  document.getElementById('cinnabar-result-name').textContent = fusedName.toUpperCase();
-  document.getElementById('cinnabar-preview').style.display = 'flex';
-  if(fuseBtn) { fuseBtn.style.opacity='1'; fuseBtn.style.pointerEvents='all'; }
-  // Store fused card for confirm
-  window._pendingFusion = fusedCard;
+  window._pendingFusion = buildFusedCard(a, b);
+  runCinnabarFusionAnimation(a, b, cards);
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// CINNABAR FUSION ANIMATION
+// ══════════════════════════════════════════════════════════════
+
+// Direct version: no DOM card elements needed (for testing / programmatic use)
+function runCinnabarFusionAnimationDirect(cardA, cardB) {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  const cw = Math.min(window.innerWidth * 0.22, 170);
+  // Fake the two cards as starting from left/right of centre
+  const fakeA = { left: cx - cw * 2.5, top: cy - cw * 0.75, width: cw, height: cw * 1.5 };
+  const fakeB = { left: cx + cw * 1.5, top: cy - cw * 0.75, width: cw, height: cw * 1.5 };
+  _runFusionCore(cardA, cardB, fakeA, fakeB, null, null, null);
+}
+
+function runCinnabarFusionAnimation(cardA, cardB, allCards) {
+  const screen  = document.getElementById('cinnabar-screen');
+  const row     = document.getElementById('cinnabar-hand-row');
+  if(!row || !screen) { runCinnabarFusionAnimationDirect(cardA, cardB); return; }
+  const allWraps = [...row.querySelectorAll('.card-visual')];
+  const elA = allWraps[_cinnabarSelected[0]];
+  const elB = allWraps[_cinnabarSelected[1]];
+  const rA = elA ? elA.getBoundingClientRect() : null;
+  const rB = elB ? elB.getBoundingClientRect() : null;
+  if(!rA || !rB) { runCinnabarFusionAnimationDirect(cardA, cardB); return; }
+
+  // Fade out unselected cards + UI
+  allWraps.forEach((w,i)=>{ if(!_cinnabarSelected.includes(i)){w.style.transition='opacity 0.3s';w.style.opacity='0';w.style.pointerEvents='none';}});
+  screen.querySelectorAll('.between-title,.between-subtitle,#cinnabar-preview').forEach(el=>{el.style.transition='opacity 0.3s';el.style.opacity='0';});
+  const btns = screen.querySelector('.fusion-btns');
+  if(btns){btns.style.transition='opacity 0.3s';btns.style.opacity='0';}
+  setTimeout(()=>screen.classList.remove('visible'), 100);
+
+  _runFusionCore(cardA, cardB, rA, rB, allWraps, elA, elB);
+}
+
+function _runFusionCore(cardA, cardB, rA, rB, allWraps, elA, elB) {
+  const cx = window.innerWidth  / 2;
+  const cy = window.innerHeight / 2;
+  const cw = Math.min(window.innerWidth * 0.32, 240);
+  const ch = cw * 1.5;
+  const fusedCard = window._pendingFusion;
+
+  // ── Warp filter ─────────────────────────────────────────────
+  const warpDisp = document.querySelector('#crt-warp-filter feDisplacementMap');
+  const warpOrig = warpDisp ? +warpDisp.getAttribute('scale') : 40;
+  let warpT = 0;
+  function animateWarp() {
+    warpT = Math.min(warpT + 0.025, 1);
+    const v = warpOrig + Math.sin(warpT * Math.PI) * 80;
+    if(warpDisp) warpDisp.setAttribute('scale', v.toFixed(1));
+    if(warpT < 1) requestAnimationFrame(animateWarp);
+    else if(warpDisp) warpDisp.setAttribute('scale', warpOrig.toFixed(1));
+  }
+
+  // ── Scanlines ───────────────────────────────────────────────
+  const _sl = document.getElementById('crt-scanlines');
+  if(_sl) { _sl.style.transition='opacity 0.4s'; _sl.style.opacity='0'; }
+  function restoreScanlines() {
+    if(_sl) { _sl.style.transition='opacity 0.5s'; _sl.style.opacity=''; }
+  }
+
+  // ── Dark bg overlay ─────────────────────────────────────────
+  const bg = document.createElement('div');
+  bg.style.cssText = 'position:fixed;inset:0;z-index:2990;background:rgba(4,6,16,0);pointer-events:none;transition:background 0.35s ease;';
+  document.body.appendChild(bg);
+  requestAnimationFrame(()=>{ bg.style.background='rgba(4,6,16,0.92)'; });
+
+  // ── Build a card element (sprite-only, no white bg for evo phase) ──
+  function makeFC(imgSrc, fromX, fromY) {
+    const el = document.createElement('div');
+    el.style.cssText = `position:fixed;width:${cw}px;height:${ch}px;
+      border-radius:10px;overflow:hidden;background:#ffffff;
+      border:2px solid rgba(50,70,140,0.8);
+      box-shadow:0 8px 32px rgba(0,0,0,0.85);
+      will-change:transform,filter;z-index:3000;
+      left:${cx-cw/2}px;top:${cy-ch/2}px;`;
+    const dx = fromX - cx, dy = fromY - cy;
+    el.style.transform = `translate(${dx}px,${dy}px) scale(0.75)`;
+    const img = document.createElement('img');
+    img.src = imgSrc; img.draggable = false;
+    img.style.cssText = 'position:absolute;top:6%;left:50%;transform:translateX(-50%);height:84%;width:auto;object-fit:contain;image-rendering:pixelated;';
+    el.appendChild(img);
+    el._img = img;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  const srcA = cardA.fusionImg || cardA.img || '';
+  const srcB = cardB.fusionImg || cardB.img || '';
+  const srcF = (fusedCard && (fusedCard.fusionImg || fusedCard.img)) || srcA;
+
+  const fromAX = rA.left + rA.width/2,  fromAY = rA.top + rA.height/2;
+  const fromBX = rB.left + rB.width/2,  fromBY = rB.top + rB.height/2;
+
+  const wA = makeFC(srcA, fromAX, fromAY);
+  const wB = makeFC(srcB, fromBX, fromBY);
+
+  // ══ ACT 1: Cards scale up from start positions (200ms) ══════
+  setTimeout(()=>{
+    const sep = cw * 1.1;
+    wA.style.transition = 'transform 280ms cubic-bezier(0.4,0,0.2,1)';
+    wB.style.transition = 'transform 280ms cubic-bezier(0.4,0,0.2,1)';
+    // A on left leaning right, B on right leaning left
+    wA.style.transform = `translate(${-sep}px,0) scale(1) rotate(12deg)`;
+    wB.style.transform = `translate(${sep}px,0) scale(1) rotate(-12deg)`;
+    requestAnimationFrame(animateWarp);
+  }, 100);
+
+  // ══ ACT 2: Both slide to centre, stack, tilt upright (500ms) ═
+  setTimeout(()=>{
+    const DUR = 480;
+    wA.style.transition = `transform ${DUR}ms cubic-bezier(0.6,0,0.2,1)`;
+    wB.style.transition = `transform ${DUR}ms cubic-bezier(0.6,0,0.2,1)`;
+    // A still leans slightly right as it arrives, B slightly left
+    wA.style.transform = 'translate(0,0) scale(1) rotate(6deg)';
+    wB.style.transform = 'translate(0,0) scale(1) rotate(-6deg)';
+    // After they've stacked, straighten up and start evo
+    setTimeout(()=>{
+      wA.style.transition = 'transform 200ms ease';
+      wB.style.transition = 'transform 200ms ease, opacity 150ms ease';
+      wA.style.transform = 'translate(0,0) scale(1) rotate(0deg)';
+      wB.style.transform = 'translate(0,0) scale(1) rotate(0deg)';
+      setTimeout(startEvoPhase, 220);
+    }, DUR + 40);
+  }, 430);
+
+  // ══ ACT 3+4+5: Evolution inside a card ═════════════════════
+  // Card A becomes the vessel. Sprite cycles A → B → Fusion as
+  // black silhouettes, then colorises to reveal fusion.
+  function startEvoPhase() {
+    spinning = false;
+    // Snap to centre, upright
+    wA.style.transition = 'transform 0.1s ease';
+    wB.style.transition = 'transform 0.1s ease, opacity 0.1s';
+    wA.style.transform = 'translate(0,0) scale(1) rotate(0deg)';
+    wB.style.transform = 'translate(0,0) scale(1) rotate(0deg)';
+    wB.style.opacity = '0';
+
+    setTimeout(()=>{
+      wB.remove();
+      // Card stays white with border — silhouette is inside it
+      wA.style.boxShadow = '0 8px 32px rgba(0,0,0,0.9)';
+      // Go to black silhouette immediately — no transition flash
+      wA._img.style.transition = 'none';
+      wA._img.style.filter = 'brightness(0) saturate(0)';
+
+      // Sequence of sprites to cycle through (A, B, A, B, A, B… then F)
+      // Each swap is instant (no flash — just img src change while black)
+      const sprites = [srcA, srcB, srcA, srcB, srcA, srcB, srcA, srcB, srcA, srcB, srcF];
+      const CYCLE_MS = 200; // how long each sprite shows while black
+      let step = 0;
+
+      function cycleSprite() {
+        if(step >= sprites.length - 1) {
+          // Last one is fusion — reveal it in colour
+          evoReveal();
+          return;
+        }
+        step++;
+        // Swap src while filter is already brightness(0) — invisible change
+        wA._img.src = sprites[step];
+        setTimeout(cycleSprite, CYCLE_MS);
+      }
+
+      // Start cycling after a short settle
+      setTimeout(cycleSprite, 300);
+    }, 150);
+  }
+
+  // ══ Reveal: transition from black silhouette to full colour ═
+  function evoReveal() {
+    wA._img.style.transition = 'filter 0.7s ease';
+    wA._img.style.filter = 'brightness(1) saturate(1)';
+    wA.style.transition = 'background 0.5s, border 0.4s';
+    wA.style.background = '#ffffff';
+    wA.style.border = '2px solid rgba(50,70,140,0.8)';
+    restoreScanlines();
+
+    // Pop once colour is in, then auto-advance after 1s
+    setTimeout(()=>{
+      bg.remove();
+      wA.style.transition = 'transform 0.18s cubic-bezier(0.2,1.6,0.3,1)';
+      wA.style.transform = 'translate(0,0) scale(1.13) rotate(0deg)';
+      setTimeout(()=>{
+        wA.style.transition = 'transform 0.14s cubic-bezier(0.4,0,0.6,1)';
+        wA.style.transform = 'translate(0,0) scale(1) rotate(0deg)';
+      }, 180);
+      setTimeout(()=>{
+        wA.style.transition = 'opacity 0.3s ease';
+        wA.style.opacity = '0';
+        setTimeout(()=>{ wA.remove(); confirmFusion(); }, 320);
+      }, 1000);
+    }, 750);
+  }
+}
+
+// ── Fusion result: just the card + one button ─────────────────
+function showFusionResult(fusedCard) {
+  if(!fusedCard) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:3500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(16px,3vh,32px);opacity:0;transition:opacity 0.4s ease;pointer-events:all;';
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=>{ overlay.style.opacity='1'; });
+
+  const cw2 = Math.min(window.innerWidth*0.32, 195);
+  const cardEl = makeCardVisual(fusedCard, `width:${cw2}px;aspect-ratio:2/3;`);
+  cardEl.style.cssText += ';opacity:0;transform:scale(0.75);transition:opacity 0.5s 0.1s ease,transform 0.5s 0.1s cubic-bezier(0.2,1.4,0.3,1);';
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'action-btn play';
+  addBtn.style.cssText += ';opacity:0;transition:opacity 0.4s 0.4s ease;font-size:clamp(9px,1vw,13px);';
+  addBtn.textContent = 'ADD TO DECK';
+  addBtn.onclick = ()=>{ overlay.remove(); confirmFusion(); };
+
+  overlay.append(cardEl, addBtn);
+
+  requestAnimationFrame(()=>{
+    setTimeout(()=>{ cardEl.style.opacity='1'; cardEl.style.transform='scale(1)'; }, 100);
+    setTimeout(()=>{ addBtn.style.opacity='1'; }, 400);
+  });
 }
 
 function confirmFusion() {
   if(!window._pendingFusion) return;
-  G.deck.push({...window._pendingFusion});
+  G.bonusCards.push({...window._pendingFusion, _isBonusCard:true});
+  G.deck.push({...window._pendingFusion, id:Math.random().toString(36).slice(2)});
   shuffle(G.deck);
   window._pendingFusion = null;
   _cinnabarSelected = [];
@@ -3082,8 +3487,7 @@ function showHandScore(handName, chips, mult, totalDmg, cards) {
     font-family:'PokemonClassic',monospace; font-size:clamp(16px,2.2vw,32px);
     color:#ffdd66; text-shadow:2px 2px 0 #000, 0 0 24px rgba(255,200,0,0.6);
     letter-spacing:3px; text-align:center;
-    background:rgba(0,0,0,0.8); padding:8px 28px; border-radius:8px;
-    border:2px solid rgba(255,210,0,0.4);
+    padding:8px 28px;
     animation:scorePop 0.35s cubic-bezier(0.2,1.4,0.3,1) forwards;
   `;
   nameBanner.textContent = handName.toUpperCase();
@@ -3161,6 +3565,13 @@ async function playSelectedHand() {
 
   // Deduct hand, update run stats
   G.handsLeft = Math.max(0, G.handsLeft - 1);
+  const _handNum = 4 - G.handsLeft; // which hand in this battle (1,2,3)
+  // Apply trainer modifier multiplier
+  let _modMult = 1.0;
+  if(typeof getModifierMultiplier === 'function') _modMult = getModifierMultiplier(_handNum);
+  const _isDisabled = typeof isHandTypeDisabled==='function' && isHandTypeDisabled(result?.name||'');
+  if(_isDisabled) { totalDmg = 0; showHandScore(result.name+' DISABLED', 0, 0, 0, selectedCards); }
+  else if(_modMult !== 1.0) { totalDmg = Math.round(totalDmg * _modMult); }
   G.roundScore += totalDmg;
   G.roundChips = chips;
   G.roundMult = mult;
@@ -3188,8 +3599,8 @@ async function playSelectedHand() {
       `width:${r.width}px`,`height:${r.height}px`,
       `left:${r.left}px`,`top:${r.top}px`,
       'border-radius:8px','overflow:hidden',
-      'background:#1a1a1a',
-      'border:none',
+      'background:#ffffff',
+      'border:2px solid rgba(50,70,140,0.8)',
       'box-shadow:0 4px 14px rgba(0,0,0,0.8)',
       'pointer-events:none',
       'transition:none',
@@ -3202,7 +3613,7 @@ async function playSelectedHand() {
     if(img) {
       const gi = document.createElement('img');
       gi.src = img.src;
-      gi.style.cssText = 'position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);height:100%;width:auto;object-fit:contain;image-rendering:pixelated;';
+      gi.style.cssText = 'position:absolute;top:6%;bottom:10%;left:50%;transform:translateX(-50%);height:84%;width:auto;object-fit:contain;image-rendering:pixelated;';
       ghost.appendChild(gi);
     }
     // Copy type badge
@@ -3353,7 +3764,7 @@ let _daycareCardIdx = null;
 const CARD_XP = {}; // cardId -> xp
 
 function getInterludeType() {
-  const idx = G.trainerIdx - 1; // trainer was already incremented
+  const idx = G.trainerIdx - 1;
   return INTERLUDE_SEQUENCE[Math.max(0, Math.min(idx, INTERLUDE_SEQUENCE.length-1))];
 }
 
@@ -3417,9 +3828,8 @@ function openRouteScreen() {
 
 function confirmRoutePick() {
   if(!_routePicked) return;
-  G.bonusCards.push(FUSIONS.find(f=>f.name===_routePicked.name)||FUSIONS[0]);
-  G.deck.push({...mkCard(FUSIONS.find(f=>f.name===_routePicked.name)||FUSIONS[0])});
-  shuffle(G.deck);
+  // Store the full card object — works for both fusion and basic cards
+  G.bonusCards.push({..._routePicked, _isBonusCard:true});
   closeInterludeScreens();
   startNextBattle();
 }
@@ -3491,7 +3901,7 @@ function confirmDaycareAction(card) {
     if(bi>-1) G.bonusCards.splice(bi,1);
   } else if(_daycareAction === 'breed') {
     const f = FUSIONS.find(f=>f.name===card.name)||FUSIONS[0];
-    G.bonusCards.push(f);
+    G.bonusCards.push(f); // fusion object — handled in startNextBattle
     G.deck.push({...mkCard(f)}); shuffle(G.deck);
   } else if(_daycareAction === 'training') {
     CARD_XP[card.name] = (CARD_XP[card.name]||0) + 1;
@@ -3519,6 +3929,7 @@ function closeInterludeScreens() {
   document.getElementById('route-screen')?.classList.remove('visible');
   document.getElementById('daycare-screen')?.classList.remove('visible');
   document.getElementById('shop-screen')?.classList.add('hidden');
+  document.getElementById('cinnabar-screen')?.classList.remove('visible');
 }
 
 function hideGameUIForInterlude() {
@@ -3535,13 +3946,24 @@ function hideGameUIForInterlude() {
 function makeCardVisual(card, sizeCss) {
   const el = document.createElement('div');
   el.className = 'card-visual';
+  // Idle float animation vars (same stagger logic as hand cards)
+  const tilt = (Math.random()-0.5)*4;
+  const floatDur = 2.8 + Math.random()*1.2;
+  const floatDelay = -(Math.random()*floatDur);
+  el.style.setProperty('--tilt', tilt+'deg');
+  el.style.setProperty('--float-dur', floatDur.toFixed(2)+'s');
+  el.style.setProperty('--float-delay', floatDelay.toFixed(2)+'s');
+  el.classList.add('cv-floating');
   if(sizeCss) el.style.cssText += sizeCss;
+
   const art = document.createElement('img');
   art.className = 'cv-art'; art.draggable = false;
   removeWhiteBg(card.fusionImg||card.img, url=>{art.src=url;});
   el.appendChild(art);
+
   if(card.type1) { const t=typeBadge(card.type1,'hc-type1'); el.appendChild(t); }
   if(card.type2) { const t=typeBadge(card.type2,'hc-type2'); el.appendChild(t); }
+
   return el;
 }
 
@@ -3840,16 +4262,16 @@ async function dealFromDeckToHand(destEl, card, side, cardTilt, cardIndex) {
   ghostWrap.style.cssText = `position:fixed;left:${deckCx}px;top:${deckCy}px;z-index:999;pointer-events:none;`;
   const ghost = document.createElement('div');
   ghost.className = 'deal-ghost';
-  ghost.style.cssText = `position:relative;width:${nominalW}px;aspect-ratio:2/3;transform-origin:50% 110%;transform-style:preserve-3d;border-radius:8px;overflow:hidden;background:#0a0a18;border:2px solid #334488;box-shadow:0 4px 20px rgba(0,0,0,0.85);will-change:transform,opacity;perspective:800px;`;
+  ghost.style.cssText = `position:relative;width:${nominalW}px;aspect-ratio:2/3;transform-origin:50% 110%;transform-style:preserve-3d;border-radius:8px;overflow:hidden;background:#ffffff;border:2px solid rgba(50,70,140,0.8);box-shadow:0 4px 20px rgba(0,0,0,0.85);will-change:transform,opacity;perspective:800px;`;
 
   // Back face
   const back = document.createElement('div');
-  back.style.cssText = `position:absolute;inset:0;border-radius:7px;background:repeating-linear-gradient(135deg,#1a1060 0,#1a1060 6px,#110a44 6px,#110a44 12px);backface-visibility:visible;`;
+  back.style.cssText = `position:absolute;inset:0;border-radius:7px;background:#ffffff;backface-visibility:visible;`;
   ghost.appendChild(back);
 
   // Front face (card art)
   const frontFace = document.createElement('div');
-  frontFace.style.cssText = `position:absolute;inset:0;border-radius:7px;background:#0a0a18;backface-visibility:hidden;opacity:0;`;
+  frontFace.style.cssText = `position:absolute;inset:0;border-radius:7px;background:#ffffff;backface-visibility:hidden;opacity:0;`;
   if(isOurs && card){
     const img = document.createElement('img'); img.draggable=false;
     img.style.cssText=`position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);height:100%;width:auto;object-fit:contain;image-rendering:pixelated;`;
@@ -4169,11 +4591,11 @@ async function attackTrainer(srcIdx) {
 }
 
 async function advanceTrainer() {
-  const t=TRAINERS[G.trainerIdx];
-  G.trainerIdx = Math.min(G.trainerIdx + 1, TRAINERS.length - 1);
-  G.gold = (G.gold||0) + 4 + G.trainerIdx; // more gold vs harder gyms
+  const t=getCurrentTrainer();
+  G.trainerIdx = G.trainerIdx + 1;
+  G.gold = (G.gold||0) + 4 + Math.floor(G.trainerIdx/3);
   await delay(500);
-  if(G.trainerIdx >= TRAINERS.length){ G.trainerIdx = TRAINERS.length-1; setTimeout(returnToMap,800); return; }
+  if(G.trainerIdx >= BATTLE_SEQUENCE.length){ G.trainerIdx = BATTLE_SEQUENCE.length-1; setTimeout(returnToMap,800); return; }
   setTimeout(openInterlude, 800);
 }
 
@@ -4411,7 +4833,7 @@ async function animateOppPlay(card){}
 // ── HERO POWER (player's removed; opp's kept for future use) ──
 function useHeroPower(){ /* Player hero power removed */ }
 function useOppHeroPower(){
-  const trainer=TRAINERS[G.trainerIdx];
+  const trainer=getCurrentTrainer();
   const board=G.theirBoard.filter(c=>c);
   const ourBoard=G.ourBoard.filter(c=>c);
   switch(G.trainerIdx){
@@ -4431,7 +4853,7 @@ function useOppHeroPower(){
 function updateRunPanel() {
   const panel = document.getElementById('run-panel');
   if(!panel || panel.style.display === 'none') return;
-  const trainer = TRAINERS[G.trainerIdx] || TRAINERS[0];
+  const trainer = getCurrentTrainer() || TRAINERS[0];
   // Portrait
   const trainerName = document.getElementById('rp-trainer-name');
   const trainerHpEl = document.getElementById('rp-trainer-hp');
@@ -4471,14 +4893,14 @@ function initHpTooltips(){
     oppBtn.style.pointerEvents='all';
     oppBtn.style.cursor='help';
     oppBtn.addEventListener('pointerenter',()=>{
-      const t=TRAINERS[G.trainerIdx]||TRAINERS[0];
+      const t=getCurrentTrainer()||TRAINERS[0];
       showHpTip(t.hpName||'Hero Power', t.hpDesc||'', t.hpCost||2, oppBtn);
     });
   }
 }
 
 function updatePortraits(){
-  const t=TRAINERS[G.trainerIdx]||TRAINERS[0];
+  const t=getCurrentTrainer()||TRAINERS[0];
   const trainerHpEl2=document.getElementById('rp-trainer-hp'); if(trainerHpEl2) trainerHpEl2.textContent='❤️ '+G.trainerHp+' / '+G.trainerMaxHp;
   const hpBar2=document.getElementById('rp-hp-bar'); if(hpBar2) hpBar2.style.width=Math.max(0,(G.trainerHp/G.trainerMaxHp)*100)+'%';
   updateRunPanel();
@@ -4731,6 +5153,211 @@ function fusionsByDex(dexNums) {
 }
 
 // Helper: build a 52-card deck from weighted pool
+
+
+// ── POKÉMON TRAIT TABLE ───────────────────────────────────────
+// Each entry: [trait_type, value, description]
+const POKEMON_TRAITS = {
+  'Bulbasaur':   ['Growth',      2,    '+2 Mult permanently when scored'],
+  'Ivysaur':     ['Growth',      3,    '+3 Mult permanently when scored'],
+  'Venusaur':    ['Growth',      5,    '+5 Mult permanently when scored'],
+  'Charmander':  ['Aggressive',  15,   '+15 Chips'],
+  'Charmeleon':  ['Aggressive',  30,   '+30 Chips'],
+  'Charizard':   ['Powerhouse',  8,    '+8 Mult'],
+  'Squirtle':    ['Defensive',   1,    '+1 Hand size'],
+  'Wartortle':   ['Defensive',   2,    '+2 Hand size'],
+  'Blastoise':   ['Support',     15,   'Other played cards gain +15 Chips'],
+  'Caterpie':    ['Swarm',       10,   '+10 Chips per duplicate Pokémon'],
+  'Metapod':     ['Defensive',   25,   'Reduce boss penalties by 25%'],
+  'Butterfree':  ['Support',     2,    'Other cards gain +2 Mult'],
+  'Weedle':      ['Swarm',       10,   '+10 Chips per matching species'],
+  'Kakuna':      ['Defensive',   15,   '+15% chance to avoid negative effects'],
+  'Beedrill':    ['Swarm',       20,   '+20 Chips per matching Pokémon'],
+  'Pidgey':      ['Aggressive',  10,   '+10 Chips'],
+  'Pidgeotto':   ['Aggressive',  25,   '+25 Chips'],
+  'Pidgeot':     ['Powerhouse',  7,    '+7 Mult'],
+  'Rattata':     ['Aggressive',  10,   '+10 Chips'],
+  'Raticate':    ['Aggressive',  25,   '+25 Chips'],
+  'Spearow':     ['Aggressive',  15,   '+15 Chips'],
+  'Fearow':      ['Powerhouse',  6,    '+6 Mult'],
+  'Ekans':       ['Trickster',   10,   '10% retrigger chance'],
+  'Arbok':       ['Trickster',   20,   '20% retrigger chance'],
+  'Pikachu':     ['Growth',      1,    '+1 Chip every scored hand'],
+  'Raichu':      ['Powerhouse',  6,    '+6 Mult'],
+  'Sandshrew':   ['Defensive',   25,   '+25 Chips'],
+  'Sandslash':   ['Defensive',   50,   '+50 Chips'],
+  'Nidoran-F':   ['Growth',      1,    '+1 Mult every round'],
+  'Nidorina':    ['Growth',      2,    '+2 Mult every round'],
+  'Nidoqueen':   ['Support',     3,    'Other cards gain +3 Mult'],
+  'Nidoran-M':   ['Aggressive',  20,   '+20 Chips'],
+  'Nidorino':    ['Aggressive',  35,   '+35 Chips'],
+  'Nidoking':    ['Powerhouse',  9,    '+9 Mult'],
+  'Clefairy':    ['Support',     15,   '+15 Chips to all cards'],
+  'Clefable':    ['Mystic',      1.25, 'X1.25 Mult'],
+  'Vulpix':      ['Trickster',   15,   '15% chance to duplicate effect'],
+  'Ninetales':   ['Mystic',      1.35, 'X1.35 Mult'],
+  'Jigglypuff':  ['Support',     1,    '+1 Hand size'],
+  'Wigglytuff':  ['Support',     2,    '+2 Hand size'],
+  'Zubat':       ['Swarm',       10,   '+10 Chips per matching type'],
+  'Golbat':      ['Swarm',       25,   '+25 Chips per matching type'],
+  'Oddish':      ['Growth',      1,    '+1 Mult per round'],
+  'Gloom':       ['Growth',      2,    '+2 Mult per round'],
+  'Vileplume':   ['Support',     25,   'Buff all Grass cards +25 Chips'],
+  'Paras':       ['Swarm',       10,   '+10 Chips per duplicate'],
+  'Parasect':    ['Swarm',       25,   '+25 Chips per duplicate'],
+  'Venonat':     ['Trickster',   10,   '10% retrigger'],
+  'Venomoth':    ['Trickster',   25,   '25% retrigger'],
+  'Diglett':     ['Swarm',       15,   '+15 Chips per matching species'],
+  'Dugtrio':     ['Swarm',       40,   '+40 Chips per matching species'],
+  'Meowth':      ['Wealth',      1,    '+$1 when scored'],
+  'Persian':     ['Wealth',      2,    '+$2 when scored'],
+  'Psyduck':     ['Mystic',      1.1,  'X1.1 Mult'],
+  'Golduck':     ['Mystic',      1.25, 'X1.25 Mult'],
+  'Mankey':      ['Aggressive',  20,   '+20 Chips'],
+  'Primeape':    ['Powerhouse',  7,    '+7 Mult'],
+  'Growlithe':   ['Aggressive',  25,   '+25 Chips'],
+  'Arcanine':    ['Powerhouse',  10,   '+10 Mult'],
+  'Poliwag':     ['Growth',      1,    '+1 Mult per round'],
+  'Poliwhirl':   ['Growth',      2,    '+2 Mult per round'],
+  'Poliwrath':   ['Powerhouse',  8,    '+8 Mult'],
+  'Abra':        ['Mystic',      1.15, 'X1.15 Mult'],
+  'Kadabra':     ['Mystic',      1.3,  'X1.3 Mult'],
+  'Alakazam':    ['Mystic',      1.5,  'X1.5 Mult'],
+  'Machop':      ['Aggressive',  25,   '+25 Chips'],
+  'Machoke':     ['Aggressive',  45,   '+45 Chips'],
+  'Machamp':     ['Powerhouse',  12,   '+12 Mult'],
+  'Bellsprout':  ['Growth',      1,    '+1 Mult per round'],
+  'Weepinbell':  ['Growth',      2,    '+2 Mult per round'],
+  'Victreebel':  ['Powerhouse',  8,    '+8 Mult'],
+  'Tentacool':   ['Defensive',   15,   '+15 Chips'],
+  'Tentacruel':  ['Support',     25,   'Buff Water cards +25 Chips'],
+  'Geodude':     ['Defensive',   30,   '+30 Chips'],
+  'Graveler':    ['Defensive',   50,   '+50 Chips'],
+  'Golem':       ['Defensive',   80,   '+80 Chips'],
+  'Ponyta':      ['Aggressive',  25,   '+25 Chips'],
+  'Rapidash':    ['Powerhouse',  7,    '+7 Mult'],
+  'Slowpoke':    ['Defensive',   1,    '+1 Hand size'],
+  'Slowbro':     ['Support',     3,    '+3 Mult to other cards'],
+  'Magnemite':   ['Adaptive',    0,    'Counts as Electric or Steel'],
+  'Magneton':    ['Adaptive',    0,    'Counts as 2 types'],
+  "Farfetch'd":  ['Trickster',   20,   '20% chance copy effect'],
+  'Doduo':       ['Swarm',       15,   '+15 Chips'],
+  'Dodrio':      ['Swarm',       40,   '+40 Chips'],
+  'Seel':        ['Defensive',   25,   '+25 Chips'],
+  'Dewgong':     ['Defensive',   60,   '+60 Chips'],
+  'Grimer':      ['Trickster',   15,   '15% retrigger'],
+  'Muk':         ['Trickster',   30,   '30% retrigger'],
+  'Shellder':    ['Defensive',   30,   '+30 Chips'],
+  'Cloyster':    ['Defensive',   75,   '+75 Chips'],
+  'Gastly':      ['Trickster',   15,   '15% retrigger'],
+  'Haunter':     ['Trickster',   25,   '25% retrigger'],
+  'Gengar':      ['Trickster',   40,   '40% retrigger'],
+  'Onix':        ['Defensive',   100,  '+100 Chips'],
+  'Drowzee':     ['Mystic',      1.15, 'X1.15 Mult'],
+  'Hypno':       ['Mystic',      1.35, 'X1.35 Mult'],
+  'Krabby':      ['Aggressive',  25,   '+25 Chips'],
+  'Kingler':     ['Powerhouse',  8,    '+8 Mult'],
+  'Voltorb':     ['Trickster',   15,   '15% retrigger'],
+  'Electrode':   ['Trickster',   35,   '35% retrigger'],
+  'Exeggcute':   ['Support',     10,   '+10 Chips to all cards'],
+  'Exeggutor':   ['Mystic',      1.3,  'X1.3 Mult'],
+  'Cubone':      ['Growth',      2,    '+2 Mult per round'],
+  'Marowak':     ['Powerhouse',  8,    '+8 Mult'],
+  'Hitmonlee':   ['Aggressive',  50,   '+50 Chips'],
+  'Hitmonchan':  ['Support',     20,   'Buff adjacent cards +20 Chips'],
+  'Lickitung':   ['Support',     1,    '+1 Hand size'],
+  'Koffing':     ['Trickster',   20,   '20% retrigger'],
+  'Weezing':     ['Trickster',   35,   '35% retrigger'],
+  'Rhyhorn':     ['Defensive',   50,   '+50 Chips'],
+  'Rhydon':      ['Powerhouse',  10,   '+10 Mult'],
+  'Chansey':     ['Wealth',      3,    '+$3 when scored'],
+  'Tangela':     ['Growth',      2,    '+2 Mult per round'],
+  'Kangaskhan':  ['Support',     20,   'Buff all cards +20 Chips'],
+  'Horsea':      ['Growth',      1,    '+1 Mult per round'],
+  'Seadra':      ['Powerhouse',  7,    '+7 Mult'],
+  'Goldeen':     ['Aggressive',  20,   '+20 Chips'],
+  'Seaking':     ['Powerhouse',  6,    '+6 Mult'],
+  'Staryu':      ['Adaptive',    0,    'Counts as any type'],
+  'Starmie':     ['Adaptive',    0,    'Counts as any type + retrigger'],
+  'Mr. Mime':    ['Trickster',   25,   '25% copy effect'],
+  'Scyther':     ['Powerhouse',  10,   '+10 Mult'],
+  'Jynx':        ['Mystic',      1.25, 'X1.25 Mult'],
+  'Electabuzz':  ['Powerhouse',  8,    '+8 Mult'],
+  'Magmar':      ['Powerhouse',  8,    '+8 Mult'],
+  'Pinsir':      ['Powerhouse',  10,   '+10 Mult'],
+  'Tauros':      ['Aggressive',  50,   '+50 Chips'],
+  'Magikarp':    ['Growth',      5,    '+5 Chips every round'],
+  'Gyarados':    ['Powerhouse',  15,   '+15 Mult'],
+  'Lapras':      ['Support',     2,    '+2 Hand size'],
+  'Ditto':       ['Adaptive',    0,    'Counts as any Pokémon'],
+  'Eevee':       ['Adaptive',    0,    'Counts as any evolution'],
+  'Vaporeon':    ['Support',     30,   'Buff Water cards +30 Chips'],
+  'Jolteon':     ['Powerhouse',  10,   '+10 Mult'],
+  'Flareon':     ['Powerhouse',  10,   '+10 Mult'],
+  'Porygon':     ['Adaptive',    0,    'Copies one trait'],
+  'Omanyte':     ['Ancient',     50,   '+50 Chips'],
+  'Omastar':     ['Ancient',     100,  '+100 Chips'],
+  'Kabuto':      ['Ancient',     50,   '+50 Chips'],
+  'Kabutops':    ['Ancient',     120,  '+120 Chips'],
+  'Aerodactyl':  ['Ancient',     150,  '+150 Chips'],
+  'Snorlax':     ['Defensive',   100,  '+100 Chips'],
+  'Articuno':    ['Legendary',   1.5,  'X1.5 Mult'],
+  'Zapdos':      ['Legendary',   1.5,  'X1.5 Mult'],
+  'Moltres':     ['Legendary',   1.5,  'X1.5 Mult'],
+  'Dratini':     ['Growth',      2,    '+2 Mult per round'],
+  'Dragonair':   ['Growth',      4,    '+4 Mult per round'],
+  'Dragonite':   ['Powerhouse',  15,   '+15 Mult'],
+  'Mewtwo':      ['Legendary',   2.0,  'X2 Mult'],
+  'Mew':         ['Legendary',   1.75, 'X1.75 Mult'],
+};
+
+const TRAIT_COLORS = {
+  'Growth':      '#44cc44',
+  'Aggressive':  '#ff4422',
+  'Powerhouse':  '#ff6600',
+  'Defensive':   '#3399ff',
+  'Support':     '#dd88ff',
+  'Swarm':       '#ffaa00',
+  'Trickster':   '#cc44cc',
+  'Mystic':      '#7755ff',
+  'Wealth':      '#ffdd00',
+  'Adaptive':    '#44dddd',
+  'Ancient':     '#aa8833',
+  'Legendary':   '#ff4499',
+};
+
+function getCardTraits(card) {
+  // Returns array of trait objects for a card (up to 2 for fusion)
+  const traits = [];
+  if(card.dexA && KANTO_BY_DEX[parseInt(card.dexA)]) {
+    const name = KANTO_BY_DEX[parseInt(card.dexA)].name;
+    if(POKEMON_TRAITS[name]) traits.push({name, ...Object.fromEntries([['type',POKEMON_TRAITS[name][0]],['value',POKEMON_TRAITS[name][1]],['desc',POKEMON_TRAITS[name][2]]])});
+  }
+  if(card.dexB && KANTO_BY_DEX[parseInt(card.dexB)]) {
+    const name = KANTO_BY_DEX[parseInt(card.dexB)].name;
+    if(POKEMON_TRAITS[name]) traits.push({name, ...Object.fromEntries([['type',POKEMON_TRAITS[name][0]],['value',POKEMON_TRAITS[name][1]],['desc',POKEMON_TRAITS[name][2]]])});
+  }
+  // Also check by card name for basic cards
+  if(!traits.length && POKEMON_TRAITS[card.name]) {
+    const t = POKEMON_TRAITS[card.name];
+    traits.push({name:card.name, type:t[0], value:t[1], desc:t[2]});
+  }
+  return traits.slice(0, 2);
+}
+
+function renderTraitBadges(card, container) {
+  const traits = getCardTraits(card);
+  if(!traits.length) return;
+  traits.forEach(t => {
+    const badge = document.createElement('span');
+    badge.style.cssText = `display:inline-block;font-family:'PokemonClassic',monospace;font-size:6px;
+      padding:1px 4px;border-radius:3px;letter-spacing:0.5px;color:#fff;white-space:nowrap;
+      background:${TRAIT_COLORS[t.type]||'#555'};opacity:0.9;margin:1px;`;
+    badge.textContent = t.type.toUpperCase();
+    badge.title = t.desc;
+    container.appendChild(badge);
+  });
+}
 
 // ── Kanto Pokémon data (dex 1–151) ────────────────────────────────
 const KANTO_POKEMON = [
@@ -5470,7 +6097,7 @@ function startNextBattle() {
   const shopScreen = document.getElementById('shop-screen');
   if (shopScreen) shopScreen.classList.add('hidden');
   // Show game UI for next battle
-  const trainer = TRAINERS[G.trainerIdx];
+  const trainer = getCurrentTrainer();
   G.trainerHp = trainer.hp; G.trainerMaxHp = trainer.hp;
   G.ourBoard = new Array(6).fill(null);
   G.theirBoard = new Array(4).fill(null);
@@ -5481,7 +6108,10 @@ function startNextBattle() {
   const starterBase = G._starterDeckCards && G._starterDeckCards.length
     ? G._starterDeckCards.map(c=>({...c,id:Math.random().toString(36).slice(2)}))
     : shuffle(FUSIONS.map(mkCard));
-  const bonusCopies = G.bonusCards.map(f => mkCard(f));
+  // bonusCards can be full card objects (_isBonusCard) or fusion objects
+  const bonusCopies = G.bonusCards.map(f =>
+    f._isBonusCard ? {...f, id:Math.random().toString(36).slice(2)} : mkCard(f)
+  );
   G.deck = shuffle([...starterBase, ...bonusCopies]);
   // Reset round counters
   G.handsLeft = 3;
@@ -5566,6 +6196,23 @@ function startNextBattle() {
 </div>
 
 <!-- ── DAY CARE SCREEN ── -->
+
+<!-- ── CINNABAR MANSION SCREEN ── -->
+<div id="cinnabar-screen" class="between-screen">
+  <div class="between-title">CINNABAR MANSION</div>
+  <div class="between-subtitle" style="margin-bottom:clamp(12px,2vh,24px);">SELECT 2 POKÉMON TO FUSE</div>
+  <div id="cinnabar-hand-row" style="display:flex;gap:clamp(8px,1.5vw,20px);flex-wrap:wrap;justify-content:center;align-items:flex-end;margin-bottom:clamp(12px,2vh,24px);overflow:visible;padding:10px 0;max-width:min(95vw,800px);"></div>
+  <div id="cinnabar-preview" style="display:none;flex-direction:column;align-items:center;gap:10px;margin-bottom:16px;">
+    <div style="font-family:'PokemonClassic',monospace;font-size:clamp(8px,0.9vw,11px);color:#ff8833;letter-spacing:2px;">✨ FUSION RESULT</div>
+    <div id="cinnabar-result-card" style="width:clamp(90px,10vw,130px);"></div>
+    <div id="cinnabar-result-name" style="font-family:'PokemonClassic',monospace;font-size:clamp(9px,0.95vw,13px);color:#ffdd66;letter-spacing:2px;"></div>
+  </div>
+  <div style="display:flex;gap:12px;margin-top:8px;align-items:center;">
+    <button id="cinnabar-fuse-btn" class="action-btn play" onclick="confirmFusion()" style="opacity:0.4;pointer-events:none;font-size:clamp(8px,0.9vw,12px);">FUSE</button>
+    <button onclick="skipCinnabar()" style="font-family:'PokemonClassic',monospace;font-size:clamp(8px,0.9vw,12px);padding:10px 20px;background:rgba(20,30,60,0.85);border:1px solid rgba(60,90,180,0.5);border-radius:6px;color:#7799bb;cursor:pointer;letter-spacing:1px;">SKIP →</button>
+  </div>
+</div>
+
 <div id="daycare-screen" class="between-screen">
   <div class="between-title">DAY CARE CENTER</div>
   <div class="between-subtitle">NURTURE YOUR POKÉMON</div>
