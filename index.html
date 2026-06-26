@@ -226,7 +226,7 @@ html { overflow: hidden; }
 }
 .hc:hover {
   transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 6px)) scale(1.03) rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)) !important;
-  z-index:100 !important; box-shadow:0 10px 22px rgba(0,0,0,0.9);
+  z-index:200 !important; box-shadow:0 10px 22px rgba(0,0,0,0.9);
   transition:transform 0.08s ease, box-shadow 0.1s !important;
 }
 .hc-select-ring {
@@ -840,14 +840,14 @@ html { overflow: hidden; }
   background:transparent; display:block; z-index:1;
 }
 .card-visual:hover { transform:translateY(-10px) scale(1.06) rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)); border-color:rgba(255,210,80,0.6); box-shadow:0 12px 26px rgba(0,0,0,0.95); z-index:10; transition:transform 0.08s ease, border-color 0.15s !important; }
-.card-visual.cv-selected { border-color:#ffdd00 !important; box-shadow:0 0 0 2px #ffdd00,0 0 18px rgba(255,210,0,0.5) !important; transform:translateY(-12px) scale(1.07) !important; }
+.card-visual.cv-selected { border-color:rgba(100,180,255,0.9) !important; box-shadow:0 0 0 2px rgba(80,150,255,0.8),0 0 22px rgba(80,140,255,0.45),0 8px 24px rgba(0,0,0,0.9) !important; transform:scale(1.06) !important; filter:brightness(1.08) !important; z-index:10 !important; }
 
 /* ── DECK VIEWER SCREEN ── */
 #deck-viewer {
   position:fixed; inset:0; z-index:1500; display:none;
   flex-direction:column; align-items:center; justify-content:flex-start;
   padding:0;
-  background:rgba(4,6,18,0.97); overflow:hidden;
+  background:transparent; overflow:hidden;
   font-family:'PokemonClassic',monospace;
   pointer-events:all;
 }
@@ -1809,17 +1809,17 @@ void main(){
 
 
 <!-- Portrait rotation overlay -->
-<div id="rotate-overlay" style="display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:15vh;gap:24px;font-family:'PokemonClassic',monospace;color:#ffdd66;text-align:center;pointer-events:all;" onclick="if(document.getElementById('rot-step2').style.display!=='none'){ if(typeof SFX!=='undefined') SFX.confirm(); tryFullscreen();}">
+<div id="rotate-overlay" style="display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;font-family:'PokemonClassic',monospace;color:#ffdd66;text-align:center;pointer-events:all;" onclick="if(document.getElementById('rot-step2').style.display!=='none'){ if(typeof SFX!=='undefined') SFX.confirm(); tryFullscreen();}">
   <!-- Scanlines overlay (CRT effect inside overlay) -->
   <div style="position:absolute;inset:0;z-index:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.15) 0px,rgba(0,0,0,0.15) 2px,transparent 2px,transparent 4px);mix-blend-mode:multiply;"></div>
   <!-- Semi-transparent bg so the bg canvas shows through -->
   <div style="position:absolute;inset:0;background:rgba(4,6,16,0.75);z-index:0;"></div>
   <!-- Step 1: rotate -->
-  <div id="rot-step1" style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+  <div id="rot-step1" style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;flex:1;">
     <div style="font-size:20px;letter-spacing:3px;color:#ffdd66;">ROTATE YOUR DEVICE</div>
   </div>
   <!-- Step 2: fullscreen (tap anywhere) -->
-  <div id="rot-step2" style="display:none;position:relative;z-index:1;flex-direction:column;align-items:center;gap:16px;">
+  <div id="rot-step2" style="display:none;position:relative;z-index:1;flex-direction:column;align-items:center;gap:16px;margin-top:28vh;">
     <div style="font-size:20px;letter-spacing:3px;color:#ffdd66;animation:fullscreenPulse 1.4s ease infinite;">GO FULL SCREEN</div>
     <div style="font-size:9px;color:#aabbcc;letter-spacing:1px;margin-top:4px;">(TAP THE SCREEN)</div>
   </div>
@@ -1846,15 +1846,15 @@ function checkOrientationStep() {
   if(!isMobile) { overlay.style.display='none'; if(gw) gw.style.visibility=''; return; }
   if(isPortrait) {
     overlay.style.display='flex';
-    if(gw) gw.style.visibility='hidden';
+    // gameWrap stays visible — overlay covers it at z-index:9999
     document.getElementById('rot-step1').style.display='flex';
     document.getElementById('rot-step2').style.display='none';
   } else {
-    // Landscape: show "GO FULL SCREEN" prompt — user taps to trigger
+    // Landscape: show fullscreen prompt ON TOP of game — don't hide gameWrap
     overlay.style.display='flex';
     document.getElementById('rot-step1').style.display='none';
     document.getElementById('rot-step2').style.display='flex';
-    if(gw) gw.style.visibility='hidden';
+    if(gw) gw.style.visibility=''; // keep game visible underneath
   }
 }
 function tryFullscreen() {
@@ -1880,6 +1880,9 @@ function isFullscreen() {
 function onFullscreenChange() {
   if(isFullscreen()) {
     document.getElementById('rotate-overlay').style.display='none';
+    const gw2=document.getElementById('gameWrap'); if(gw2) gw2.style.visibility='';
+  } else {
+    setTimeout(checkOrientationStep, 300);
   }
 }
 ['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach(e=>
@@ -2637,7 +2640,7 @@ function makeHcEl(card, i, isHidden) {
   el.style.setProperty('--dx', '0px');
   el.style.setProperty('--dy', '0px');
   // Position-aware z-index: base order preserved, selected cards lift above unselected
-  el.style.zIndex = G_selected.has(i) ? (50 + i) : (2 + i);
+  el.style.zIndex = G_selected.has(i) ? (110 + i) : (2 + i);
   if(G_selected.has(i)) el.classList.add('selected-hand');
   if(isHidden) { el.style.visibility = 'hidden'; el.style.pointerEvents = 'none'; }
   const art = document.createElement('img');
@@ -2710,7 +2713,7 @@ function toggleHandSelect(idx) {
     }
     G_selected.add(idx);
     const elA = hcEls[idx];
-    if(elA) { elA.classList.remove('selected-hand'); elA.classList.add('selected-hand'); elA.style.zIndex = 50 + idx; }
+    if(elA) { elA.classList.remove('selected-hand'); elA.classList.add('selected-hand'); elA.style.zIndex = 110 + idx; }
     if(typeof SFX!=='undefined') SFX.cardSelect();
   }
   // Update action bar without rebuilding hand DOM
@@ -2969,18 +2972,21 @@ async function animateHandReflow(deadIndices, callback) {
     }
   });
 
-  // ── Step 5: rebuild DOM in sorted order ───────────────────────
-  hc.innerHTML='';
+  // ── Step 5: rebuild DOM — set FLIP offsets BEFORE first paint ──
+  // We use visibility:hidden on the container momentarily so the
+  // instant-reposition never flashes to the user.
+  hc.style.visibility = 'hidden';
+  hc.innerHTML = '';
   window._reflowAnimating = true;
+
   const allNewEls = G.hand.map((card,i)=>{
     const el = makeHcEl(card,i,false);
-    // Do NOT add hc-floating yet — would start animation before FLIP offsets are set
     el._addFloatAfterFlip = false;
     hc.appendChild(el);
     return el;
   });
 
-  // Force layout so final positions are computed
+  // Force layout to get final positions while still hidden
   void hc.getBoundingClientRect();
 
   // ── Step 6: Deck position (source of new cards) ───────────────
@@ -2993,25 +2999,23 @@ async function animateHandReflow(deadIndices, callback) {
   const existingEls = allNewEls.filter((_,i)=>!newCards.includes(G.hand[i]));
   const newEls      = allNewEls.filter((_,i)=> newCards.includes(G.hand[i]));
 
-  // ── PHASE 1: existing cards slide to sorted positions (300ms) ──
-  // New card elements stay invisible during this phase
+  // New cards stay invisible during phase 1
   newEls.forEach(el=>{
     el.style.opacity='0';
     el.style.pointerEvents='none';
   });
 
-  // Read final positions and compute FLIP offsets for existing cards
+  // Read final (target) positions for existing cards
   const existingFinals = existingEls.map(el=>{
     const r=el.getBoundingClientRect();
     return {cx:r.left+r.width/2, cy:r.top+r.height/2};
   });
 
+  // Apply FLIP offsets — cards start at their OLD positions
   existingEls.forEach((el,i)=>{
     const card=G.hand[allNewEls.indexOf(el)];
     const fromCx = cardToCx.get(card) ?? existingFinals[i].cx;
-    const delta = fromCx - existingFinals[i].cx; // positive = came from right
-    // Tilt: moving right → lean right (+), moving left → lean left (-)
-    // Add small random variance (±1.5deg)
+    const delta = fromCx - existingFinals[i].cx;
     const rng = (Math.random()-0.5)*3;
     const tiltDeg = (delta > 0 ? 4 : delta < 0 ? -4 : 0) + rng;
     el.style.setProperty('--dx', delta+'px');
@@ -3019,7 +3023,10 @@ async function animateHandReflow(deadIndices, callback) {
     el.style.setProperty('--slide-tilt', tiltDeg+'deg');
     el.style.transition='none';
   });
+
+  // NOW unhide — cards are already at their old visual positions via --dx
   void hc.getBoundingClientRect();
+  hc.style.visibility = '';
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
 
   // Animate existing cards to final positions with motion tilt
@@ -4218,4 +4225,151 @@ const TRAINER_DIALOGUE = {
   ],
   'Cooltrainer': [
     "RELAX. I\'LL MAKE THIS QUICK.",
-    "HEARD YOU WERE SOMETHING SPECIAL. I\
+    "HEARD YOU WERE SOMETHING SPECIAL. I\'VE HEARD THAT BEFORE.",
+    "MY TEAM IS OPTIMISED. YOURS IS... CREATIVE. WE\'LL SEE HOW THAT GOES.",
+  ],
+  'Veteran': [
+    "I REMEMBER WHEN TRAINERS ACTUALLY TRAINED. WHAT HAPPENED TO THAT?",
+    "THIRTY YEARS ON THESE ROUTES. NOTHING SURPRISES ME ANYMORE.",
+    "LOSE TO A KID? NOT TODAY. NOT AFTER EVERYTHING I\'VE SEEN.",
+  ],
+  'Elite Scientist': [
+    "PROJECT LAZARUS IS CLASSIFIED. ALL YOU NEED TO KNOW IS THAT IT WORKED.",
+    "MEWTWO WAS JUST THE BEGINNING. MY WORK GOES MUCH FURTHER.",
+    "YOUR FUSION CARDS ARE PRIMITIVE COMPARED TO WHAT I\'VE CREATED IN THE LAB.",
+  ],
+  'Elite Psychic': [
+    "I ALREADY KNOW HOW THIS ENDS. I\'M SIMPLY BEING POLITE.",
+    "YOUR NEXT MOVE IS... YES. EXACTLY WHAT I THOUGHT.",
+    "THE MIND IS THE STRONGEST MUSCLE. MINE IS VERY, VERY FIT.",
+  ],
+  'Elite Black Belt': [
+    "POWER WITHOUT DISCIPLINE IS NOTHING. OBSERVE DISCIPLINE.",
+    "I HAVE TRAINED AT EVERY DOJO FROM VERMILION TO SAFFRON.",
+    "FIGHTING SPIRIT IS THE FINAL EVOLUTION. I HAVE ACHIEVED IT.",
+  ],
+  'Elite Breeder': [
+    "EVERY POKÉMON ON MY TEAM WAS BRED FOR ONE PURPOSE: TO WIN.",
+    "NATURE. IV\'S. EV\'S. I UNDERSTOOD THESE THINGS BEFORE ANYONE ELSE.",
+    "YOUR FUSIONS INTEREST ME. BUT BREEDING IS AN OLDER AND WISER ART.",
+  ],
+  'Elite Executive': [
+    "TEAM ROCKET DOES NOT FAIL. INDIVIDUALS FAIL. THE ORGANISATION ENDURES.",
+    "GIOVANNI BUILT SOMETHING THAT CANNOT BE STOPPED. I AM THE PROOF.",
+    "YOU THINK YOU\'RE FIGHTING A GRUNT? YOU\'RE FIGHTING THE MACHINE.",
+  ],
+  // GYM LEADERS
+  'Brock': [
+    "I\'M BROCK! I\'M THE GYM LEADER HERE! MY ROCK-HARD WILL IS AS SOLID AS BOULDERS!",
+    "NOTHING GETS THROUGH ROCK. NOT WATER. NOT GRASS. NOT YOUR LITTLE CARD TRICKS.",
+    "I\'VE TRAINED ON THESE VERY MOUNTAINS SINCE I WAS OLD ENOUGH TO HOLD A POKÉ BALL.",
+  ],
+  'Misty': [
+    "PREPARE YOURSELF! I\'M THE WORLD-FAMOUS BEAUTY, MISTY! I SPECIALIZE IN WATER-TYPE POKÉMON!",
+    "MY CERULEAN GYM HAS STOOD UNDEFEATED SINCE BEFORE YOU WERE BORN. ALMOST.",
+    "STARMIE IS A MYSTERY EVEN TO ME. THAT\'S WHAT MAKES US PERFECT TOGETHER.",
+  ],
+  'Lt. Surge': [
+    "HEY BABY! WANT TO FEEL WHAT REAL POWER IS LIKE? MY POKÉMON WILL SHOW YOU!",
+    "BACK IN THE WAR, ELECTRIC POKÉMON SAVED MY LIFE MORE THAN ONCE. I OWE THEM EVERYTHING.",
+    "NOBODY LEAVES VERMILION GYM WITHOUT A LIGHTNING BOLT MEMORY!",
+  ],
+  'Erika': [
+    "OH MY... I DOZED OFF FOR A MOMENT. SHALL WE BEGIN? MY GRASS TYPES HAVE BEEN PATIENT.",
+    "THIS GYM DOUBLES AS A TEA HOUSE. PERHAPS AFTER YOUR DEFEAT WE CAN SHARE A CUP.",
+    "VILEPLUME IS BLOOMING TODAY. THAT\'S ALWAYS A GOOD SIGN FOR US AND A BAD ONE FOR YOU.",
+  ],
+  'Koga': [
+    "FWAHAHAHA! PREPARE YOURSELF FOR THE ULTIMATE BATTLING EXPERIENCE!",
+    "POISON SEEPS IN SLOWLY. BY THE TIME YOU NOTICE, IT IS ALREADY TOO LATE.",
+    "SILENCE. STILLNESS. POISON. THESE ARE THE WEAPONS OF THE TRUE NINJA.",
+  ],
+  'Sabrina': [
+    "I HAD A VISION OF THIS BATTLE. YOU DIDN\'T WIN THERE EITHER.",
+    "MY PSYCHIC POWERS TELL ME EVERYTHING ABOUT YOU. EVERYTHING.",
+    "ALAKAZAM\'S IQ IS 5000. YOU CANNOT OUTWIT IT. DO NOT TRY.",
+  ],
+  'Blaine': [
+    "HAHAHA! MY FIERY POKÉMON WILL MAKE YOU FEEL THE HEAT!",
+    "RIDDLE ME THIS: WHAT BURNS HOTTER THAN THE SUN AND SLOWER THAN YOU\'LL LOSE? MY ARCANINE!",
+    "I BUILT THIS GYM ON A VOLCANO. DOES THAT TELL YOU SOMETHING ABOUT MY PERSONALITY?",
+  ],
+  'Giovanni': [
+    "SO. YOU MADE IT THIS FAR. IMPRESSIVE. FUTILE, BUT IMPRESSIVE.",
+    "TEAM ROCKET IS NOT A GANG. IT IS AN ORGANISATION. THERE IS A DIFFERENCE. YOU WON\'T UNDERSTAND IT.",
+    "I HAVE DEDICATED MY LIFE TO THE PURSUIT OF POWER. STAND ASIDE OR BE CRUSHED. CHOOSE.",
+  ],
+};
+
+// How many times we've clicked the portrait this battle
+let _dialogueIdx = 0;
+
+let _dialogueDismissTimer = null;
+
+function showTrainerDialogue(trainerName) {
+  const lines = TRAINER_DIALOGUE[trainerName];
+  const bubble = document.getElementById('trainer-dialogue');
+  const nameEl = document.getElementById('trainer-dialogue-name');
+  const textEl = document.getElementById('trainer-dialogue-text');
+  const inner  = document.getElementById('trainer-dialogue-inner');
+  if(!bubble || !nameEl || !textEl || !inner) return;
+  if(!lines || !lines.length) return;
+
+  const line = lines[_dialogueIdx % lines.length];
+  _dialogueIdx++;
+
+  nameEl.textContent = trainerName.toUpperCase();
+  textEl.textContent = line;
+
+  console.log('[DIALOGUE] Showing:', trainerName, '|', line.slice(0,40));
+  // Show + reset opacity first, then animate in
+  bubble.style.display = 'block';
+  bubble.style.opacity = '1';
+  bubble.style.transition = 'none';
+  inner.style.animation = 'none';
+  inner.style.opacity = '0';
+  inner.style.transform = 'translateX(-6px)';
+  // Force reflow then animate
+  void bubble.offsetWidth;
+  inner.style.transition = 'opacity 0.2s ease, transform 0.2s cubic-bezier(0.2,1.4,0.3,1)';
+  inner.style.opacity = '1';
+  inner.style.transform = 'translateX(0)';
+
+  if(_dialogueDismissTimer) clearTimeout(_dialogueDismissTimer);
+  _dialogueDismissTimer = setTimeout(() => {
+    bubble.style.transition = 'opacity 0.35s ease';
+    bubble.style.opacity = '0';
+    setTimeout(() => {
+      bubble.style.display = 'none';
+      bubble.style.transition = '';
+      inner.style.transition = '';
+    }, 380);
+  }, 4200);
+}
+
+function hideTrainerDialogue() {
+  const bubble = document.getElementById('trainer-dialogue');
+  if(bubble) { bubble.style.display = 'none'; bubble.style.opacity = '0'; }
+  if(_dialogueDismissTimer) { clearTimeout(_dialogueDismissTimer); _dialogueDismissTimer = null; }
+}
+
+// Reset dialogue index at start of each battle
+function resetDialogue() { _dialogueIdx = 0; }
+
+function evaluateHand(cards) {
+  if(!cards || cards.length === 0) return null;
+  const n = cards.length;
+
+  // Gather dex pairs for each card
+  const dexPairs = cards.map(cardDexNums);
+  const allDex = dexPairs.flat();
+  const types = cards.map(c => c.type1);
+  const type2s = cards.map(c => c.type2);
+
+  // Count dex occurrences
+  const dexCount = {};
+  allDex.forEach(d => { if(d) dexCount[d] = (dexCount[d]||0)+1; });
+  const maxShared = Math.max(0, ...Object.values(dexCount));
+
+  // Count how many CARDS share a given dex number (not raw occurrences)
+  // cardDexShar
