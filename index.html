@@ -369,6 +369,7 @@ html { overflow: hidden; }
   display:flex; flex-direction:row; justify-content:center; align-items:flex-end;
   padding-bottom:0; pointer-events:none; z-index:100; overflow:visible;
   perspective:900px;
+  touch-action:none;
 }
 .hc {
   --slide-dx:0px;
@@ -382,6 +383,7 @@ html { overflow: hidden; }
   background:#ffffff;
   border:2px solid rgba(50,70,140,0.8); box-shadow:0 4px 14px rgba(0,0,0,0.8);
   user-select:none;
+  touch-action:none;
 }
 .hc:hover {
   transform: rotate(var(--tilt,0deg)) translateX(calc(var(--dx,0px) + var(--slide-dx,0px))) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 6px)) scale(1.03) rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)) !important;
@@ -581,7 +583,7 @@ body.hand-dragging .hc:hover {
 #item-popover.visible { opacity:1; }
 /* ── OWNED ITEMS panel (top-right) ── */
 #owned-items-panel {
-  position:fixed; top:82px; right:12px; z-index:111;
+  position:fixed; top:62px; right:12px; z-index:111;
   display:none; flex-direction:column; gap:5px; align-items:flex-end;
   max-width:clamp(160px,16vw,220px); pointer-events:all;
   font-family:'PokemonClassic',monospace;
@@ -1520,7 +1522,15 @@ body.hand-dragging .hc:hover {
 
   /* ── Left panel ── */
   #run-panel  { width:clamp(110px,20vw,150px) !important; gap:4px !important; left:6px !important; top:6px !important; }
-  #rp-hand-preview { display:none !important; }
+  #rp-hand-preview { display:inline-flex !important; padding:5px 8px !important; min-height:0 !important; }
+  /* Show opp HP in run-panel on mobile */
+  #mobile-opp-hp { display:block !important; margin-top:4px; }
+  /* Hide the opp HP strip from centre-screen on mobile (it's now in run-panel) */
+  #opp-pokemon-hp-strip { display:none !important; }
+  /* Music button: top-right, LEFT of items label on mobile */
+  #rotom-widget { position:fixed !important; top:10px !important; bottom:auto !important;
+    right:calc(6px + clamp(130px,20vw,180px) + 8px) !important; left:auto !important; }
+  #owned-items-panel { right:6px !important; top:10px !important; }
   #rp-portrait { flex-direction:row !important; align-items:stretch !important; gap:0 !important; }
   #rp-portrait-img-wrap { width:56px !important; min-width:56px !important; height:auto !important; aspect-ratio:1/1 !important; flex-shrink:0 !important; border-radius:8px 0 0 8px !important; border:none !important; overflow:hidden !important; }
   #rp-portrait-img-wrap img { width:100% !important; height:100% !important; object-fit:cover !important; transform:scale(3.0) !important; transform-origin:center 45% !important; }
@@ -2175,6 +2185,15 @@ document.addEventListener('keydown',e=>{
     <div id="rp-hand-preview-label">Selected Hand</div>
     <div id="rp-hand-name" class="no-hand">—</div>
   </div>
+  <!-- Mobile: opp HP bar lives here on small screens -->
+  <div id="mobile-opp-hp" style="display:none;">
+    <div id="mobile-opp-hp-label" style="display:flex;justify-content:space-between;font-family:'PokemonClassic',monospace;font-size:clamp(6px,0.7vw,8px);color:#ff8888;letter-spacing:1px;margin-bottom:2px;">
+      <span>❤ OPP</span><span id="mobile-opp-hp-text">— / —</span>
+    </div>
+    <div style="height:5px;background:rgba(40,8,8,0.8);border-radius:3px;overflow:hidden;border:1px solid rgba(255,40,40,0.2);">
+      <div id="mobile-opp-hp-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#cc1100,#ff3322 40%,#ff6644 80%,#ffaa44);border-radius:3px;transition:width 0.5s cubic-bezier(0.4,0,0.2,1);"></div>
+    </div>
+  </div>
   <!-- Hands/Discards moved to bottom-left fixed element -->
 </div>
 
@@ -2201,7 +2220,7 @@ document.addEventListener('keydown',e=>{
 <!-- sits to the right of hd-row at same bottom position, managed by show/hideRotomRadio --></div><!-- /hd-row -->
 
 <!-- ── MUSIC TOGGLE BUTTON ── -->
-<div id="rotom-widget" style="display:none;position:fixed;z-index:200;top:52px;right:12px;font-family:'PokemonClassic',monospace;">
+<div id="rotom-widget" style="display:none;position:fixed;z-index:200;top:10px;right:12px;font-family:'PokemonClassic',monospace;">
   <div id="rotom-box" onclick="rotomToggle()" title="Toggle Music"
     style="border-radius:8px;padding:8px 14px;cursor:pointer;
            background:#0a1a33;border:2px solid #1a3366;
@@ -2940,15 +2959,9 @@ function updateActionBar() {
   if(labelEl) labelEl.textContent = 'Playing';
   if(!nameEl) { updatePlayHandBtn(); return; }
 
-  if(sel === 0) {
-    if(labelEl) labelEl.textContent = 'Selected Hand';
-    nameEl.innerHTML = '<div>—</div>';
-    nameEl.className = 'no-hand';
-    nameEl.style.fontSize = '';
-    if(_activeHandType) { _activeHandType = null; renderHandsPanel(); }
-  } else {
-    // Always show first 5 cards
-    const selectedCards = G.hand.slice(0, Math.min(5, G.hand.length));
+  {
+    // Always show first 5 cards regardless of selection state
+    const selectedCards = G.hand ? G.hand.slice(0, Math.min(5, G.hand.length)) : [];
     const result = evaluateHand(selectedCards);
 
     // Build per-card move summary
@@ -4025,7 +4038,7 @@ function showRotomRadio() {
     el.style.display='block';
     // Always top-right, above the items panel
     el.style.right  = '12px';
-    el.style.top    = '52px';
+    el.style.top    = '10px';
     el.style.left   = 'auto';
     el.style.bottom = 'auto';
     el.style.position = 'fixed';
@@ -7094,7 +7107,7 @@ function initHandDrag() {
     if(G.animating || !G.ourTurn) return;
     const cardEl = e.target.closest('.hc');
     if(!cardEl) return;
-
+    e.preventDefault(); // prevent scroll on mobile
     // Capture the pointer so we get all subsequent events even outside the element
     try { cardEl.setPointerCapture(e.pointerId); } catch(err){}
 
@@ -7171,8 +7184,14 @@ function beginHandDrag(cardEl, sx, sy) {
   if(srcBadge) ghost.appendChild(srcBadge.cloneNode(true));
   document.body.appendChild(ghost);
 
-  // Slot card: invisible, keeps full width — layout unchanged
-  cardEl.style.visibility = 'hidden';
+  // Slot card: invisible AND width collapses so neighbours close the gap
+  cardEl.style.transition = 'width 0.15s cubic-bezier(0.4,0,0.2,1), margin 0.15s cubic-bezier(0.4,0,0.2,1), opacity 0.1s ease';
+  cardEl.style.opacity    = '0';
+  cardEl.style.overflow   = 'hidden';
+  requestAnimationFrame(() => {
+    cardEl.style.width  = '0px';
+    cardEl.style.margin = '0';
+  });
 
   _hDrag = {
     cardEl, ghost, idx, insertIdx: idx,
@@ -7271,47 +7290,7 @@ function onHandDragEnd() {
   const to   = Math.max(0, Math.min(d.insertIdx, G.hand.length - 1));
   const els  = [...hc.querySelectorAll('.hc')];
 
-  // Compute step from natural positions
-  const natXs = d.naturalPos
-    .filter((p, i) => i !== from && p)
-    .map(p => p.left)
-    .sort((a, b) => a - b);
-  const step = natXs.length > 1
-    ? (natXs[natXs.length-1] - natXs[0]) / (natXs.length - 1)
-    : d.cardW;
-
-  // FLIP inversion: each card goes from current visual position → final natural position
-  let li = 0;
-  els.forEach((el, domI) => {
-    if(el === d.cardEl) return;
-    const oldLog  = li++;
-    const nat     = d.naturalPos[domI];
-    if(!nat) return;
-    const selTy   = parseFloat(el.style.getPropertyValue('--sel-ty') || '0');
-    const tiltr   = parseFloat(el.style.getPropertyValue('--tilt')   || '0');
-    const curDx   = el._slideDx || 0;     // where it visually is
-    let   finalShift = 0;
-    if(from < to && oldLog >= from && oldLog < to) finalShift = -step;
-    if(from > to && oldLog >= to   && oldLog < from) finalShift = +step;
-    const invertDx = curDx - finalShift;  // push to current visual position
-    el.style.transition = 'none';
-    el.style.transform  = `rotate(${tiltr}deg) translateX(${invertDx}px) translateY(${selTy}px)`;
-    el._slideDx = invertDx;
-  });
-
-  void hc.offsetHeight; // force reflow
-
-  // Animate all cards to final natural positions
-  els.forEach(el => {
-    if(el === d.cardEl) return;
-    const selTy = parseFloat(el.style.getPropertyValue('--sel-ty') || '0');
-    const tiltr = parseFloat(el.style.getPropertyValue('--tilt')   || '0');
-    el.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
-    el.style.transform  = `rotate(${tiltr}deg) translateX(0px) translateY(${selTy}px)`;
-    el._slideDx = 0;
-  });
-
-  // Reorder G.hand
+  // ── Step 1: Reorder G.hand data first ──────────────────────
   if(from !== to) {
     const selCards = new Set(Array.from(G_selected).map(i => G.hand[i]).filter(Boolean));
     const [card] = G.hand.splice(from, 1);
@@ -7320,13 +7299,92 @@ function onHandDragEnd() {
     if(typeof SFX !== 'undefined') SFX.confirm();
   }
 
-  // Ghost fades out
+  // ── Step 2: Move slot card DOM element to new position ──────
+  // Instead of hiding it for 320ms, physically move it now so
+  // it appears at the right place immediately.
+  if(from !== to) {
+    // Remove from current position and insert at target
+    hc.removeChild(d.cardEl);
+    const newEls = [...hc.querySelectorAll('.hc')];
+    // Insert before the element at index `to`, or append if at end
+    const refEl = newEls[to]; // element currently at target index
+    if(refEl) hc.insertBefore(d.cardEl, refEl);
+    else       hc.appendChild(d.cardEl);
+  }
+
+  // ── Step 3: Restore slot card — full width, visible, no transition ─
+  // Restore all collapsed properties instantly so layout is correct for FLIP
+  ['width','margin','opacity','overflow','visibility','transition'].forEach(p => d.cardEl.style.removeProperty(p));
+  d.cardEl.style.transition = 'none';
+  d.cardEl.style.transform  = '';
+  d.cardEl._slideDx = 0;
+  void hc.offsetHeight; // let layout settle with full-width card
+
+  // ── Step 4: FLIP all cards from their slid positions to natural ──
+  // Re-query since DOM changed
+  const allEls = [...hc.querySelectorAll('.hc')];
+  const step = (() => {
+    const xs = d.naturalPos.filter((p,i)=>i!==from&&p).map(p=>p.left).sort((a,b)=>a-b);
+    return xs.length > 1 ? (xs[xs.length-1]-xs[0])/(xs.length-1) : d.cardW;
+  })();
+
+  // Map old DOM indices to new DOM positions
+  // Each non-dragged card shifted by ±1 if it's between from and to
+  let li = 0;
+  const origEls = els; // original DOM order (before removeChild/insertBefore)
+  allEls.forEach(el => {
+    const selTy = parseFloat(el.style.getPropertyValue('--sel-ty') || '0');
+    const tiltr = parseFloat(el.style.getPropertyValue('--tilt')   || '0');
+    if(el === d.cardEl) {
+      // Slot card: was at ghost position. FLIP from ghost pos to natural.
+      const ghostLeft = parseFloat(d.ghost.style.left) || d.slotLeft;
+      const ghostTop  = parseFloat(d.ghost.style.top)  || d.slotTop;
+      const nr = el.getBoundingClientRect();
+      const fdx = ghostLeft - nr.left;
+      const fdy = ghostTop  - nr.top;
+      if(Math.abs(fdx) > 1 || Math.abs(fdy) > 1) {
+        el.style.transition = 'none';
+        el.style.transform  = `rotate(${tiltr}deg) translateX(${fdx}px) translateY(${fdy}px)`;
+      }
+      return;
+    }
+    // Find this element's old slide offset
+    const oldDomI = origEls.indexOf(el);
+    const curDx   = (oldDomI >= 0) ? (el._slideDx || 0) : 0;
+    const oldLog  = li++;
+    let   finalShift = 0;
+    if(from < to && oldLog >= from && oldLog < to) finalShift = -step;
+    if(from > to && oldLog >= to   && oldLog < from) finalShift = +step;
+    const invertDx = curDx - finalShift;
+    el.style.transition = 'none';
+    el.style.transform  = `rotate(${tiltr}deg) translateX(${invertDx}px) translateY(${selTy}px)`;
+    el._slideDx = invertDx;
+  });
+
+  // ── Step 5: Force reflow then play ──────────────────────────
+  void hc.offsetHeight;
+
+  allEls.forEach(el => {
+    const selTy = parseFloat(el.style.getPropertyValue('--sel-ty') || '0');
+    const tiltr = parseFloat(el.style.getPropertyValue('--tilt')   || '0');
+    el.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
+    el.style.transform  = `rotate(${tiltr}deg) translateX(0px) translateY(${selTy}px)`;
+    el._slideDx = 0;
+  });
+
+  // ── Step 6: Ghost fades out simultaneously ───────────────────
   d.ghost.style.transition = 'opacity 0.15s ease';
   d.ghost.style.opacity    = '0';
   setTimeout(() => d.ghost.remove(), 180);
 
-  // Rebuild DOM after animation completes
+  // ── Step 7: Clean up after animation — renderHand for full refresh ──
   setTimeout(() => {
+    // Clear inline transforms left by FLIP
+    [...hc.querySelectorAll('.hc')].forEach(el => {
+      el.style.transform  = '';
+      el.style.transition = '';
+      el._slideDx = 0;
+    });
     renderHand();
     if(typeof renderHandsPanel === 'function') renderHandsPanel();
     updateActionBar();
@@ -7858,18 +7916,25 @@ async function playSelectedHand() {
     const move = getMove(card);
     if(el) {
       el.style.pointerEvents = 'none';
+      // Pause float animation so our transform takes effect
+      el.style.animationPlayState = 'paused';
       const tilt = parseFloat(el.style.getPropertyValue('--tilt') || '0');
-      // Smooth uplift before firing the move
+      const selTy = parseFloat(el.style.getPropertyValue('--sel-ty') || '0');
       el.style.transition = 'transform 0.2s cubic-bezier(0.34,1.4,0.5,1)';
-      el.style.transform  = `rotate(${tilt}deg) translateY(-30px) scale(1.07)`;
-      await delay(170);
+      el.style.transform  = `rotate(${tilt}deg) translateX(0px) translateY(${selTy - 28}px) scale(1.07)`;
+      await delay(180);
     }
     await playMoveAnimation(card, el, move);
     if(el) {
-      const tilt = parseFloat(el.style.getPropertyValue('--tilt') || '0');
+      const tilt  = parseFloat(el.style.getPropertyValue('--tilt') || '0');
+      const selTy = parseFloat(el.style.getPropertyValue('--sel-ty') || '0');
       el.style.transition = 'transform 0.16s cubic-bezier(0.4,0,0.2,1)';
-      el.style.transform  = `rotate(${tilt}deg) translateY(0px)`;
-      setTimeout(() => { el.style.transform=''; el.style.transition=''; el.style.filter=''; el.style.opacity=''; }, 180);
+      el.style.transform  = `rotate(${tilt}deg) translateX(0px) translateY(${selTy}px)`;
+      setTimeout(() => {
+        el.style.transform=''; el.style.transition='';
+        el.style.filter=''; el.style.opacity='';
+        el.style.animationPlayState='';
+      }, 200);
     }
     await delay(80);
   }
@@ -9329,6 +9394,11 @@ function renderOppPokemon() {
   const pct = G.oppPokemonMaxHp>0 ? (G.oppPokemonHp/G.oppPokemonMaxHp*100) : 100;
   if(bar)    bar.style.width = Math.max(0,pct)+'%';
   if(hpText) hpText.textContent = G.oppPokemonHp+' / '+G.oppPokemonMaxHp;
+  // Also update mobile HP bar in run-panel
+  const mBar = document.getElementById('mobile-opp-hp-bar');
+  const mTxt = document.getElementById('mobile-opp-hp-text');
+  if(mBar) mBar.style.width = Math.max(0,pct)+'%';
+  if(mTxt) mTxt.textContent = G.oppPokemonHp+' / '+G.oppPokemonMaxHp;
   // Populate move info panel
   renderOppMovePanel(card, dex);
   updatePokeballs();
