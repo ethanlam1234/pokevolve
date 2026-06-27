@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Riftborn</title>
 <style>
+@property --slide-dx { syntax: "<length>"; inherits: false; initial-value: 0px; }
+
 @font-face {
   font-family: 'PokemonClassic';
   src: url('https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fonts/viewport.ttf') format('truetype');
@@ -146,6 +148,162 @@ html { overflow: hidden; }
 
 
 /* ── HAND REFLOW ANIMATION ── */
+/* ── OPPONENT POKEMON — bare sprite + HP strip, no card ── */
+#opp-pokemon-zone {
+  position:fixed;
+  left:50%;
+  top:32vh;                   /* ~1/3 from top, more in center */
+  transform:translate(-50%,-50%);  /* self-centre on that anchor */
+  z-index:105;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  pointer-events:none;
+  max-height:44vh;
+}
+#opp-pokemon-card {
+  /* Shell — size capped so large sprites don't overflow */
+  width:clamp(190px,21vw,270px);
+  height:clamp(190px,26vh,270px);  /* explicit height cap */
+  position:relative;
+  background:transparent;
+  border:none;
+  box-shadow:none;
+  overflow:hidden;           /* clip sprite to card height */
+  flex-shrink:0;
+}
+#opp-pokemon-sprite {
+  width:100%; height:100%;
+  object-fit:contain;
+  object-position:center bottom; /* anchor sprite to bottom of box */
+  image-rendering:pixelated;
+  position:absolute;
+  top:0; left:0;
+  filter:drop-shadow(0 6px 20px rgba(0,0,0,0.85));
+}
+#opp-pokemon-name { display:none; }
+#opp-status-row {
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  justify-content:center;
+  min-height:0;
+  max-width:clamp(150px,18vw,240px);
+}
+.opp-status-badge {
+  font-family:'PokemonClassic',monospace;
+  font-size:clamp(8px,0.82vw,11px);
+  padding:3px 9px;
+  border-radius:3px;
+  letter-spacing:1px;
+  color:#fff;
+  white-space:nowrap;
+  text-transform:uppercase;
+  box-shadow:0 2px 0 rgba(0,0,0,0.4);
+}
+#opp-pokemon-type { display:none; }
+/* HP strip sits below the sprite */
+/* ── Opponent move info panel — below HP bar ── */
+#opp-move-panel {
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  margin-top:4px;
+  width:clamp(150px,20vw,280px);
+}
+#opp-move-chip {
+  font-family:'PokemonClassic',monospace;
+  font-size:clamp(8px,0.85vw,11px);
+  background:rgba(14,16,36,0.92);
+  border:1px solid rgba(60,80,140,0.5);
+  border-radius:18px;
+  padding:6px 16px;
+  color:#8899bb;
+  letter-spacing:0.5px;
+  white-space:nowrap;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  cursor:default;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+#opp-move-chip.visible {
+  border-color:rgba(100,130,200,0.7);
+  box-shadow:0 0 0 1px rgba(80,110,180,0.3),0 4px 16px rgba(0,0,0,0.6);
+  color:#ccd6f0;
+}
+#opp-move-name {
+  color:#ffdd66;
+  font-size:clamp(8px,0.85vw,11px);
+}
+#opp-move-type-badge {
+  font-size:clamp(6px,0.6vw,8px);
+  padding:1px 6px;
+  border-radius:8px;
+  letter-spacing:0.5px;
+  color:#fff;
+}
+#opp-move-desc {
+  font-family:'PokemonClassic',monospace;
+  font-size:clamp(6px,0.65vw,8px);
+  color:#667788;
+  letter-spacing:0.5px;
+  text-align:center;
+  line-height:1.6;
+  padding:0 8px;
+}
+
+/* ── Opponent pokemon HP bar — polished combined display ── */
+#opp-pokemon-hp-strip {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  width:clamp(150px,18vw,240px);
+}
+#opp-pokemon-hp-label {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  font-family:'PokemonClassic',monospace;
+  font-size:clamp(7px,0.75vw,10px);
+  letter-spacing:1px;
+}
+#opp-pokemon-hp-label-left {
+  color:#ff8888;
+}
+#opp-pokemon-hp-label-right {
+  color:#ffaaaa;
+}
+#opp-pokemon-hp-bar-wrap {
+  width:100%;
+  height:8px;
+  background:rgba(40,8,8,0.8);
+  border-radius:4px;
+  overflow:hidden;
+  border:1px solid rgba(255,40,40,0.25);
+  box-shadow:0 0 10px rgba(255,20,20,0.15),inset 0 1px 0 rgba(255,255,255,0.05);
+  position:relative;
+}
+#opp-pokemon-hp-bar {
+  height:100%;
+  width:100%;
+  background:linear-gradient(90deg,#cc1100,#ff3322 40%,#ff6644 80%,#ffaa44);
+  border-radius:4px;
+  transition:width 0.5s cubic-bezier(0.4,0,0.2,1);
+  position:relative;
+}
+#opp-pokemon-hp-bar::after {
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:40%;
+  background:linear-gradient(180deg,rgba(255,255,255,0.2),transparent);
+  border-radius:4px 4px 0 0;
+}
 #hand-container {
   transition: none; /* individual cards handle transitions */
 }
@@ -171,11 +329,11 @@ html { overflow: hidden; }
 
 /* ── HAND CARD 3D FLOAT ANIMATION ── */
 @keyframes hcFloat {
-  0%   { transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(calc(var(--sel-ty,0px) + var(--dy,0px)))        rotateX(0deg)    scale(1.000); }
-  30%  { transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 2px)) rotateX(1.2deg)  scale(1.005); }
-  60%  { transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 3px)) rotateX(1.8deg)  scale(1.008); }
-  80%  { transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 1px)) rotateX(0.8deg)  scale(1.003); }
-  100% { transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(calc(var(--sel-ty,0px) + var(--dy,0px)))        rotateX(0deg)    scale(1.000); }
+  0%   { transform: rotate(var(--tilt,0deg)) translateX(calc(var(--dx,0px) + var(--slide-dx,0px))) translateY(calc(var(--sel-ty,0px) + var(--dy,0px)))        rotateX(0deg)    scale(1.000); }
+  30%  { transform: rotate(var(--tilt,0deg)) translateX(calc(var(--dx,0px) + var(--slide-dx,0px))) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 2px)) rotateX(1.2deg)  scale(1.005); }
+  60%  { transform: rotate(var(--tilt,0deg)) translateX(calc(var(--dx,0px) + var(--slide-dx,0px))) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 3px)) rotateX(1.8deg)  scale(1.008); }
+  80%  { transform: rotate(var(--tilt,0deg)) translateX(calc(var(--dx,0px) + var(--slide-dx,0px))) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 1px)) rotateX(0.8deg)  scale(1.003); }
+  100% { transform: rotate(var(--tilt,0deg)) translateX(calc(var(--dx,0px) + var(--slide-dx,0px))) translateY(calc(var(--sel-ty,0px) + var(--dy,0px)))        rotateX(0deg)    scale(1.000); }
 }
 .hc.hc-floating {
   animation: hcFloat var(--float-dur, 3.2s) var(--float-delay, 0s) ease-in-out infinite;
@@ -213,10 +371,11 @@ html { overflow: hidden; }
   perspective:900px;
 }
 .hc {
+  --slide-dx:0px;
   width:clamp(110px,9.2vw,148px); flex:0 0 auto; margin:0 -12px;
   aspect-ratio:2/3; position:relative;
   cursor:pointer; pointer-events:all;
-  transform: rotate(calc(var(--tilt,0deg) + var(--motion-tilt,0deg))) translateX(var(--dx,0px)) translateY(var(--dy,0px));
+  transform: rotate(calc(var(--tilt,0deg) + var(--motion-tilt,0deg))) translateX(calc(var(--dx,0px) + var(--slide-dx,0px))) translateY(var(--dy,0px));
   transform-origin: 50% 110%;
   transition:transform 0.18s ease, box-shadow 0.18s, z-index 0s, margin-left 320ms cubic-bezier(0.4,0,0.15,1);
   border-radius:8px; overflow:hidden;
@@ -225,16 +384,27 @@ html { overflow: hidden; }
   user-select:none;
 }
 .hc:hover {
-  transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 6px)) scale(1.03) rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)) !important;
+  transform: rotate(var(--tilt,0deg)) translateX(calc(var(--dx,0px) + var(--slide-dx,0px))) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 6px)) scale(1.03) rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)) !important;
   z-index:200 !important; box-shadow:0 10px 22px rgba(0,0,0,0.9);
   transition:transform 0.08s ease, box-shadow 0.1s !important;
+}
+/* During drag: kill ALL animations/hover/3D on every card */
+body.hand-dragging .hc,
+body.hand-dragging .hc.hc-floating {
+  animation: none !important;
+  pointer-events: none !important;
+}
+body.hand-dragging .hc:hover {
+  transform: none !important;
+  z-index: auto !important;
+  transition: none !important;
 }
 .hc-select-ring {
   position:absolute; inset:0; border-radius:8px; pointer-events:none;
   border:1px solid transparent;
   transition:border-color 0.25s ease, box-shadow 0.25s ease;
 }
-.hc.selected-hand .hc-select-ring {
+.hc.selected-hand-DISABLED .hc-select-ring {
   border-color:rgba(100,160,255,0.5);
   box-shadow:0 0 0 1px rgba(80,140,255,0.3), 0 0 8px rgba(80,140,255,0.2);
 }
@@ -309,6 +479,8 @@ html { overflow: hidden; }
 }
 #rp-trainer-name { font-size:clamp(11px,1.2vw,16px); color:#fff; letter-spacing:1px; text-shadow:1px 1px 0 #000; }
 #rp-trainer-hp   { font-size:clamp(7px,0.7vw,10px); color:#ff9999; letter-spacing:0px; margin-top:2px; }
+.rp-pokeball { font-size:clamp(8px,0.9vw,12px); color:#ee1111; transition:color 0.3s,opacity 0.3s; }
+.rp-pokeball.fainted { color:#333344; opacity:0.4; }
 #rp-hp-bar-wrap  { height:4px; background:rgba(255,30,30,0.15); border-radius:2px; overflow:hidden; margin-top:5px; }
 #rp-hp-bar       { height:100%; background:linear-gradient(90deg,#ff3322,#ff6644); border-radius:2px; transition:width 0.4s ease; }
 /* Hero power block */
@@ -324,18 +496,22 @@ html { overflow: hidden; }
 /* Hand name preview in panel */
 #rp-hand-preview {
   background:rgba(8,10,26,0.94); border:2px solid rgba(50,70,140,0.5);
-  border-radius:8px; padding:12px 14px; min-height:52px;
+  border-radius:8px; padding:10px 14px;
   box-shadow:0 3px 12px rgba(0,0,0,0.6);
-  display:flex; flex-direction:column; gap:4px;
+  display:inline-flex; flex-direction:column; gap:3px;
+  align-self:flex-start;
+  width:fit-content; min-width:80px;
 }
 #rp-hand-preview-label {
   font-size:clamp(8px,0.78vw,11px); color:#445566; letter-spacing:2px;
   text-transform:uppercase;
 }
 #rp-hand-name {
-  font-size:clamp(13px,1.35vw,18px); color:#ffdd66; letter-spacing:1px;
+  font-size:clamp(9px,0.95vw,12px); color:#ffdd66; letter-spacing:0.5px;
   min-height:1.4em; transition:color 0.2s;
+  display:flex; flex-direction:column; gap:1px;
 }
+#rp-hand-name div { white-space:nowrap; }
 #rp-hand-name.no-hand { color:#334455; }
 /* Hands / Discards — styled like the blue/red Balatro chips×mult boxes */
 #hd-row {
@@ -350,12 +526,12 @@ html { overflow: hidden; }
   min-width:clamp(70px,7vw,100px);
 }
 .rp-hd-box.hands {
-  background:#1a44aa; border-color:#3366ff;
-  box-shadow:0 3px 0 #0a1a44, 0 0 12px rgba(50,100,255,0.25);
-}
-.rp-hd-box.discards {
   background:#aa1122; border-color:#ff3344;
   box-shadow:0 3px 0 #440008, 0 0 12px rgba(255,50,80,0.25);
+}
+.rp-hd-box.discards {
+  background:#1a44aa; border-color:#3366ff;
+  box-shadow:0 3px 0 #0a1a44, 0 0 12px rgba(50,100,255,0.25);
 }
 .rp-hd-label { font-size:clamp(10px,1.0vw,14px); color:rgba(255,255,255,0.7); letter-spacing:1px; display:block; font-family:'PokemonClassic',monospace; }
 .rp-hd-val   { font-size:clamp(28px,3.0vw,42px); color:#fff; font-weight:bold; display:block; line-height:1.1; font-family:'PokemonClassic',monospace; }
@@ -404,7 +580,7 @@ html { overflow: hidden; }
 #item-popover.visible { opacity:1; }
 /* ── OWNED ITEMS panel (top-right) ── */
 #owned-items-panel {
-  position:fixed; top:18px; right:12px; z-index:111;
+  position:fixed; top:56px; right:12px; z-index:111;
   display:none; flex-direction:column; gap:5px; align-items:flex-end;
   max-width:clamp(160px,16vw,220px); pointer-events:all;
   font-family:'PokemonClassic',monospace;
@@ -974,9 +1150,9 @@ html { overflow: hidden; }
 .hc-type1, .hc-type2, .pc-type1, .pc-type2 {
   position:absolute; z-index:10; pointer-events:none;
   font-family:'PokemonClassic',monospace;
-  font-size:clamp(8px,0.82vw,11px);
+  font-size:clamp(9px,0.95vw,13px);
   font-weight:bold; color:#fff;
-  padding:2px 4px; border-radius:3px;
+  padding:2px 5px; border-radius:3px;
   text-shadow:0 1px 2px rgba(0,0,0,0.9);
   line-height:1.3; letter-spacing:0;
   white-space:nowrap;
@@ -1488,7 +1664,7 @@ html { overflow: hidden; }
   #starter-confirm-btn { font-size:10px !important; padding:8px 20px !important; }
 
   /* ── Type badges ── */
-  .hc-type1,.hc-type2,.pc-type1,.pc-type2 { font-size:7px !important; padding:1px 3px !important; }
+  .hc-type1,.hc-type2,.pc-type1,.pc-type2 { font-size:8px !important; padding:1px 4px !important; }
 
   /* ── Remove ALL hover effects on touch screens ── */
   .hc:hover { transform: rotate(calc(var(--tilt,0deg) + var(--motion-tilt,0deg))) translateX(var(--dx,0px)) translateY(var(--dy,0px)) !important; box-shadow:0 4px 14px rgba(0,0,0,0.8) !important; transition:none !important; }
@@ -1971,8 +2147,17 @@ document.addEventListener('keydown',e=>{
     </div>
     <div id="rp-portrait-overlay">
       <div id="rp-trainer-name">BROCK</div>
-      <div id="rp-trainer-hp">❤️ 20 / 20</div>
-      <div id="rp-hp-bar-wrap"><div id="rp-hp-bar" style="width:100%"></div></div>
+      <div id="rp-trainer-hp" style="display:none">❤️ 20 / 20</div>
+      <div id="rp-hp-bar-wrap" style="display:none"><div id="rp-hp-bar" style="width:100%"></div></div>
+      <!-- Pokéballs: 6 balls show remaining enemy pokemon -->
+      <div id="rp-pokeballs" style="display:flex;gap:3px;flex-wrap:wrap;margin-top:4px;">
+        <span class="rp-pokeball active" data-ball="0">⬤</span>
+        <span class="rp-pokeball active" data-ball="1">⬤</span>
+        <span class="rp-pokeball active" data-ball="2">⬤</span>
+        <span class="rp-pokeball active" data-ball="3">⬤</span>
+        <span class="rp-pokeball active" data-ball="4">⬤</span>
+        <span class="rp-pokeball active" data-ball="5">⬤</span>
+      </div>
     </div>
   </div>
   <!-- hero power hidden -->
@@ -1998,8 +2183,8 @@ document.addEventListener('keydown',e=>{
 <!-- Hands / Discards — fixed bottom-left -->
 <div id="hd-row" style="display:none;">
   <div class="rp-hd-box hands">
-    <span class="rp-hd-label">Hands</span>
-    <span class="rp-hd-val" id="rp-hands">3</span>
+    <span class="rp-hd-label">Health</span>
+    <span class="rp-hd-val" id="rp-hands">♥</span>
   </div>
   <div class="rp-hd-box discards">
     <span class="rp-hd-label">Discards</span>
@@ -2010,7 +2195,7 @@ document.addEventListener('keydown',e=>{
 <!-- sits to the right of hd-row at same bottom position, managed by show/hideRotomRadio --></div><!-- /hd-row -->
 
 <!-- ── MUSIC TOGGLE BUTTON ── -->
-<div id="rotom-widget" style="display:none;position:fixed;z-index:200;font-family:'PokemonClassic',monospace;">
+<div id="rotom-widget" style="display:none;position:fixed;z-index:200;top:12px;right:12px;font-family:'PokemonClassic',monospace;">
   <div id="rotom-box" onclick="rotomToggle()" title="Toggle Music"
     style="border-radius:8px;padding:8px 14px;cursor:pointer;
            background:#0a1a33;border:2px solid #1a3366;
@@ -2079,13 +2264,9 @@ document.addEventListener('keydown',e=>{
 
 <!-- Balatro bottom bar -->
 <div id="balatro-bottom">
-  <div id="sort-row">
-    <span id="sort-label">SORT</span>
-    <button class="sort-btn active" id="sort-species" onclick="sortHand('species')">SPECIES</button>
-    <button class="sort-btn" id="sort-type" onclick="sortHand('type')">TYPE</button>
-  </div>
+  <!-- sort-row removed: always sorted by type -->
   <div id="action-row">
-    <button class="action-btn discard" id="discard-btn" onclick="discardSelected()" disabled>DISCARD</button>
+    <button class="action-btn discard" id="discard-btn" onclick="discardSelected()" style="display:none">DISCARD</button>
     <button class="action-btn play" id="play-btn" onclick="playSelectedHand()" disabled>PLAY HAND</button>
   </div>
 </div>
@@ -2097,6 +2278,25 @@ document.addEventListener('keydown',e=>{
   <div id="mana-row"></div>
 </div>
 <div id="turn-announce"></div>
+<div id="opp-pokemon-zone">
+  <!-- Just the sprite -->
+  <div id="opp-pokemon-card">
+    <img id="opp-pokemon-sprite" src="" alt="">
+  </div>
+  <!-- Polished HP bar strip -->
+  <div id="opp-pokemon-hp-strip">
+    <div id="opp-pokemon-hp-label">
+      <span id="opp-pokemon-hp-label-left">❤ HP</span>
+      <span id="opp-pokemon-hp-label-right">— / —</span>
+    </div>
+    <div id="opp-pokemon-hp-bar-wrap">
+      <div id="opp-pokemon-hp-bar"></div>
+    </div>
+  </div>
+  <!-- Status effects row -->
+  <div id="opp-status-row"></div>
+  <!-- opp move panel moved to hands-panel at top of screen -->
+</div>
 <div class="card-tooltip" id="card-tooltip"><div class="tt-cost" id="tt-cost"></div><img class="tt-art" id="tt-art" src=""><div class="tt-name" id="tt-name"></div><div class="tt-kw" id="tt-kw"></div><div class="tt-stats"><span class="tt-atk" id="tt-atk"></span><span class="tt-hp" id="tt-hp"></span></div></div>
 <div id="bc-hint"></div>
 
@@ -2316,6 +2516,11 @@ let G = {
   drag:null, bcPending:null, heroPowerUsed:false, heroPowerCost:2,
   selectedHand:-1,
   trainerIdx:0,
+  oppPokemon:null,      // current opponent pokemon card
+  oppPokemonHp:0,
+  oppPokemonMaxHp:0,
+  oppPokemonIdx:0,      // which pokemon (0-5) is active
+  oppPokemonsLeft:6,    // pokeballs remaining
   trainerHp:20, trainerMaxHp:20,
   // Run info (Balatro-style)
   bonusCards:[],        // permanent deck additions from shop
@@ -2459,12 +2664,24 @@ function initGame() {
   G.trainerIdx=0;
   const firstTrainer=TRAINERS[0];
   G.trainerHp=firstTrainer.hp; G.trainerMaxHp=firstTrainer.hp;
+
+  // ── TEST MODE: override everything for battle testing ──────────
+  G.deck = [];
+  for(let _d=1;_d<=151;_d++){ const _c=mkBasicCard(_d); if(_c) G.deck.push(_c); }
+  G.trainerHp = 99999; G.trainerMaxHp = 99999;
+  G.handsLeft = 99; G.discardsLeft = 9999;
+  console.log('[TEST MODE] All 151 Pokémon loaded, 99999 HP, infinite discards');
+  // ── END TEST MODE ──────────────────────────────────────────────
+
   // Set initial gym color
   if(window._balatroBg) window._balatroBg.setTrainer('Youngster');
   setTimeout(()=>setTrainerPortrait(firstTrainer), 100);
   buildUI();
   renderAll();
   renderOppHand();
+  G.oppPokemonsLeft = 6;
+  G.oppPokemonIdx = 0;
+  pickOppPokemon();
   const DRAW=8;
   const DRAW_N=8;
   for(let i=0;i<DRAW_N;i++){
@@ -2472,8 +2689,7 @@ function initGame() {
       if(G.deck.length){
         G.hand.push({...G.deck.shift()});
         // Sort hand by current sort mode on each card addition
-        if(G_sort_mode==='type') G.hand.sort((a,b)=>(a.type1||'').localeCompare(b.type1||''));
-        else G.hand.sort((a,b)=>(parseInt(a.dexA)||0)-(parseInt(b.dexA)||0));
+        G.hand.sort((a,b)=>(a.type1||'zzz').localeCompare(b.type1||'zzz')||((parseInt(a.dexA)||0)-(parseInt(b.dexA)||0))); // always type sort
         renderHand(true);
       }
     }, 150+i*180);
@@ -2484,6 +2700,7 @@ function initGame() {
 // initGame draw complete
 
 function buildUI() {
+  setTimeout(initHandDrag, 300);
   const wrap = document.getElementById('gameWrap');
   if(!document.getElementById('bf-ours')){
     const oz=document.createElement('div'); oz.className='bf-zone ours'; oz.id='bf-ours'; wrap.appendChild(oz);
@@ -2575,7 +2792,8 @@ function hideCardTooltip(){ document.getElementById('card-tooltip')?.classList.r
 
 // ═══ BALATRO-STYLE HAND SYSTEM ═══════════════════════════════
 let G_selected = new Set();
-let G_sort_mode = 'species';
+let G_sort_mode = 'type'; // always sort by type
+let G_items = []; // owned items — declared early so launchTestBattle can use it
 const _tiltCache = {};
 function getTilt(id) {
   if(!_tiltCache[id]) _tiltCache[id] = (Math.random() * 10 - 5).toFixed(2);
@@ -2605,18 +2823,34 @@ function makeHcEl(card, i, isHidden) {
   el.style.setProperty('--dx', '0px');
   el.style.setProperty('--dy', '0px');
   // Position-aware z-index: base order preserved, selected cards lift above unselected
-  el.style.zIndex = G_selected.has(i) ? (110 + i) : (2 + i);
-  if(G_selected.has(i)) el.classList.add('selected-hand');
+  el.style.zIndex = String(2 + i);
+  // No selection highlighting — cards played in order
   if(isHidden) { el.style.visibility = 'hidden'; el.style.pointerEvents = 'none'; }
   const art = document.createElement('img');
   art.className = 'hc-art'; art.draggable = false;
   removeWhiteBg(card.fusionImg || card.img, url => { art.src = url; });
   el.appendChild(art);
-  if(card.type1) el.appendChild(typeBadge(card.type1, 'hc-type1'));
-  if(card.type2) el.appendChild(typeBadge(card.type2, 'hc-type2'));
+  // Show move name badge (coloured by move type), fall back to type badges
+  const _mv = typeof POKEMON_MOVES !== 'undefined' ? getMove(card) : null;
+  if(_mv) {
+    const mb = document.createElement('span');
+    mb.className = 'hc-type1';
+    mb.textContent = _mv.name;
+    mb.style.background = TYPE_COLORS[_mv.type] || '#555';
+    mb.style.fontSize = 'clamp(8px,0.88vw,12px)';
+    mb.style.letterSpacing = '0.3px';
+    mb.style.maxWidth = '90%';
+    mb.style.overflow = 'hidden';
+    mb.style.textOverflow = 'ellipsis';
+    mb.style.whiteSpace = 'nowrap';
+    el.appendChild(mb);
+  } else {
+    if(card.type1) el.appendChild(typeBadge(card.type1, 'hc-type1'));
+    if(card.type2) el.appendChild(typeBadge(card.type2, 'hc-type2'));
+  }
   const ring = document.createElement('div'); ring.className = 'hc-select-ring';
   el.appendChild(ring);
-  el.addEventListener('click', () => toggleHandSelect(i));
+  // No click-to-select — cards are played in hand order
   el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
   const floatDur = 2.8 + (i * 0.22) % 1.0; // 2.8-3.8s range
   // Negative delays = animation already in progress (staggered, no waiting)
@@ -2687,39 +2921,75 @@ function toggleHandSelect(idx) {
 
 function updateActionBar() {
   const sel = G_selected.size;
-  const playBtn = document.getElementById('play-btn');
+  const playBtn    = document.getElementById('play-btn');
   const discardBtn = document.getElementById('discard-btn');
-  if(playBtn)   { playBtn.disabled = sel === 0;    playBtn.textContent   = sel > 0 ? `PLAY HAND (${sel})` : 'PLAY HAND'; }
-  if(discardBtn){ discardBtn.disabled = sel === 0; discardBtn.textContent = sel > 0 ? `DISCARD (${sel})` : 'DISCARD'; }
-  // Live hand name preview in left panel
-  const nameEl = document.getElementById('rp-hand-name');
-  if(nameEl) {
-    if(sel === 0) {
-      nameEl.textContent = '—';
-      nameEl.className = 'no-hand';
-      if(_activeHandType) { _activeHandType = null; renderHandsPanel(); }
-    } else {
-      const selectedCards = Array.from(G_selected).sort((a,b)=>a-b).map(i=>G.hand[i]).filter(Boolean);
-      const result = evaluateHand(selectedCards);
-      nameEl.textContent = result?.name || '—';
-      nameEl.className = (result && result.name !== 'No Hand') ? '' : 'no-hand';
-      // Sync active chip on hands panel
-      const detectedName = result?.name;
-      if(detectedName && detectedName !== 'No Hand') {
-        if(_activeHandType !== detectedName) {
-          _activeHandType = detectedName;
-          renderHandsPanel();
-        }
-      } else {
-        // Check if remaining selection still matches the active hand type
-        if(_activeHandType) {
-          const stillMatches = detectedName === _activeHandType;
-          if(!stillMatches) {
-            _activeHandType = null;
-            renderHandsPanel();
-          }
-        }
+  if(playBtn)   { playBtn.disabled = false; playBtn.textContent = 'PLAY HAND'; }
+  if(discardBtn){ discardBtn.style.display='none'; }
+
+  const nameEl  = document.getElementById('rp-hand-name');
+  const labelEl = document.getElementById('rp-hand-preview-label');
+  if(labelEl) labelEl.textContent = 'Playing';
+  if(!nameEl) { updatePlayHandBtn(); return; }
+
+  if(sel === 0) {
+    if(labelEl) labelEl.textContent = 'Selected Hand';
+    nameEl.innerHTML = '<div>—</div>';
+    nameEl.className = 'no-hand';
+    nameEl.style.fontSize = '';
+    if(_activeHandType) { _activeHandType = null; renderHandsPanel(); }
+  } else {
+    // Always show first 5 cards
+    const selectedCards = G.hand.slice(0, Math.min(5, G.hand.length));
+    const result = evaluateHand(selectedCards);
+
+    // Build per-card move summary
+    const effects = [];
+    let totalDmg = 0;
+    selectedCards.forEach(card => {
+      const move = (typeof getMove==='function') ? getMove(card) : null;
+      if(!move) return;
+      if(move.dmg > 0) totalDmg += move.dmg;
+      if(move.effect && move.effect !== 'null') {
+        const effMap = {
+          poison:`Poison ${move.val}`, burn:`Burn ${move.val}`,
+          sleep:`Sleep ${move.val}%`, freeze:`Freeze ${move.val}%`,
+          stun:`Stun ${move.val}%`, block:`Block +${move.val}`,
+          heal:`Heal ${move.val}`, draw:`Draw ${move.val} card${move.val!==1?'s':''}`,
+          setup:`Setup`, pierce:`Ignores Block`, drain:`Drain ${move.val}%`,
+          permup:`+${move.val} permanent`, gold:`+$${move.val}`,
+          crit:`Crit ${move.val}%`, double:`Hits twice`,
+          reflect:`Reflect ${move.val}%`, dblblock:`Double Block`,
+          selfdestruct:`Self-Destruct`, aoe:`Hits all`,
+          execute:`Execute`, debuff:`-${move.val}% enemy dmg`,
+          delay:`Delay`, allyup:`Ally +${move.val} dmg`,
+          evolve:`Evolve`, copy:`Copy ability`,
+          rampage:`Rampage`, boss:`Bonus vs boss`,
+          burnheal:`Burn heals you`, burnx2:`Burn doubled`,
+          spread:`Spreads`, amplify:`Status +${move.val}%`,
+          chain:`+${move.val} per prior`,retrig:`Retrigger`,
+          noheal:`Block healing`, pierce:`Ignore Block`,
+          spore:`Spore stack`,accuracy:`+${move.val}% accuracy`,
+        };
+        const txt = effMap[move.effect] || move.effect;
+        if(txt && !effects.includes(txt)) effects.push(txt);
       }
+    });
+
+    // Each item on its own line, no emojis, no separators
+    if(labelEl) labelEl.textContent = 'Playing';
+    const lines = [];
+    if(totalDmg > 0) lines.push(`${totalDmg} DMG`);
+    effects.slice(0, 4).forEach(e => lines.push(e));
+    nameEl.innerHTML = lines.map(l=>`<div>${l}</div>`).join('') || '<div>—</div>';
+    nameEl.style.fontSize = 'clamp(9px,0.95vw,12px)';
+    nameEl.style.lineHeight = '1.7';
+    nameEl.className = lines.length>0 ? '' : 'no-hand';
+
+    const detectedName = result?.name;
+    if(detectedName && detectedName !== 'No Hand') {
+      if(_activeHandType !== detectedName) { _activeHandType = detectedName; renderHandsPanel(); }
+    } else if(_activeHandType) {
+      if(result?.name !== _activeHandType) { _activeHandType = null; renderHandsPanel(); }
     }
   }
   updatePlayHandBtn();
@@ -2795,6 +3065,11 @@ async function discardSelected() {
   await animateHandReflow(selectedIndices, () => {
     clearTimeout(_discardWatchdog);
     G.animating = false;
+    // Reset selected hand UI
+    const nameEl = document.getElementById('rp-hand-name');
+    const labelEl = document.getElementById('rp-hand-preview-label');
+    if(nameEl) { nameEl.innerHTML = '<div>—</div>'; nameEl.className = 'no-hand'; }
+    if(labelEl) labelEl.textContent = 'Playing';
     renderHandsPanel();
     updateRunPanel();
   });
@@ -2811,7 +3086,8 @@ async function discardSelected() {
 
 // ── CARD SORTING HELPER ─────────────────────────────────────────
 function sortKey(card) {
-  if(G_sort_mode === 'type') return (card.type1||'zzz') + (card.type2||'zzz') + (card.name||'');
+  // Always sort by type then dex
+  return (card.type1||'zzz') + (card.type2||'zzz') + String(parseInt(card.dexA)||0).padStart(3,'0');
   return String(parseInt(card.dexA)||999).padStart(4,'0') + (card.name||'');
 }
 
@@ -3738,28 +4014,12 @@ function showRotomRadio() {
   const el=document.getElementById('rotom-widget');
   if(el) {
     el.style.display='block';
-    const isMobile = Math.min(window.screen.width, window.screen.height) < 600;
-    if(isMobile) {
-      // On mobile: position directly below the trainer name/HP overlay
-      const overlay = document.getElementById('rp-portrait-overlay');
-      const rp      = document.getElementById('run-panel');
-      const anchor  = overlay || rp;
-      if(anchor) {
-        const r = anchor.getBoundingClientRect();
-        el.style.left   = r.left + 'px';
-        el.style.top    = (r.bottom + 4) + 'px';
-        el.style.bottom = 'auto';
-      }
-    } else {
-      // Desktop: above the hd-row (bottom-left)
-      const hdRow = document.getElementById('hd-row');
-      if(hdRow) {
-        const r = hdRow.getBoundingClientRect();
-        el.style.left = r.left + 'px';
-        el.style.bottom = (window.innerHeight - r.top + 6) + 'px';
-        el.style.top = 'auto';
-      }
-    }
+    // Always top-right, above the items panel
+    el.style.right  = '12px';
+    el.style.top    = '12px';
+    el.style.left   = 'auto';
+    el.style.bottom = 'auto';
+    el.style.position = 'fixed';
   }
   if(!_rotomAudio) { rotomLoad(_rotomIdx, true); _rotomPlaying=true; }
 }
@@ -4348,6 +4608,2935 @@ function hideTrainerDialogue() {
 // Reset dialogue index at start of each battle
 function resetDialogue() { _dialogueIdx = 0; }
 
+
+// ══════════════════════════════════════════════════════════════════
+// POKEMON MOVE DATA — all 151 Gen 1 moves
+// Each entry: { name, type, category, dmg, effect, effectVal, desc }
+// category: 'status' | 'attack' | 'defend'
+// effect: 'poison'|'burn'|'sleep'|'stun'|'freeze'|'block'|'heal'|
+//         'draw'|'setup'|'buff'|'drain'|'recoil'|'repeat'|'copy'|null
+// ══════════════════════════════════════════════════════════════════
+const POKEMON_MOVES = {
+  1:  {name:'Seed Bomb',      type:'Grass',    cat:'attack', dmg:25,  effect:'poison',  val:3,   desc:'25 DMG. Poison 3.'},
+  2:  {name:'Root Growth',    type:'Grass',    cat:'attack', dmg:40,  effect:'poison',  val:5,   desc:'40 DMG. Poison lasts +2 turns.'},
+  3:  {name:'Toxic Garden',   type:'Grass',    cat:'attack', dmg:70,  effect:'poison',  val:8,   desc:'70 DMG. Poison triggers heal 5.'},
+  4:  {name:'Ember',          type:'Fire',     cat:'attack', dmg:30,  effect:'burn',    val:4,   desc:'30 DMG. Burn 4.'},
+  5:  {name:'Flame Spiral',   type:'Fire',     cat:'attack', dmg:55,  effect:'burn',    val:6,   desc:'55 DMG. Burn +3 each round.'},
+  6:  {name:'Inferno',        type:'Fire',     cat:'attack', dmg:90,  effect:'burn',    val:10,  desc:'90 DMG. Double Burn this turn.'},
+  7:  {name:'Bubble Shield',  type:'Water',    cat:'defend', dmg:25,  effect:'block',   val:30,  desc:'25 DMG. Gain 30 Block.'},
+  8:  {name:'Shell Defense',  type:'Water',    cat:'defend', dmg:40,  effect:'block',   val:50,  desc:'40 DMG. Gain 50 Block.'},
+  9:  {name:'Hydro Cannon',   type:'Water',    cat:'attack', dmg:100, effect:'block',   val:30,  desc:'100 DMG. Block = 30% damage.'},
+  10: {name:'String Shot',    type:'Bug',      cat:'status', dmg:15,  effect:'debuff',  val:10,  desc:'15 DMG. Enemy damage -10%.'},
+  11: {name:'Harden',         type:'Normal',   cat:'defend', dmg:0,   effect:'block',   val:70,  desc:'Gain 70 Block. Block buff +25%.'},
+  12: {name:'Sleep Powder',   type:'Bug',      cat:'status', dmg:30,  effect:'sleep',   val:35,  desc:'30 DMG. 35% Sleep.'},
+  13: {name:'Poison Sting',   type:'Poison',   cat:'status', dmg:15,  effect:'poison',  val:6,   desc:'15 DMG. Poison 6.'},
+  14: {name:'Iron Cocoon',    type:'Bug',      cat:'defend', dmg:0,   effect:'block',   val:90,  desc:'90 Block. Cannot lose buffs.'},
+  15: {name:'Twin Needle',    type:'Bug',      cat:'attack', dmg:35,  effect:'poison',  val:5,   desc:'35 DMG twice. Poison 5.'},
+  16: {name:'Gust',           type:'Flying',   cat:'attack', dmg:25,  effect:'dispel',  val:1,   desc:'25 DMG. Remove enemy buff.'},
+  17: {name:'Wing Burst',     type:'Flying',   cat:'attack', dmg:50,  effect:'chain',   val:10,  desc:'50 DMG. +10 per prior card.'},
+  18: {name:'Hurricane',      type:'Flying',   cat:'attack', dmg:90,  effect:'stun',    val:35,  desc:'90 DMG. 35% Stun.'},
+  19: {name:'Quick Bite',     type:'Normal',   cat:'attack', dmg:30,  effect:'execute', val:50,  desc:'30 DMG. +50% below 40% HP.'},
+  20: {name:'Savage Fang',    type:'Normal',   cat:'attack', dmg:75,  effect:'crit',    val:30,  desc:'75 DMG. 30% Crit.'},
+  21: {name:'Fury Peck',      type:'Flying',   cat:'attack', dmg:35,  effect:'double',  val:0,   desc:'35 DMG. Hits twice if first.'},
+  22: {name:'Drill Strike',   type:'Flying',   cat:'attack', dmg:90,  effect:'pierce',  val:0,   desc:'90 DMG. Ignore Block.'},
+  23: {name:'Venom Coil',     type:'Poison',   cat:'status', dmg:30,  effect:'poison',  val:10,  desc:'30 DMG. Poison 10.'},
+  24: {name:'Intimidation',   type:'Poison',   cat:'status', dmg:0,   effect:'debuff',  val:25,  desc:'Enemy damage -25%.'},
+  25: {name:'Static Charge',  type:'Electric', cat:'attack', dmg:35,  effect:'draw',    val:1,   desc:'35 DMG. Draw 1.'},
+  26: {name:'Voltage Loop',   type:'Electric', cat:'attack', dmg:80,  effect:'retrig',  val:25,  desc:'80 DMG. Electric retrigger 25%.'},
+  27: {name:'Dig',            type:'Ground',   cat:'status', dmg:0,   effect:'setup',   val:90,  desc:'Setup. Next turn: 90 DMG.'},
+  28: {name:'Burrowing Strike',type:'Ground',  cat:'attack', dmg:70,  effect:'block',   val:30,  desc:'70 DMG. Next turn: 30 Block.'},
+  29: {name:'Toxic Spark',    type:'Poison',   cat:'status', dmg:25,  effect:'amplify', val:50,  desc:'25 DMG. Next status +50%.'},
+  30: {name:'Protective Bond',type:'Normal',   cat:'defend', dmg:35,  effect:'shield',  val:10,  desc:'35 DMG. Shared block.'},
+  31: {name:'Royal Poison',   type:'Poison',   cat:'status', dmg:80,  effect:'spread',  val:3,   desc:'80 DMG. Poison spreads.'},
+  32: {name:'Horn Charge',    type:'Poison',   cat:'attack', dmg:30,  effect:'permup',  val:5,   desc:'30 DMG. +5 permanent dmg.'},
+  33: {name:'Battle Instinct',type:'Poison',   cat:'attack', dmg:45,  effect:'revenge', val:10,  desc:'45 DMG. +10 after hit.'},
+  34: {name:'Earth Breaker',  type:'Ground',   cat:'attack', dmg:110, effect:'stun',    val:35,  desc:'110 DMG. 35% Stun.'},
+  35: {name:'Lucky Star',     type:'Normal',   cat:'status', dmg:20,  effect:'lucky',   val:25,  desc:'20 DMG. Effects +25%.'},
+  36: {name:'Moon Wish',      type:'Normal',   cat:'defend', dmg:50,  effect:'heal',    val:15,  desc:'50 DMG. Heal 15.'},
+  37: {name:'Will-O-Wisp',    type:'Fire',     cat:'status', dmg:25,  effect:'burn',    val:6,   desc:'25 DMG. Burn 6.'},
+  38: {name:'Cursed Flame',   type:'Fire',     cat:'attack', dmg:65,  effect:'burndbf', val:20,  desc:'65 DMG. Burned -20% dmg.'},
+  39: {name:'Lullaby',        type:'Normal',   cat:'status', dmg:15,  effect:'sleep',   val:40,  desc:'15 DMG. 40% Sleep.'},
+  40: {name:'Encore',         type:'Normal',   cat:'attack', dmg:60,  effect:'repeat',  val:50,  desc:'60 DMG. Repeat last ability.'},
+  41: {name:'Leech Bite',     type:'Poison',   cat:'attack', dmg:30,  effect:'drain',   val:30,  desc:'30 DMG. Heal 30%.'},
+  42: {name:'Blood Drain',    type:'Poison',   cat:'attack', dmg:60,  effect:'steal',   val:0,   desc:'60 DMG. Steal healing.'},
+  43: {name:'Spore',          type:'Grass',    cat:'status', dmg:25,  effect:'poison',  val:5,   desc:'25 DMG. Poison 5 or Sleep 20%.'},
+  44: {name:'Toxic Cloud',    type:'Poison',   cat:'status', dmg:50,  effect:'amplify', val:3,   desc:'50 DMG. All Poison +3 stacks.'},
+  45: {name:'Venom Bloom',    type:'Poison',   cat:'attack', dmg:80,  effect:'dblpoison',val:0,  desc:'80 DMG. Poison doubled.'},
+  46: {name:'Spore Growth',   type:'Grass',    cat:'status', dmg:0,   effect:'spore',   val:1,   desc:'Gain 1 Spore stack.'},
+  47: {name:'Fungal Burst',   type:'Grass',    cat:'attack', dmg:50,  effect:'spore',   val:20,  desc:'50 DMG. Spores +20 each.'},
+  48: {name:'Compound Eyes',  type:'Bug',      cat:'status', dmg:40,  effect:'accuracy',val:30,  desc:'40 DMG. Status accuracy +30%.'},
+  49: {name:'Sleep Dust',     type:'Bug',      cat:'status', dmg:50,  effect:'sleep',   val:45,  desc:'50 DMG. 45% Sleep.'},
+  50: {name:'Underground',    type:'Ground',   cat:'status', dmg:0,   effect:'setup',   val:120, desc:'Setup. Next turn: 120 DMG.'},
+  51: {name:'Triple Dig',     type:'Ground',   cat:'setup',  dmg:0,   effect:'multihit',val:50,  desc:'Next turn: 3×50 DMG.'},
+  52: {name:'Pay Day',        type:'Normal',   cat:'attack', dmg:25,  effect:'gold',    val:1,   desc:'25 DMG. Gain $1.'},
+  53: {name:'Golden Claw',    type:'Normal',   cat:'attack', dmg:60,  effect:'crit',    val:0,   desc:'60 DMG. Crit = bonus gold.'},
+  54: {name:'Confusion Wave', type:'Psychic',  cat:'status', dmg:35,  effect:'confuse', val:0,   desc:'35 DMG. Scramble enemy buff.'},
+  55: {name:'Mind Flow',      type:'Psychic',  cat:'attack', dmg:60,  effect:'draw',    val:0,   desc:'60 DMG. Draw per status.'},
+  56: {name:'Rage',           type:'Fighting', cat:'attack', dmg:40,  effect:'revenge', val:10,  desc:'40 DMG. +10 dmg when hurt.'},
+  57: {name:'Fury',           type:'Fighting', cat:'attack', dmg:80,  effect:'rampage', val:0,   desc:'80 DMG. +dmg every hit.'},
+  58: {name:'Loyal Guard',    type:'Fire',     cat:'defend', dmg:35,  effect:'allyup',  val:10,  desc:'35 DMG. Next ally +10 dmg.'},
+  59: {name:'Inferno Fang',   type:'Fire',     cat:'attack', dmg:100, effect:'allydie', val:0,   desc:'100 DMG. +dmg on ally death.'},
+  60: {name:'Ripple',         type:'Water',    cat:'status', dmg:25,  effect:'spread',  val:0,   desc:'25 DMG. Spread effects.'},
+  61: {name:'Whirlpool',      type:'Water',    cat:'status', dmg:50,  effect:'delay',   val:30,  desc:'50 DMG. Delay enemy 30%.'},
+  62: {name:'Counter Wave',   type:'Water',    cat:'defend', dmg:80,  effect:'reflect', val:40,  desc:'80 DMG. Reflect 40% dmg.'},
+  63: {name:'Teleport',       type:'Psychic',  cat:'defend', dmg:0,   effect:'dodge',   val:0,   desc:'Avoid next attack.'},
+  64: {name:'Psychic Link',   type:'Psychic',  cat:'status', dmg:50,  effect:'amplify', val:50,  desc:'50 DMG. Next card +50%.'},
+  65: {name:'Future Sight',   type:'Psychic',  cat:'setup',  dmg:0,   effect:'setup',   val:180, desc:'Setup. After 2 turns: 180 DMG.'},
+  66: {name:'Training',       type:'Fighting', cat:'attack', dmg:30,  effect:'permup',  val:5,   desc:'30 DMG. +5 perm damage.'},
+  67: {name:'Heavy Lift',     type:'Fighting', cat:'defend', dmg:60,  effect:'block',   val:25,  desc:'60 DMG. 25 Block.'},
+  68: {name:'Powerhouse',     type:'Fighting', cat:'attack', dmg:120, effect:'double',  val:0,   desc:'120 DMG. Double strongest.'},
+  69: {name:'Vine Trap',      type:'Grass',    cat:'status', dmg:25,  effect:'debuff',  val:15,  desc:'25 DMG. Enemy dmg -15%.'},
+  70: {name:'Acid Spray',     type:'Poison',   cat:'status', dmg:45,  effect:'blockcut',val:0,   desc:'45 DMG. Reduce Block gain.'},
+  71: {name:'Carnivore',      type:'Grass',    cat:'attack', dmg:80,  effect:'drain',   val:20,  desc:'80 DMG. Heal 20 on kill.'},
+  72: {name:'Jelly Armor',    type:'Water',    cat:'defend', dmg:25,  effect:'resist',  val:0,   desc:'25 DMG. Reduce status dmg.'},
+  73: {name:'Toxic Ocean',    type:'Poison',   cat:'status', dmg:70,  effect:'poison',  val:3,   desc:'70 DMG. Poison all enemies.'},
+  74: {name:'Rock Skin',      type:'Rock',     cat:'defend', dmg:20,  effect:'block',   val:40,  desc:'20 DMG. 40 Block.'},
+  75: {name:'Rollout',        type:'Rock',     cat:'attack', dmg:40,  effect:'chain',   val:25,  desc:'40 DMG. Next +25.'},
+  76: {name:'Mountain Body',  type:'Rock',     cat:'attack', dmg:90,  effect:'blockdmg',val:30,  desc:'90 DMG. Block→damage 30%.'},
+  77: {name:'Flame Sprint',   type:'Fire',     cat:'attack', dmg:50,  effect:'burn',    val:4,   desc:'50 DMG. Burn 4.'},
+  78: {name:'Blazing Charge', type:'Fire',     cat:'attack', dmg:90,  effect:'burnx2',  val:0,   desc:'90 DMG. Double Burn dmg.'},
+  79: {name:'Slow Mind',      type:'Psychic',  cat:'status', dmg:20,  effect:'delay',   val:0,   desc:'20 DMG. Enemy delayed.'},
+  80: {name:'Shell Mind',     type:'Water',    cat:'defend', dmg:70,  effect:'absorb',  val:0,   desc:'70 DMG. Block when hit.'},
+  81: {name:'Magnetism',      type:'Electric', cat:'status', dmg:30,  effect:'elecup',  val:0,   desc:'30 DMG. Electric stronger.'},
+  82: {name:'Magnetic Field', type:'Electric', cat:'status', dmg:70,  effect:'retrig',  val:20,  desc:'70 DMG. Electric triggers ×2.'},
+  83: {name:'Lucky Strike',   type:'Normal',   cat:'attack', dmg:40,  effect:'crit',    val:0,   desc:'40 DMG. +Crit chance.'},
+  84: {name:'Double Peck',    type:'Flying',   cat:'attack', dmg:35,  effect:'double',  val:0,   desc:'35 DMG twice.'},
+  85: {name:'Triple Peck',    type:'Flying',   cat:'attack', dmg:45,  effect:'triple',  val:0,   desc:'45 DMG three times.'},
+  86: {name:'Ice Breath',     type:'Ice',      cat:'status', dmg:30,  effect:'freeze',  val:20,  desc:'30 DMG. 20% Freeze.'},
+  87: {name:'Frozen Tide',    type:'Ice',      cat:'attack', dmg:70,  effect:'freeze',  val:35,  desc:'70 DMG. 35% Freeze.'},
+  88: {name:'Sludge',         type:'Poison',   cat:'status', dmg:35,  effect:'poison',  val:6,   desc:'35 DMG. Poison 6.'},
+  89: {name:'Toxic Body',     type:'Poison',   cat:'status', dmg:70,  effect:'poison',  val:0,   desc:'70 DMG. Poison grows each round.'},
+  90: {name:'Clamp',          type:'Water',    cat:'status', dmg:30,  effect:'noheal',  val:0,   desc:'30 DMG. Enemy cannot heal.'},
+  91: {name:'Spike Armor',    type:'Ice',      cat:'defend', dmg:80,  effect:'reflect', val:0,   desc:'80 DMG. Reflect dmg taken.'},
+  92: {name:'Haunt',          type:'Ghost',    cat:'status', dmg:0,   effect:'repeat',  val:0,   desc:'Repeat previous status.'},
+  93: {name:'Shadow Trick',   type:'Ghost',    cat:'attack', dmg:50,  effect:'retrig',  val:0,   desc:'50 DMG. Retrigger last ability.'},
+  94: {name:'Nightmare',      type:'Ghost',    cat:'attack', dmg:90,  effect:'retrig',  val:0,   desc:'90 DMG. Retrigger strongest.'},
+  95: {name:'Rock Wall',      type:'Rock',     cat:'defend', dmg:30,  effect:'block',   val:80,  desc:'30 DMG. 80 Block.'},
+  96: {name:'Hypnosis',       type:'Psychic',  cat:'status', dmg:20,  effect:'sleep',   val:30,  desc:'20 DMG. 30% Sleep.'},
+  97: {name:'Dream Eater',    type:'Psychic',  cat:'attack', dmg:70,  effect:'sleepx2', val:0,   desc:'70 DMG. ×2 vs sleeping.'},
+  98: {name:'Crab Claw',      type:'Water',    cat:'attack', dmg:50,  effect:'permup',  val:10,  desc:'50 DMG. +10 dmg.'},
+  99: {name:'Giant Claw',     type:'Water',    cat:'attack', dmg:110, effect:'crit',    val:0,   desc:'110 DMG. Crit dmg doubled.'},
+  100:{name:'Explosion',      type:'Normal',   cat:'attack', dmg:250, effect:'selfdestruct',val:0,desc:'250 DMG. Remove self.'},
+  101:{name:'Mega Explosion', type:'Electric', cat:'attack', dmg:350, effect:'selfdestruct',val:0,desc:'350 DMG. Retrigger if fused.'},
+  102:{name:'Seed Mind',      type:'Grass',    cat:'status', dmg:20,  effect:'buff',    val:0,   desc:'20 DMG. Random buff.'},
+  103:{name:'Solar Beam',     type:'Grass',    cat:'setup',  dmg:0,   effect:'setup',   val:180, desc:'Setup. Next turn: 180 DMG.'},
+  104:{name:'Bone Throw',     type:'Ground',   cat:'attack', dmg:45,  effect:'repeat',  val:0,   desc:'45 DMG. Chance to repeat.'},
+  105:{name:'Ancestor Rage',  type:'Ground',   cat:'attack', dmg:90,  effect:'allydie', val:0,   desc:'90 DMG. +dmg ally death.'},
+  106:{name:'High Kick',      type:'Fighting', cat:'attack', dmg:90,  effect:'lowblock',val:0,   desc:'90 DMG. ×2 if low Block.'},
+  107:{name:'Combo Punch',    type:'Fighting', cat:'attack', dmg:40,  effect:'chain',   val:10,  desc:'40 DMG. +10 per prior card.'},
+  108:{name:'Tongue Bind',    type:'Normal',   cat:'status', dmg:30,  effect:'debuff',  val:20,  desc:'30 DMG. Enemy dmg -20%.'},
+  109:{name:'Smog',           type:'Poison',   cat:'status', dmg:35,  effect:'poison',  val:7,   desc:'35 DMG. Poison 7.'},
+  110:{name:'Toxic Gas',      type:'Poison',   cat:'status', dmg:80,  effect:'poison',  val:0,   desc:'80 DMG. Future enemies start poisoned.'},
+  111:{name:'Horn Drill',     type:'Ground',   cat:'attack', dmg:70,  effect:'execute', val:10,  desc:'70 DMG. 20% kill below 10% HP.'},
+  112:{name:'Earthquake',     type:'Ground',   cat:'attack', dmg:120, effect:'aoe',     val:0,   desc:'120 DMG. Hits all enemies.'},
+  113:{name:'Softboiled',     type:'Normal',   cat:'defend', dmg:0,   effect:'heal',    val:40,  desc:'Heal 40.'},
+  114:{name:'Vine Maze',      type:'Grass',    cat:'status', dmg:40,  effect:'delay',   val:0,   desc:'40 DMG. Enemy delayed.'},
+  115:{name:'Protective Mother',type:'Normal', cat:'defend', dmg:80,  effect:'shield',  val:0,   desc:'80 DMG. Protect next card.'},
+  116:{name:'Bubble',         type:'Water',    cat:'attack', dmg:30,  effect:'draw',    val:1,   desc:'30 DMG. Draw 1.'},
+  117:{name:'Dragon Current', type:'Water',    cat:'attack', dmg:70,  effect:'chain',   val:0,   desc:'70 DMG. +dmg per attack.'},
+  118:{name:'Water Pierce',   type:'Water',    cat:'attack', dmg:45,  effect:'pierce',  val:0,   desc:'45 DMG. Ignore Block.'},
+  119:{name:'Royal Spear',    type:'Water',    cat:'attack', dmg:90,  effect:'boss',    val:0,   desc:'90 DMG. Bonus vs bosses.'},
+  120:{name:'Cosmic Power',   type:'Psychic',  cat:'status', dmg:30,  effect:'buff',    val:0,   desc:'30 DMG. Random buff.'},
+  121:{name:'Star Burst',     type:'Psychic',  cat:'attack', dmg:80,  effect:'repeat',  val:0,   desc:'80 DMG. Repeat random effect.'},
+  122:{name:'Barrier',        type:'Psychic',  cat:'defend', dmg:0,   effect:'dblblock',val:0,   desc:'Double Block gained.'},
+  123:{name:'Blade Dance',    type:'Bug',      cat:'attack', dmg:50,  effect:'double',  val:0,   desc:'50 DMG twice.'},
+  124:{name:'Lovely Kiss',    type:'Ice',      cat:'status', dmg:40,  effect:'sleep',   val:35,  desc:'40 DMG. 35% Sleep.'},
+  125:{name:'Charge',         type:'Electric', cat:'setup',  dmg:0,   effect:'elecx2',  val:0,   desc:'Next Electric ×2.'},
+  126:{name:'Flame Charge',   type:'Fire',     cat:'attack', dmg:70,  effect:'burn',    val:8,   desc:'70 DMG. Burn 8.'},
+  127:{name:'Guillotine',     type:'Bug',      cat:'attack', dmg:120, effect:'execute', val:0,   desc:'120 DMG. Bonus vs weakened.'},
+  128:{name:'Rampage',        type:'Normal',   cat:'attack', dmg:100, effect:'rampage', val:0,   desc:'100 DMG. Grows every attack.'},
+  129:{name:'Splash',         type:'Water',    cat:'status', dmg:0,   effect:'permup',  val:5,   desc:'0 DMG. +5 perm power.'},
+  130:{name:'Rage Wave',      type:'Water',    cat:'attack', dmg:120, effect:'consume', val:0,   desc:'120 DMG. Consume power.'},
+  131:{name:'Sing',           type:'Normal',   cat:'status', dmg:40,  effect:'sleep',   val:30,  desc:'40 DMG. 30% Sleep.'},
+  132:{name:'Transform',      type:'Normal',   cat:'status', dmg:0,   effect:'copy',    val:0,   desc:'Copy adjacent ability.'},
+  133:{name:'Adaptation',     type:'Normal',   cat:'status', dmg:0,   effect:'evolve',  val:0,   desc:'Copy evolution effects.'},
+  134:{name:'Aqua Ring',      type:'Water',    cat:'defend', dmg:40,  effect:'regen',   val:10,  desc:'40 DMG. Heal 10 each round.'},
+  135:{name:'Thunder Loop',   type:'Electric', cat:'attack', dmg:80,  effect:'draw',    val:1,   desc:'80 DMG. Draw 1 after attack.'},
+  136:{name:'Flame Burst',    type:'Fire',     cat:'attack', dmg:100, effect:'burnx2',  val:0,   desc:'100 DMG. Burn doubles.'},
+  137:{name:'Data Copy',      type:'Normal',   cat:'status', dmg:0,   effect:'copy',    val:50,  desc:'Copy last ability 50%.'},
+  138:{name:'Ancient Shell',  type:'Rock',     cat:'defend', dmg:40,  effect:'block',   val:0,   desc:'40 DMG. Gain Block.'},
+  139:{name:'Fossil Storm',   type:'Rock',     cat:'attack', dmg:90,  effect:'status',  val:0,   desc:'90 DMG. Random status.'},
+  140:{name:'Shell Strike',   type:'Rock',     cat:'defend', dmg:45,  effect:'block',   val:0,   desc:'45 DMG. Block after attack.'},
+  141:{name:'Blade Shell',    type:'Rock',     cat:'attack', dmg:100, effect:'drain',   val:25,  desc:'100 DMG. Heal 25%.'},
+  142:{name:'Ancient Wind',   type:'Flying',   cat:'attack', dmg:110, effect:'allyup',  val:30,  desc:'110 DMG. Prior card +30.'},
+  143:{name:'Rest',           type:'Normal',   cat:'defend', dmg:0,   effect:'heal',    val:60,  desc:'Heal 60. Gain 50 Block.'},
+  144:{name:'Blizzard',       type:'Ice',      cat:'attack', dmg:100, effect:'freeze',  val:35,  desc:'100 DMG. 35% Freeze.'},
+  145:{name:'Thunderstorm',   type:'Electric', cat:'attack', dmg:120, effect:'chain',   val:0,   desc:'120 DMG. +dmg per prior card.'},
+  146:{name:'Sacred Flame',   type:'Fire',     cat:'attack', dmg:120, effect:'burnheal',val:0,   desc:'120 DMG. Burn heals you.'},
+  147:{name:'Dragon Growth',  type:'Dragon',   cat:'attack', dmg:30,  effect:'permup',  val:0,   desc:'30 DMG. +perm damage.'},
+  148:{name:'Dragon Aura',    type:'Dragon',   cat:'status', dmg:70,  effect:'allyup',  val:0,   desc:'70 DMG. Buff next card.'},
+  149:{name:'Dragon Rage',    type:'Dragon',   cat:'attack', dmg:130, effect:'permup',  val:0,   desc:'130 DMG. Perm increase.'},
+  150:{name:'Psychic Mastery',type:'Psychic',  cat:'attack', dmg:150, effect:'double',  val:0,   desc:'150 DMG. Double strongest.'},
+  151:{name:'Genesis',        type:'Psychic',  cat:'status', dmg:0,   effect:'evolve',  val:0,   desc:'Evolve one played Pokémon.'},
+};
+
+// Convenience: get move for a card by dex number
+function getMove(card) {
+  const dex = parseInt(card.dexA || card.dexNum) || 0;
+  return POKEMON_MOVES[dex] || null;
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// HIGH-QUALITY MOVE ANIMATION ENGINE
+// Canvas-based effects: projectiles, lightning, fire, water, etc.
+// ══════════════════════════════════════════════════════════════
+
+// ── Core VFX canvas (shared, recycled) ───────────────────────
+function getVfxCanvas() {
+  let c = document.getElementById('vfx-canvas');
+  if(!c) {
+    c = document.createElement('canvas');
+    c.id = 'vfx-canvas';
+    c.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:8000;';
+    document.body.appendChild(c);
+  }
+  // Always sync pixel dims to viewport (handles resize & first use)
+  if(c.width !== window.innerWidth || c.height !== window.innerHeight) {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+  }
+  return c;
+}
+
+// Create a PRIVATE canvas for a single animation — avoids conflicts
+// when multiple animations run simultaneously (seeds, multi-hit, etc.)
+function makePrivateCanvas() {
+  const c = document.createElement('canvas');
+  c.width = window.innerWidth; c.height = window.innerHeight;
+  c.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:8001;';
+  document.body.appendChild(c);
+  return c;
+}
+
+// Screen flash — full viewport tint
+function screenFlash(color, alpha=0.55, dur=180) {
+  const d=document.createElement('div');
+  d.style.cssText=`position:fixed;inset:0;background:${color};opacity:${alpha};pointer-events:none;z-index:7999;transition:opacity ${dur}ms ease;`;
+  document.body.appendChild(d);
+  requestAnimationFrame(()=>{ d.style.opacity='0'; setTimeout(()=>d.remove(),dur+50); });
+}
+
+// Screen shake
+function screenShake(mag=6, dur=250) {
+  const gw=document.getElementById('gameWrap'); if(!gw) return;
+  let t=0;
+  const id=setInterval(()=>{
+    gw.style.transform=`translate(${(Math.random()-0.5)*mag*2}px,${(Math.random()-0.5)*mag}px)`;
+    t+=20; if(t>=dur){clearInterval(id);gw.style.transform='';}
+  },20);
+}
+
+// Get centre of element
+function elCenter(el) {
+  if(!el) return {x:window.innerWidth/2, y:window.innerHeight/2};
+  const r=el.getBoundingClientRect();
+  return {x:r.left+r.width/2, y:r.top+r.height/2};
+}
+
+// Get centre of opponent Pokémon card
+function oppCenter() {
+  const oz=document.getElementById('opp-pokemon-card');
+  return elCenter(oz);
+}
+
+// Floating label over an element
+function floatLabel(el, text, color, sz='clamp(8px,0.9vw,12px)', dur=900) {
+  const {x,y}=elCenter(el);
+  const d=document.createElement('div');
+  d.style.cssText=`position:fixed;left:${x}px;top:${y-20}px;transform:translateX(-50%);
+    font-family:'PokemonClassic',monospace;font-size:${sz};color:${color};
+    text-shadow:1px 1px 0 #000,0 0 8px ${color};letter-spacing:1px;
+    pointer-events:none;z-index:8500;animation:floatDmg 0.9s ease forwards;white-space:nowrap;`;
+  d.textContent=text;
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(),dur);
+}
+
+// Card glow flash
+function cardFlash(el, color, dur=220) {
+  if(!el) return Promise.resolve();
+  return new Promise(res=>{
+    el.style.transition=`box-shadow ${dur/2}ms ease, filter ${dur/2}ms ease`;
+    el.style.boxShadow=`0 0 0 3px ${color},0 0 24px ${color}`;
+    el.style.filter=`brightness(1.5) drop-shadow(0 0 8px ${color})`;
+    setTimeout(()=>{
+      el.style.transition=`box-shadow ${dur}ms ease, filter ${dur}ms ease`;
+      el.style.boxShadow=''; el.style.filter='';
+      setTimeout(res,dur+20);
+    },dur/2);
+  });
+}
+
+// Card shake (horizontal)
+function cardShake(el, mag=7, count=5) {
+  if(!el) return Promise.resolve();
+  return new Promise(res=>{
+    let i=0;
+    const t=setInterval(()=>{
+      el.style.transform=`translateX(${Math.sin(i*2)*mag*(1-i/(count*2))}px)`;
+      i++; if(i>=count*2){clearInterval(t);el.style.transform='';res();}
+    },20);
+  });
+}
+
+// ── Canvas primitives ─────────────────────────────────────────
+
+// Draw a lightning bolt from (x1,y1) to (x2,y2) with forks
+function drawLightning(ctx, x1,y1,x2,y2, color='#FFD700', width=3, forks=true) {
+  function bolt(ax,ay,bx,by,depth) {
+    if(depth===0){ ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();return; }
+    const mx=(ax+bx)/2+(Math.random()-0.5)*(Math.hypot(bx-ax,by-ay)*0.45);
+    const my=(ay+by)/2+(Math.random()-0.5)*(Math.hypot(bx-ax,by-ay)*0.45);
+    bolt(ax,ay,mx,my,depth-1); bolt(mx,my,bx,by,depth-1);
+    if(forks && depth===1 && Math.random()>0.4){
+      const fx=mx+(Math.random()-0.5)*60, fy=my+(Math.random()-0.5)*60;
+      ctx.globalAlpha=0.5; bolt(mx,my,fx,fy,0); ctx.globalAlpha=1;
+    }
+  }
+  // White core pass
+  ctx.save(); ctx.strokeStyle='#ffffff'; ctx.lineWidth=width*0.5;
+  ctx.shadowColor=color; ctx.shadowBlur=25; ctx.globalAlpha=1;
+  bolt(x1,y1,x2,y2,3); ctx.restore();
+  // Coloured outer pass
+  ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=width;
+  ctx.shadowColor=color; ctx.shadowBlur=18; ctx.globalAlpha=0.85;
+  bolt(x1,y1,x2,y2,3); ctx.restore();
+}
+
+// Draw a fireball arc from src to dst — with persistent trail
+function fireballArc(src, dst, color1='#FF4422', color2='#FFAA00', size=26, dur=420) {
+  return new Promise(res=>{
+    const c=getVfxCanvas(); const ctx=c.getContext('2d');
+    const trail=[];
+    const t0=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      const x=src.x+(dst.x-src.x)*t;
+      const y=src.y+(dst.y-src.y)*t - Math.sin(t*Math.PI)*80;
+      trail.push({x,y,t});
+      // Keep only last 18 trail points
+      if(trail.length>18) trail.shift();
+      ctx.clearRect(0,0,c.width,c.height);
+      // Draw glowing trail
+      trail.forEach((p,i)=>{
+        const a=(i/trail.length)*0.7;
+        const r=size*0.9*(i/trail.length);
+        const tg=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
+        tg.addColorStop(0,color2); tg.addColorStop(1,'transparent');
+        ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2);
+        ctx.fillStyle=tg; ctx.globalAlpha=a*0.8; ctx.fill();
+      });
+      ctx.globalAlpha=1;
+      // Core ball with bright white centre
+      const g=ctx.createRadialGradient(x,y,0,x,y,size*1.4);
+      g.addColorStop(0,'#ffffff'); g.addColorStop(0.25,color2); g.addColorStop(0.7,color1); g.addColorStop(1,'transparent');
+      ctx.beginPath(); ctx.arc(x,y,size*1.4,0,Math.PI*2);
+      ctx.fillStyle=g; ctx.fill();
+      // Outer glow
+      ctx.shadowColor=color1; ctx.shadowBlur=size*2;
+      ctx.beginPath(); ctx.arc(x,y,size*0.5,0,Math.PI*2);
+      ctx.fillStyle=color2; ctx.fill(); ctx.shadowBlur=0;
+      if(t<1) requestAnimationFrame(frame);
+      else { ctx.clearRect(0,0,c.width,c.height); res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Water stream: sine-wave projectile
+function waterStream(src, dst, color='#3399FF', dur=350) {
+  return new Promise(res=>{
+    const c=getVfxCanvas(); const ctx=c.getContext('2d');
+    const t0=performance.now();
+    const pts=[]; // trail
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      const x=src.x+(dst.x-src.x)*t;
+      const y=src.y+(dst.y-src.y)*t + Math.sin(t*Math.PI*3)*15;
+      pts.push({x,y,t});
+      ctx.clearRect(0,0,c.width,c.height);
+      // Draw trail
+      for(let i=1;i<pts.length;i++){
+        const a=(i/pts.length)*0.8;
+        const r=10*(i/pts.length);
+        ctx.beginPath(); ctx.arc(pts[i].x,pts[i].y,Math.max(0.1,r),0,Math.PI*2);
+        ctx.fillStyle=color; ctx.globalAlpha=a; ctx.fill();
+      }
+      ctx.globalAlpha=1;
+      if(t<1) requestAnimationFrame(frame);
+      else { ctx.clearRect(0,0,c.width,c.height); res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Rising vine from card up to target
+function vineAttack(src, dst, color='#44BB44', dur=400) {
+  return new Promise(res=>{
+    const c=getVfxCanvas(); const ctx=c.getContext('2d');
+    const t0=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      ctx.clearRect(0,0,c.width,c.height);
+      ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=4;
+      ctx.shadowColor=color; ctx.shadowBlur=8;
+      ctx.beginPath(); ctx.moveTo(src.x,src.y);
+      // Bezier vine with wave
+      const cx1=src.x+(dst.x-src.x)*0.3+Math.sin(t*10)*20;
+      const cy1=src.y+(dst.y-src.y)*0.1;
+      const cx2=src.x+(dst.x-src.x)*0.7+Math.sin(t*10+1)*20;
+      const cy2=dst.y+(src.y-dst.y)*0.3;
+      const ex=src.x+(dst.x-src.x)*t;
+      const ey=src.y+(dst.y-src.y)*t;
+      ctx.bezierCurveTo(cx1,cy1,cx2,cy2,ex,ey);
+      ctx.globalAlpha=0.85; ctx.stroke(); ctx.restore();
+      if(t<1) requestAnimationFrame(frame);
+      else { ctx.clearRect(0,0,c.width,c.height); res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Expanding ring (impact)
+function impactRing(pos, color='#ffffff', maxR=120, dur=340) {
+  return new Promise(res=>{
+    const c=getVfxCanvas(); const ctx=c.getContext('2d');
+    const t0=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      ctx.clearRect(0,0,c.width,c.height);
+      // Outer glow ring
+      ctx.beginPath(); ctx.arc(pos.x,pos.y,Math.max(0.1,maxR*t),0,Math.PI*2);
+      ctx.strokeStyle=color; ctx.lineWidth=Math.max(0.1,(5*(1-t)+1));
+      ctx.shadowColor=color; ctx.shadowBlur=15;
+      ctx.globalAlpha=(1-t)*0.9; ctx.stroke();
+      // Inner brighter ring
+      ctx.beginPath(); ctx.arc(pos.x,pos.y,Math.max(0.1,maxR*t*0.6),0,Math.PI*2);
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=(2*(1-t)+0.5);
+      ctx.globalAlpha=(1-t)*0.5; ctx.stroke();
+      ctx.globalAlpha=1; ctx.shadowBlur=0;
+      if(t<1) requestAnimationFrame(frame);
+      else { ctx.clearRect(0,0,c.width,c.height); res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Poison cloud (growing blob at target)
+function poisonCloud(pos, dur=500) {
+  return new Promise(res=>{
+    const c=getVfxCanvas(); const ctx=c.getContext('2d');
+    const t0=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      ctx.clearRect(0,0,c.width,c.height);
+      const r=70*Math.sin(t*Math.PI);
+      const g=ctx.createRadialGradient(pos.x,pos.y,0,pos.x,pos.y,r);
+      g.addColorStop(0,'rgba(180,60,200,0.8)');
+      g.addColorStop(0.5,'rgba(120,30,160,0.4)');
+      g.addColorStop(1,'rgba(80,0,100,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(pos.x,pos.y,r,0,Math.PI*2); ctx.fill();
+      // Bubbles
+      for(let i=0;i<5;i++){
+        const a=i/5*Math.PI*2+t*3;
+        const br=r*0.7; const bx=pos.x+Math.cos(a)*br; const by=pos.y+Math.sin(a)*br;
+        ctx.beginPath(); ctx.arc(bx,by,Math.max(0.1,4*(1-t))+2,0,Math.PI*2);
+        ctx.fillStyle='rgba(200,100,230,0.6)'; ctx.fill();
+      }
+      if(t<1) requestAnimationFrame(frame);
+      else { ctx.clearRect(0,0,c.width,c.height); res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Sleep sparkles spiralling around target
+function sleepSparkles(pos, dur=600) {
+  return new Promise(res=>{
+    const c=getVfxCanvas(); const ctx=c.getContext('2d');
+    const t0=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      ctx.clearRect(0,0,c.width,c.height);
+      for(let i=0;i<6;i++){
+        const a=i/6*Math.PI*2+t*Math.PI*2;
+        const r=50*t; const x=pos.x+Math.cos(a)*r; const y=pos.y+Math.sin(a)*r-30*t;
+        // Z letters
+        ctx.font=`bold ${14*(1-t*0.5)}px monospace`;
+        ctx.fillStyle=`rgba(150,200,255,${0.9*(1-t)})`;
+        ctx.fillText('Z',x,y);
+      }
+      if(t<1) requestAnimationFrame(frame);
+      else { ctx.clearRect(0,0,c.width,c.height); res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Ground crack (Dig/Earthquake) radiating from target
+function groundCrack(pos, dur=500, lines=8) {
+  return new Promise(res=>{
+    const c=getVfxCanvas(); const ctx=c.getContext('2d');
+    const t0=performance.now();
+    const angles=Array.from({length:lines},(_,i)=>i/lines*Math.PI*2+Math.random()*0.3);
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      ctx.clearRect(0,0,c.width,c.height);
+      ctx.save(); ctx.strokeStyle='#CC9944'; ctx.lineWidth=2; ctx.shadowColor='#AA6600'; ctx.shadowBlur=6;
+      angles.forEach(a=>{
+        const len=120*t; const zigzags=6;
+        ctx.beginPath(); ctx.moveTo(pos.x,pos.y);
+        for(let j=1;j<=zigzags;j++){
+          const jt=j/zigzags;
+          const x=pos.x+Math.cos(a)*len*jt+Math.sin(a)*(Math.random()-0.5)*12;
+          const y=pos.y+Math.sin(a)*len*jt+Math.cos(a)*(Math.random()-0.5)*12;
+          ctx.lineTo(x,y);
+        }
+        ctx.globalAlpha=0.8*(1-t*0.5); ctx.stroke();
+      });
+      ctx.restore();
+      if(t<1) requestAnimationFrame(frame);
+      else { ctx.clearRect(0,0,c.width,c.height); res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Psychic wave — expanding ellipse grid distortion
+function psychicWave(pos, color='#FF55A3', dur=450) {
+  return new Promise(res=>{
+    const c=getVfxCanvas(); const ctx=c.getContext('2d');
+    const t0=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      ctx.clearRect(0,0,c.width,c.height);
+      for(let r=0;r<3;r++){
+        const rt=Math.max(0,t-r*0.15);
+        const rx=120*rt, ry=60*rt;
+        ctx.beginPath(); ctx.ellipse(pos.x,pos.y,rx,ry,0,0,Math.PI*2);
+        ctx.strokeStyle=color; ctx.lineWidth=2.5*(1-rt);
+        ctx.globalAlpha=(1-rt)*0.7; ctx.stroke();
+      }
+      ctx.globalAlpha=1;
+      if(t<1) requestAnimationFrame(frame);
+      else { ctx.clearRect(0,0,c.width,c.height); res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Ice shards — jagged crystals radiating out
+function iceShards(pos, dur=420) {
+  return new Promise(res=>{
+    const c=getVfxCanvas(); const ctx=c.getContext('2d');
+    const t0=performance.now();
+    const shards=Array.from({length:10},(_,i)=>({
+      a:i/10*Math.PI*2+Math.random()*0.3,
+      len:65+Math.random()*55, w:4+Math.random()*5
+    }));
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      ctx.clearRect(0,0,c.width,c.height);
+      ctx.save(); ctx.shadowColor='#99DDFF'; ctx.shadowBlur=10;
+      shards.forEach(s=>{
+        const len=s.len*Math.sin(t*Math.PI);
+        const x1=pos.x+Math.cos(s.a)*10, y1=pos.y+Math.sin(s.a)*10;
+        const x2=pos.x+Math.cos(s.a)*len, y2=pos.y+Math.sin(s.a)*len;
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+        ctx.strokeStyle=`rgba(153,221,255,${0.9*(1-t*0.5)})`; ctx.lineWidth=s.w*(1-t)+1;
+        ctx.stroke();
+        // Crystal tip
+        ctx.beginPath(); ctx.arc(x2,y2,Math.max(0.1,3*(1-t)),0,Math.PI*2);
+        ctx.fillStyle='#ffffff'; ctx.globalAlpha=(1-t); ctx.fill(); ctx.globalAlpha=1;
+      });
+      ctx.restore();
+      if(t<1) requestAnimationFrame(frame);
+      else { ctx.clearRect(0,0,c.width,c.height); res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Ghost fade through (phasing effect on card)
+function ghostPhase(el, dur=500) {
+  if(!el) return Promise.resolve();
+  return new Promise(res=>{
+    const start=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-start)/dur);
+      el.style.opacity=String(0.3+0.7*Math.abs(Math.sin(t*Math.PI*3)));
+      if(t<1) requestAnimationFrame(frame);
+      else { el.style.opacity=''; res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Normal-type tackle impact: quick forward lunge
+function tackleImpact(el, dst, dur=280) {
+  if(!el) return Promise.resolve();
+  const src=elCenter(el); const dx=(dst.x-src.x)*0.25; const dy=(dst.y-src.y)*0.25;
+  return new Promise(res=>{
+    const start=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-start)/dur);
+      const ease=t<0.5?4*t*t*t:(t-1)*(2*t-2)*(2*t-2)+1;
+      const p=Math.sin(t*Math.PI);
+      el.style.transform=`translate(${dx*p}px,${dy*p}px)`;
+      if(t<1) requestAnimationFrame(frame);
+      else { el.style.transform=''; res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+
+// ── ADVANCED ANIMATION PRIMITIVES ────────────────────────────
+
+// Lunge: card physically flies toward target then snaps back
+function cardLunge(el, dst, scale=0.7, dur=320) {
+  if(!el) return Promise.resolve();
+  const src = elCenter(el);
+  const dx = (dst.x - src.x) * scale;
+  const dy = (dst.y - src.y) * scale;
+  return new Promise(res => {
+    const t0 = performance.now();
+    const ease = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+    function frame(now) {
+      const t = Math.min(1, (now-t0)/dur);
+      // Out: 0→0.45, back: 0.45→1
+      const phase = t < 0.45 ? t/0.45 : (1-t)/0.55;
+      const p = ease(t < 0.45 ? t/0.45 : 0) * (t < 0.45 ? 1 : (1-t)/0.55);
+      const prog = t < 0.45 ? ease(t/0.45) : ease((1-t)/0.55);
+      el.style.transform = `translate(${dx*prog}px,${dy*prog}px) scale(${1+0.08*prog})`;
+      if(t < 1) requestAnimationFrame(frame);
+      else { el.style.transform = ''; res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Card tint overlay — flash the card's bg a colour
+function cardTint(el, color, dur=300) {
+  if(!el) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `position:absolute;inset:0;background:${color};opacity:0;pointer-events:none;z-index:10;border-radius:6px;transition:opacity ${dur*0.3}ms ease;`;
+  el.style.position = 'relative';
+  el.appendChild(overlay);
+  requestAnimationFrame(()=>{
+    overlay.style.opacity = '0.7';
+    setTimeout(()=>{
+      overlay.style.transition = `opacity ${dur*0.7}ms ease`;
+      overlay.style.opacity = '0';
+      setTimeout(()=>overlay.remove(), dur*0.7);
+    }, dur*0.3);
+  });
+}
+
+// Card art tint — changes the sprite colour temporarily
+function spriteTint(el, color, dur=350) {
+  if(!el) return;
+  const art = el.querySelector('.hc-art');
+  if(!art) return;
+  const prev = art.style.filter || '';
+  art.style.transition = `filter ${dur*0.2}ms ease`;
+  art.style.filter = `sepia(1) saturate(4) hue-rotate(${color==='#FF4422'?0:color==='#3399FF'?200:color==='#44BB44'?80:color==='#993399'?280:color==='#FFD700'?45:0}deg) brightness(1.3)`;
+  setTimeout(()=>{
+    art.style.transition = `filter ${dur*0.8}ms ease`;
+    art.style.filter = prev;
+    setTimeout(()=>art.style.transition='', dur);
+  }, dur*0.2);
+}
+
+// Wobble the card (energy charging up)
+function cardWobble(el, mag=8, cycles=3, dur=400) {
+  if(!el) return Promise.resolve();
+  return new Promise(res => {
+    const t0 = performance.now();
+    function frame(now) {
+      const t = Math.min(1, (now-t0)/dur);
+      const envelope = Math.sin(t*Math.PI); // rise and fall
+      const angle = Math.sin(t*Math.PI*2*cycles) * mag * envelope;
+      const scl = 1 + Math.abs(Math.sin(t*Math.PI*cycles)) * 0.04 * envelope;
+      el.style.transform = `rotate(${angle}deg) scale(${scl})`;
+      if(t < 1) requestAnimationFrame(frame);
+      else { el.style.transform = ''; res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Opponent sprite warp/distort using canvas overlay
+function spriteWarp(intensity=12, dur=400) {
+  const sprite = document.getElementById('opp-pokemon-sprite');
+  if(!sprite) return Promise.resolve();
+  return new Promise(res => {
+    const t0 = performance.now();
+    function frame(now) {
+      const t = Math.min(1, (now-t0)/dur);
+      const env = Math.sin(t*Math.PI);
+      const dx = Math.sin(t*20)*intensity*env;
+      const dy = Math.sin(t*15+1)*intensity*0.5*env;
+      const skew = Math.sin(t*12)*intensity*0.3*env;
+      sprite.style.transform = `translate(${dx}px,${dy}px) skewX(${skew}deg)`;
+      if(t < 1) requestAnimationFrame(frame);
+      else { sprite.style.transform = ''; res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Opponent sprite recoil — flies back then returns
+function spriteRecoil(dir=1, mag=30, dur=350) {
+  const sprite = document.getElementById('opp-pokemon-sprite');
+  if(!sprite) return Promise.resolve();
+  return new Promise(res => {
+    const t0 = performance.now();
+    function frame(now) {
+      const t = Math.min(1, (now-t0)/dur);
+      // Sharp back then slow return
+      const p = t < 0.3 ? t/0.3 : 1-(t-0.3)/0.7;
+      const ease = p < 0.5 ? 2*p*p : 1-Math.pow(-2*p+2,2)/2;
+      sprite.style.transform = `translateX(${dir*mag*ease}px)`;
+      if(t < 1) requestAnimationFrame(frame);
+      else { sprite.style.transform = ''; res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Opponent sprite flash white then colour-tinted then recover
+function spriteHitFlash(color='#ffffff', dur=300) {
+  const sprite = document.getElementById('opp-pokemon-sprite');
+  if(!sprite) return;
+  sprite.style.transition = `filter ${dur*0.15}ms ease`;
+  sprite.style.filter = 'brightness(8) saturate(0)';
+  setTimeout(()=>{
+    sprite.style.filter = `brightness(2) saturate(3) drop-shadow(0 0 12px ${color})`;
+    setTimeout(()=>{
+      sprite.style.transition = `filter ${dur*0.6}ms ease`;
+      sprite.style.filter = '';
+      setTimeout(()=>sprite.style.transition='', dur);
+    }, dur*0.25);
+  }, dur*0.15);
+}
+
+// Burn overlay on opponent sprite — flickering orange filter + particles
+function spriteOnFire(dur=800) {
+  const sprite = document.getElementById('opp-pokemon-sprite');
+  const zone = document.getElementById('opp-pokemon-zone');
+  if(!sprite || !zone) return;
+  const zRect = zone.getBoundingClientRect();
+  sprite.style.filter = 'sepia(1) saturate(3) hue-rotate(0deg) brightness(1.4)';
+  // Ember particles rising from sprite
+  const embers = [];
+  for(let i=0;i<10;i++){
+    const e = document.createElement('div');
+    const startX = zRect.left + Math.random()*zRect.width;
+    e.style.cssText = `position:fixed;left:${startX}px;top:${zRect.bottom}px;width:4px;height:4px;border-radius:50%;background:#FF5500;pointer-events:none;z-index:8200;`;
+    document.body.appendChild(e);
+    embers.push(e);
+    const t = performance.now();
+    const delay_i = i * 70;
+    setTimeout(()=>{
+      e.style.transition = `transform ${300+Math.random()*300}ms ease-out, opacity 400ms ease-in`;
+      e.style.transform = `translate(${(Math.random()-0.5)*50}px,-${60+Math.random()*60}px) scale(0.2)`;
+      e.style.opacity = '0';
+      setTimeout(()=>e.remove(), 600);
+    }, delay_i);
+  }
+  setTimeout(()=>{ sprite.style.filter=''; }, dur);
+}
+
+// Poison drip on opponent sprite
+function spritePoisoned(dur=600) {
+  const sprite = document.getElementById('opp-pokemon-sprite');
+  if(!sprite) return;
+  sprite.style.transition = 'filter 0.2s ease';
+  sprite.style.filter = 'sepia(1) saturate(4) hue-rotate(260deg) brightness(0.9)';
+  setTimeout(()=>{
+    sprite.style.transition = 'filter 0.4s ease';
+    sprite.style.filter = '';
+    setTimeout(()=>sprite.style.transition='', 400);
+  }, dur);
+}
+
+// Sleep Z animation over opponent sprite
+function spriteSleeping() {
+  const zone = document.getElementById('opp-pokemon-zone');
+  if(!zone) return;
+  const zRect = zone.getBoundingClientRect();
+  const cx = zRect.left + zRect.width/2, cy = zRect.top + zRect.height*0.3;
+  for(let i=0;i<3;i++){
+    setTimeout(()=>{
+      const z = document.createElement('div');
+      z.textContent = 'Z';
+      const size = 14 + i*8;
+      z.style.cssText = `position:fixed;left:${cx+i*12}px;top:${cy}px;font-family:'PokemonClassic',monospace;font-size:${size}px;color:#99DDFF;text-shadow:1px 1px 0 #003355;font-weight:bold;pointer-events:none;z-index:8200;opacity:0;transform:translateY(0);transition:none;`;
+      document.body.appendChild(z);
+      requestAnimationFrame(()=>{
+        z.style.transition = `transform ${800+i*200}ms ease-out, opacity ${800+i*200}ms ease-out`;
+        z.style.transform = `translate(${10+i*8}px,-${50+i*20}px)`;
+        z.style.opacity = '0.9';
+        setTimeout(()=>{ z.style.opacity='0'; setTimeout(()=>z.remove(),400); }, 600+i*200);
+      });
+    }, i*250);
+  }
+}
+
+// Rock/debris shower: angular chunks fly from src to dst
+function rockShower(src, dst, color='#AA8833', count=6, dur=380) {
+  return new Promise(res => {
+    const chunks = Array.from({length:count}, ()=>({
+      ang: Math.atan2(dst.y-src.y,dst.x-src.x)+(Math.random()-0.5)*0.6,
+      speed: 0.7+Math.random()*0.5,
+      rot: (Math.random()-0.5)*720,
+      size: 8+Math.random()*10,
+    }));
+    const c=getVfxCanvas(),ctx=c.getContext('2d');
+    const t0=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      ctx.clearRect(0,0,c.width,c.height);
+      chunks.forEach(ch=>{
+        const p=t*ch.speed; const x=src.x+Math.cos(ch.ang)*p*(dst.x-src.x); const y=src.y+Math.sin(ch.ang)*p*(dst.y-src.y)+Math.sin(t*Math.PI)*(-30);
+        ctx.save(); ctx.translate(x,y); ctx.rotate(ch.rot*t*Math.PI/180);
+        ctx.fillStyle=color; ctx.globalAlpha=(1-t)*0.9;
+        ctx.fillRect(-ch.size/2,-ch.size/2,ch.size,ch.size);
+        ctx.restore();
+      });
+      if(t<1) requestAnimationFrame(frame);
+      else{ctx.clearRect(0,0,c.width,c.height);res();}
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// Pixel static/glitch on opponent sprite
+function spriteGlitch(dur=400) {
+  const sprite = document.getElementById('opp-pokemon-sprite');
+  if(!sprite) return Promise.resolve();
+  return new Promise(res=>{
+    const t0=performance.now();
+    function frame(now){
+      const t=Math.min(1,(now-t0)/dur);
+      const env=Math.sin(t*Math.PI);
+      const glitchX=(Math.random()-0.5)*20*env;
+      sprite.style.clipPath=`inset(${Math.random()*30*env}% 0 ${Math.random()*30*env}% 0)`;
+      sprite.style.transform=`translateX(${glitchX}px)`;
+      if(t<1) requestAnimationFrame(frame);
+      else{sprite.style.clipPath='';sprite.style.transform='';res();}
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+// ── Master dispatcher ─────────────────────────────────────────
+async function playMoveAnimation(card, el, move) {
+  const dex  = parseInt(card.dexA || card.dexNum) || 0;
+  // Safety: always cleanup canvas on error
+  try {
+  const color= (move && typeof TYPE_COLORS!=='undefined') ? (TYPE_COLORS[move.type]||'#fff') : '#fff';
+  const src  = elCenter(el);
+  const dst  = oppCenter();
+
+  // Always show the move name floating up from the card
+  if(move) floatLabel(el, move.name.toUpperCase(), color, 'clamp(7px,0.8vw,10px)', 1100);
+
+  switch(dex) {
+
+  // ══ 001 BULBASAUR — Seed Bomb ══════════════════════════════════
+  // 3 individual seeds with drawn leaf-veins arc to target in a cluster.
+  // Each seed pops into a ring of leaf shards. Ends with purple poison bloom.
+  case 1: {
+    spriteTint(el,'#44BB44',180);
+    await cardWobble(el,5,2,240);
+    const c=getVfxCanvas(),ctx=c.getContext('2d');
+    for(let s=0;s<3;s++){
+      await delay(s*120);
+      const ofx=(s-1)*18, ofy=-s*6;
+      const t0=performance.now(),dur=380;
+      const trail=[];
+      await new Promise(res=>{
+        function frame(now){
+          const t=Math.min(1,(now-t0)/dur);
+          const x=src.x+ofx+(dst.x-src.x)*t, y=src.y+ofy+(dst.y-src.y)*t-Math.sin(t*Math.PI)*55;
+          trail.push({x,y});
+          if(trail.length>8)trail.shift();
+          ctx.clearRect(0,0,c.width,c.height);
+          // Leaf trail
+          trail.forEach((p,i)=>{
+            const a=i/trail.length*0.5;
+            ctx.beginPath();ctx.arc(p.x,p.y,4*(i/trail.length),0,Math.PI*2);
+            ctx.fillStyle=`rgba(80,200,60,${a})`;ctx.fill();
+          });
+          // Seed: round with cross-hatch vein
+          ctx.save();ctx.translate(x,y);
+          ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);
+          ctx.fillStyle='#88DD44';ctx.shadowColor='#44FF44';ctx.shadowBlur=10;ctx.fill();
+          ctx.strokeStyle='#226622';ctx.lineWidth=1.5;
+          ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(6,0);ctx.moveTo(0,-6);ctx.lineTo(0,6);ctx.stroke();
+          // Tiny leaves
+          for(let l=0;l<3;l++){
+            const la=l/3*Math.PI*2+t*4;
+            ctx.save();ctx.translate(Math.cos(la)*7,Math.sin(la)*7);ctx.rotate(la);
+            ctx.beginPath();ctx.ellipse(0,0,5,2,0,0,Math.PI*2);
+            ctx.fillStyle='rgba(60,180,40,0.7)';ctx.fill();ctx.restore();
+          }
+          ctx.restore();
+          if(t<1)requestAnimationFrame(frame);
+          else{ctx.clearRect(0,0,c.width,c.height);
+            // Impact: leaf shards burst
+            for(let i=0;i<8;i++){
+              const a=i/8*Math.PI*2;
+              ctx.save();ctx.translate(dst.x+Math.cos(a)*20,dst.y+Math.sin(a)*20);ctx.rotate(a);
+              ctx.beginPath();ctx.ellipse(0,0,8,3,0,0,Math.PI*2);
+              ctx.fillStyle='rgba(100,220,60,0.8)';ctx.fill();ctx.restore();
+            }
+            setTimeout(()=>ctx.clearRect(0,0,c.width,c.height),200);
+            spriteHitFlash('#44BB44',220);
+            res();
+          }
+        }
+        requestAnimationFrame(frame);
+      });
+    }
+    await delay(200);
+    impactRing(dst,'#44BB44',90,300);
+    poisonCloud(dst,600);
+    spritePoisoned(700);
+    floatLabel(null,'☠ POISON 3','#CC66FF','clamp(9px,1vw,12px)',900);
+    await delay(350);
+    break;
+  }
+
+  // ══ 002 IVYSAUR — Root Growth ═══════════════════════════════════
+  // Thick vine whips out with a growing, writhing animation.
+  // Secondary vine follows. Opp gets yanked TOWARD the vine on impact.
+  case 2: {
+    spriteTint(el,'#226622',180);
+    cardWobble(el,4,2,220);
+    const c2=getVfxCanvas(),ctx2=c2.getContext('2d');
+    // Animated vine: draws itself from src to dst with sine wiggle
+    const t02=performance.now(),dur2=420;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t02)/dur2);
+        ctx2.clearRect(0,0,c2.width,c2.height);
+        // Main vine
+        ctx2.save();ctx2.strokeStyle='#33AA33';ctx2.lineWidth=7;
+        ctx2.shadowColor='#88FF44';ctx2.shadowBlur=8;ctx2.lineCap='round';
+        ctx2.beginPath();ctx2.moveTo(src.x,src.y);
+        const steps=20;
+        for(let i=1;i<=steps;i++){
+          const p=Math.min(1,i/steps/t);if(p>1)break;
+          const px=src.x+(dst.x-src.x)*p, py=src.y+(dst.y-src.y)*p;
+          const wave=Math.sin(p*Math.PI*3+t*5)*18*(1-p*0.5);
+          ctx2.lineTo(px+wave*Math.sin(Math.atan2(dst.y-src.y,dst.x-src.x)+Math.PI/2),
+                      py+wave*Math.cos(Math.atan2(dst.y-src.y,dst.x-src.x)+Math.PI/2));
+        }
+        ctx2.stroke();
+        // Leaf nodes along vine
+        for(let i=0;i<4;i++){
+          const p=i/4*t;
+          const px=src.x+(dst.x-src.x)*p,py=src.y+(dst.y-src.y)*p;
+          ctx2.beginPath();ctx2.arc(px,py,5,0,Math.PI*2);
+          ctx2.fillStyle='rgba(80,200,40,0.7)';ctx2.fill();
+        }
+        ctx2.restore();
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx2.clearRect(0,0,c2.width,c2.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteRecoil(-1,30,400); // yanked toward vine
+    spriteHitFlash('#44BB44',250);
+    impactRing(dst,'#44BB44',75,280);
+    poisonCloud(dst,500);
+    spritePoisoned(600);
+    floatLabel(null,'☠ POISON 5','#CC66FF','clamp(9px,1vw,12px)',800);
+    await delay(320);
+    break;
+  }
+
+  // ══ 003 VENUSAUR — Toxic Garden ════════════════════════════════
+  // Whole card blazes green. 4 heavy vines slam in sequence from all directions.
+  // Giant pulsing poison bloom with petals. Opp warps and recoils.
+  case 3: {
+    cardTint(el,'#002200',350);
+    spriteTint(el,'#33FF33',200);
+    await cardWobble(el,9,3,300);
+    const c3=getVfxCanvas(),ctx3=c3.getContext('2d');
+    // 4 vines from different angles, staggered
+    const dirs=[[-1,-1],[1,-1],[-1,1],[1,1]];
+    for(let vi=0;vi<4;vi++){
+      const [dx3,dy3]=dirs[vi];
+      const vsrc={x:src.x+dx3*40,y:src.y+dy3*25};
+      const t03=performance.now(),dur3=300;
+      await new Promise(res=>{
+        function frame(now){
+          const t=Math.min(1,(now-t03)/dur3);
+          ctx3.clearRect(0,0,c3.width,c3.height);
+          ctx3.save();ctx3.strokeStyle=`rgba(${40+vi*30},${160+vi*20},40,0.9)`;
+          ctx3.lineWidth=6+vi*1.5;ctx3.shadowColor='#44FF44';ctx3.shadowBlur=12;ctx3.lineCap='round';
+          ctx3.beginPath();ctx3.moveTo(vsrc.x,vsrc.y);
+          const steps=14;
+          for(let i=1;i<=steps;i++){
+            const p=Math.min(1,i/steps/t);if(p>1)break;
+            const px=vsrc.x+(dst.x-vsrc.x)*p,py=vsrc.y+(dst.y-vsrc.y)*p;
+            const w=Math.sin(p*Math.PI*2+vi)*12;
+            ctx3.lineTo(px+w*dy3,py-w*dx3);
+          }
+          ctx3.stroke();ctx3.restore();
+          if(t<1)requestAnimationFrame(frame);
+          else{ctx3.clearRect(0,0,c3.width,c3.height);
+            spriteHitFlash('#44BB44',180);
+            res();
+          }
+        }
+        requestAnimationFrame(frame);
+      });
+      await delay(60);
+    }
+    // Giant petal bloom at target
+    const t03b=performance.now(),dur3b=600;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t03b)/dur3b);
+        ctx3.clearRect(0,0,c3.width,c3.height);
+        // 8 petals
+        for(let p=0;p<8;p++){
+          const a=p/8*Math.PI*2+t*0.5;
+          const r=90*Math.sin(t*Math.PI);
+          ctx3.save();ctx3.translate(dst.x+Math.cos(a)*r*0.5,dst.y+Math.sin(a)*r*0.5);
+          ctx3.rotate(a+Math.PI/2);
+          ctx3.beginPath();ctx3.ellipse(0,0,r*0.25,r*0.5,0,0,Math.PI*2);
+          const g=ctx3.createRadialGradient(0,0,0,0,0,r*0.5);
+          g.addColorStop(0,'rgba(180,60,220,0.85)');
+          g.addColorStop(1,'rgba(80,200,40,0)');
+          ctx3.fillStyle=g;ctx3.fill();ctx3.restore();
+        }
+        // Centre blob
+        const gb=ctx3.createRadialGradient(dst.x,dst.y,0,dst.x,dst.y,70*Math.sin(t*Math.PI));
+        gb.addColorStop(0,'rgba(200,100,255,0.7)');gb.addColorStop(1,'transparent');
+        ctx3.beginPath();ctx3.arc(dst.x,dst.y,70*Math.sin(t*Math.PI),0,Math.PI*2);
+        ctx3.fillStyle=gb;ctx3.fill();
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx3.clearRect(0,0,c3.width,c3.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteWarp(16,500);
+    spriteRecoil(1,30,450);
+    spritePoisoned(900);
+    floatLabel(null,'☠ POISON 8 + HEAL 5','#CC66FF','clamp(9px,1vw,12px)',1000);
+    await delay(500);
+    break;
+  }
+
+  // ══ 004 CHARMANDER — Ember ══════════════════════════════════════
+  // Card art flickers warm. A compact fireball with crackling heat distortion
+  // arcs to target. Small fire crown on impact. Opp briefly catches fire.
+  case 4: {
+    cardTint(el,'#FF4400',200);
+    // Heat shimmer on card art
+    const artEl=el.querySelector('.hc-art');
+    if(artEl){artEl.style.transition='filter 0.15s';artEl.style.filter='brightness(1.3) saturate(1.5) sepia(0.3)';setTimeout(()=>{artEl.style.filter='';artEl.style.transition='';},300);}
+    await delay(120);
+    const c4=getVfxCanvas(),ctx4=c4.getContext('2d');
+    const t04=performance.now(),dur4=360;
+    const trail4=[];
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t04)/dur4);
+        const x=src.x+(dst.x-src.x)*t, y=src.y+(dst.y-src.y)*t-Math.sin(t*Math.PI)*60;
+        trail4.push({x,y,t});if(trail4.length>14)trail4.shift();
+        ctx4.clearRect(0,0,c4.width,c4.height);
+        // Fire trail — teardrop shapes pointing backward
+        const ang=Math.atan2(dst.y-src.y,dst.x-src.x)+Math.PI;
+        trail4.forEach((p,i)=>{
+          const frac=i/trail4.length;
+          ctx4.save();ctx4.translate(p.x,p.y);ctx4.rotate(ang);
+          ctx4.beginPath();ctx4.moveTo(0,0);
+          ctx4.bezierCurveTo(-8*(1-frac),-6*(1-frac),-8*(1-frac),6*(1-frac),0,0);
+          ctx4.fillStyle=`rgba(255,${100+frac*120},0,${frac*0.8})`;ctx4.fill();ctx4.restore();
+        });
+        // Core: bright hot fireball
+        const gr=ctx4.createRadialGradient(x,y,0,x,y,14);
+        gr.addColorStop(0,'#fff');gr.addColorStop(0.3,'#FFCC00');gr.addColorStop(0.7,'#FF4400');gr.addColorStop(1,'transparent');
+        ctx4.beginPath();ctx4.arc(x,y,14,0,Math.PI*2);ctx4.fillStyle=gr;ctx4.fill();
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx4.clearRect(0,0,c4.width,c4.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    // Fire crown: 6 flame tongues at impact
+    const c4b=getVfxCanvas(),ctx4b=c4b.getContext('2d');
+    const t04b=performance.now(),dur4b=350;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t04b)/dur4b);
+        ctx4b.clearRect(0,0,c4b.width,c4b.height);
+        for(let f=0;f<6;f++){
+          const a=f/6*Math.PI*2-Math.PI/2;
+          const h=50*Math.sin(t*Math.PI), w=12*(1-t);
+          ctx4b.save();ctx4b.translate(dst.x+Math.cos(a)*20*t,dst.y+Math.sin(a)*20*t);ctx4b.rotate(a+Math.PI/2);
+          ctx4b.beginPath();ctx4b.moveTo(-w,0);ctx4b.bezierCurveTo(-w,h*0.3,w,h*0.3,w,0);
+          ctx4b.bezierCurveTo(w,-h*0.2,0,-h,0,-h);ctx4b.bezierCurveTo(0,-h,-w,-h*0.2,-w,0);
+          const gf=ctx4b.createLinearGradient(0,0,0,-h);
+          gf.addColorStop(0,'rgba(255,150,0,0.9)');gf.addColorStop(1,'rgba(255,80,0,0)');
+          ctx4b.fillStyle=gf;ctx4b.fill();ctx4b.restore();
+        }
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx4b.clearRect(0,0,c4b.width,c4b.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteHitFlash('#FF4422',250);
+    spriteOnFire(650);
+    impactRing(dst,'#FF4422',70,280);
+    floatLabel(null,'🔥 BURN 4','#FF4422','clamp(9px,1vw,12px)',750);
+    await delay(300);
+    break;
+  }
+
+  // ══ 005 CHARMELEON — Flame Spiral ══════════════════════════════
+  // Card spins fast. A corkscrew fire helix drills through air to target.
+  // Triple hit with escalating recoil. Opp blazes longer.
+  case 5: {
+    cardTint(el,'#FF3300',280);
+    await cardWobble(el,11,4,300);
+    const c5=getVfxCanvas(),ctx5=c5.getContext('2d');
+    // Corkscrew helix: 3 interleaved fire strands spiral from src to dst
+    const t05=performance.now(),dur5=500;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t05)/dur5);
+        ctx5.clearRect(0,0,c5.width,c5.height);
+        const dirAng=Math.atan2(dst.y-src.y,dst.x-src.x);
+        for(let strand=0;strand<3;strand++){
+          const phase=strand/3*Math.PI*2;
+          const pts=[];
+          for(let i=0;i<=24*t;i++){
+            const p=i/(24);
+            const cx5=src.x+(dst.x-src.x)*p;
+            const cy5=src.y+(dst.y-src.y)*p;
+            const r=22*(1-p*0.4);
+            const a=p*Math.PI*4+phase;
+            pts.push({x:cx5+Math.cos(a)*r*Math.sin(dirAng+Math.PI/2),
+                      y:cy5+Math.sin(a)*r*Math.cos(dirAng+Math.PI/2)});
+          }
+          if(pts.length<2)continue;
+          ctx5.beginPath();ctx5.moveTo(pts[0].x,pts[0].y);
+          pts.forEach(p=>ctx5.lineTo(p.x,p.y));
+          const hue=strand*40;
+          ctx5.strokeStyle=`hsla(${20+hue},100%,${50+strand*10}%,0.85)`;
+          ctx5.lineWidth=4-strand;ctx5.shadowColor='#FF5500';ctx5.shadowBlur=10;ctx5.stroke();
+        }
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx5.clearRect(0,0,c5.width,c5.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    // Triple impact
+    for(let hit=0;hit<3;hit++){
+      impactRing(dst,'#FF5500',50+hit*25,200+hit*50);
+      spriteHitFlash('#FF5500',180);
+      await delay(160);
+      spriteRecoil(1,10+hit*8,260);
+      await delay(80);
+    }
+    spriteOnFire(750);
+    floatLabel(null,'🔥 BURN +3/RND','#FF4422','clamp(9px,1vw,12px)',850);
+    await delay(320);
+    break;
+  }
+
+  // ══ 006 CHARIZARD — Inferno ════════════════════════════════════
+  // Card physically LUNGES forward. A massive dragon-breath cone erupts —
+  // not a ball but a wide spreading fan of fire. Screen fills with heat.
+  // Opp is engulfed: fire, warp, violent recoil. 3 blast rings.
+  case 6: {
+    cardTint(el,'#FF1100',200);
+    spriteTint(el,'#FF4400',180);
+    await cardWobble(el,14,3,300);
+    cardLunge(el,dst,0.58,340);
+    await delay(200);
+    const c6=getVfxCanvas(),ctx6=c6.getContext('2d');
+    // Dragon breath: expanding cone of fire from src toward dst
+    const ang6=Math.atan2(dst.y-src.y,dst.x-src.x);
+    const dist6=Math.hypot(dst.x-src.x,dst.y-src.y);
+    const t06=performance.now(),dur6=480;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t06)/dur6);
+        ctx6.clearRect(0,0,c6.width,c6.height);
+        // Turbulent fire: many overlapping gradient ellipses along the cone
+        for(let layer=0;layer<18;layer++){
+          const lp=(layer/18+t*0.3)%1;
+          const lx=src.x+Math.cos(ang6)*dist6*lp*t;
+          const ly=src.y+Math.sin(ang6)*dist6*lp*t;
+          const spread=60*lp*(1+Math.sin(t*8+layer)*0.3);
+          const perp=ang6+Math.PI/2;
+          const ox=Math.cos(perp)*spread*(Math.random()-0.5)*2;
+          const oy=Math.sin(perp)*spread*(Math.random()-0.5)*2;
+          const hue=Math.random()>0.5?20:40;
+          const g=ctx6.createRadialGradient(lx+ox,ly+oy,0,lx+ox,ly+oy,40*lp+10);
+          g.addColorStop(0,`rgba(255,${180+Math.random()*75},0,${0.7*(1-lp*0.3)})`);
+          g.addColorStop(0.4,`rgba(255,${50+lp*100},0,${0.4*(1-lp*0.3)})`);
+          g.addColorStop(1,'transparent');
+          ctx6.beginPath();ctx6.ellipse(lx+ox,ly+oy,40*lp+15,20*lp+8,ang6,0,Math.PI*2);
+          ctx6.fillStyle=g;ctx6.fill();
+        }
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx6.clearRect(0,0,c6.width,c6.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    impactRing(dst,'#FF2200',150,420);
+    await delay(80);
+    impactRing(dst,'#FFAA00',100,340);
+    await delay(80);
+    impactRing(dst,'#FFFF88',60,260);
+    spriteHitFlash('#FF0000',400);
+    spriteOnFire(1300);
+    spriteWarp(15,420);
+    spriteRecoil(1,50,480);
+    floatLabel(null,'🔥×2 BURN','#FF4422','clamp(10px,1.1vw,14px)',1100);
+    await delay(600);
+    break;
+  }
+
+  // ══ 007 SQUIRTLE — Bubble Shield ════════════════════════════════
+  // Iridescent soap bubbles float from card to target. Each pops with a
+  // soft ring on impact. Card gets a blue shield shimmer.
+  case 7: {
+    cardTint(el,'#0055FF',250);
+    const c7=getVfxCanvas(),ctx7=c7.getContext('2d');
+    const bubbles=Array.from({length:12},(_,i)=>({
+      x:src.x+(Math.random()-0.5)*30, y:src.y+(Math.random()-0.5)*20,
+      r:8+Math.random()*8, phase:i*0.08, speed:0.6+Math.random()*0.5
+    }));
+    const t07=performance.now(),dur7=600;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t07)/dur7);
+        ctx7.clearRect(0,0,c7.width,c7.height);
+        bubbles.forEach(b=>{
+          const bt=Math.min(1,Math.max(0,t*b.speed-b.phase));
+          if(bt<=0)return;
+          const x=b.x+(dst.x-b.x)*bt+Math.sin(bt*6+b.phase)*15;
+          const y=b.y+(dst.y-b.y)*bt-Math.sin(bt*Math.PI)*40;
+          const alpha=bt<0.8?1:1-(bt-0.8)/0.2;
+          // Iridescent bubble: gradient with sheen
+          ctx7.save();
+          ctx7.beginPath();ctx7.arc(x,y,b.r,0,Math.PI*2);
+          const g=ctx7.createRadialGradient(x-b.r*0.3,y-b.r*0.3,0,x,y,b.r);
+          g.addColorStop(0,`rgba(200,240,255,${alpha*0.8})`);
+          g.addColorStop(0.4,`rgba(100,180,255,${alpha*0.5})`);
+          g.addColorStop(1,`rgba(50,100,200,${alpha*0.4})`);
+          ctx7.fillStyle=g;ctx7.fill();
+          ctx7.strokeStyle=`rgba(150,220,255,${alpha*0.6})`;ctx7.lineWidth=1.5;ctx7.stroke();
+          // Sheen highlight
+          ctx7.beginPath();ctx7.arc(x-b.r*0.3,y-b.r*0.4,b.r*0.25,0,Math.PI*2);
+          ctx7.fillStyle=`rgba(255,255,255,${alpha*0.5})`;ctx7.fill();
+          ctx7.restore();
+          // Pop ring at arrival
+          if(bt>0.75){
+            const pop=(bt-0.75)/0.25;
+            ctx7.beginPath();ctx7.arc(x,y,b.r*(1+pop*2),0,Math.PI*2);
+            ctx7.strokeStyle=`rgba(100,200,255,${(1-pop)*0.6})`;ctx7.lineWidth=2*(1-pop);ctx7.stroke();
+          }
+        });
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx7.clearRect(0,0,c7.width,c7.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    cardFlash(el,'#66AAFF',350);
+    impactRing(dst,'#3399FF',70,270);
+    floatLabel(el,'🛡 BLOCK 30','#66AAFF','clamp(9px,1vw,12px)',800);
+    await delay(300);
+    break;
+  }
+
+  // ══ 008 WARTORTLE — Shell Defense ═══════════════════════════════
+  // Spinning shell shield materialises around card. Twin water spirals
+  // drill toward target from opposite sides. Opp pushed back.
+  case 8: {
+    cardTint(el,'#0044AA',250);
+    const c8=getVfxCanvas(),ctx8=c8.getContext('2d');
+    const t08=performance.now(),dur8=520;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t08)/dur8);
+        ctx8.clearRect(0,0,c8.width,c8.height);
+        // Shell: 3 concentric spinning arcs
+        for(let ring=0;ring<3;ring++){
+          const r=55+ring*18, rot=t*Math.PI*(2-ring*0.3);
+          ctx8.save();ctx8.translate(src.x,src.y);ctx8.rotate(rot);
+          ctx8.beginPath();ctx8.arc(0,0,r,0,Math.PI*1.5);
+          ctx8.strokeStyle=`rgba(${80+ring*40},${160+ring*30},255,${0.7-ring*0.1})`;
+          ctx8.lineWidth=4-ring;ctx8.shadowColor='#66AAFF';ctx8.shadowBlur=8;ctx8.stroke();
+          // Shell notch detail
+          ctx8.beginPath();ctx8.arc(r,0,6,0,Math.PI*2);
+          ctx8.fillStyle=`rgba(150,220,255,0.5)`;ctx8.fill();
+          ctx8.restore();
+        }
+        // Two water spirals converging at dst
+        [-1,1].forEach(side=>{
+          const ox=side*80*(1-t), oy=-30;
+          const pts=[];
+          for(let i=0;i<=16*t;i++){
+            const p=i/16;
+            const wx=src.x+ox+(dst.x-src.x-ox)*p;
+            const wy=src.y+oy+(dst.y-src.y-oy)*p+Math.sin(p*Math.PI*3+t*4)*18;
+            pts.push({x:wx,y:wy});
+          }
+          if(pts.length<2)return;
+          ctx8.beginPath();ctx8.moveTo(pts[0].x,pts[0].y);
+          pts.forEach(p=>ctx8.lineTo(p.x,p.y));
+          ctx8.strokeStyle=`rgba(80,180,255,${0.7*(1-(1-t))})`;
+          ctx8.lineWidth=6;ctx8.shadowColor='#3399FF';ctx8.shadowBlur=8;ctx8.stroke();
+        });
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx8.clearRect(0,0,c8.width,c8.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteRecoil(1,22,350);
+    impactRing(dst,'#3399FF',85,300);
+    cardFlash(el,'#99DDFF',400);
+    floatLabel(el,'🛡 BLOCK 50','#66AAFF','clamp(9px,1vw,12px)',800);
+    await delay(320);
+    break;
+  }
+
+  // ══ 009 BLASTOISE — Hydro Cannon ════════════════════════════════
+  // Card recoils as twin THICK water cannons blast. Water jets are chunky
+  // and powerful, not sine-wave. Massive concentric rings. Opp flies back.
+  case 9: {
+    cardTint(el,'#0033CC',250);
+    cardWobble(el,6,2,200);
+    await delay(160);
+    // Card physically kicks back (recoil direction)
+    const recoilDir=Math.sign(src.y-dst.y)||1;
+    el.style.transition='transform 0.12s ease';
+    el.style.transform=`translateY(${recoilDir*18}px)`;
+    const c9=getVfxCanvas(),ctx9=c9.getContext('2d');
+    const t09=performance.now(),dur9=320;
+    // Twin cannon jets: thick, chunky, with pressure lines
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t09)/dur9);
+        ctx9.clearRect(0,0,c9.width,c9.height);
+        [-18,18].forEach((ox,ci)=>{
+          const jx=src.x+ox, jy=src.y-8;
+          const ex=dst.x+(ci===0?-12:12), ey=dst.y;
+          // Main water column
+          ctx9.save();
+          const ang=Math.atan2(ey-jy,ex-jx);
+          ctx9.translate(jx,jy);ctx9.rotate(ang);
+          const len=Math.hypot(ex-jx,ey-jy)*t;
+          const g=ctx9.createLinearGradient(0,0,len,0);
+          g.addColorStop(0,'rgba(0,100,255,0.9)');
+          g.addColorStop(0.5,'rgba(100,200,255,0.8)');
+          g.addColorStop(1,'rgba(200,240,255,0.6)');
+          ctx9.fillStyle=g;ctx9.fillRect(0,-10,len,20);
+          // Pressure lines
+          for(let l=0;l<4;l++){
+            const lx=len*l/4;
+            ctx9.beginPath();ctx9.moveTo(lx,-12);ctx9.lineTo(lx+4,-12);
+            ctx9.strokeStyle='rgba(200,240,255,0.4)';ctx9.lineWidth=1;ctx9.stroke();
+          }
+          ctx9.restore();
+          // Spray at tip
+          if(t>0.6){
+            const sp=(t-0.6)/0.4;
+            for(let s=0;s<8;s++){
+              const sa=Math.random()*Math.PI-Math.PI/2+ang;
+              ctx9.beginPath();ctx9.arc(ex+(Math.cos(sa)*sp*30),ey+(Math.sin(sa)*sp*30),Math.max(0.1,4*(1-sp)),0,Math.PI*2);
+              ctx9.fillStyle=`rgba(100,200,255,${(1-sp)*0.6})`;ctx9.fill();
+            }
+          }
+        });
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx9.clearRect(0,0,c9.width,c9.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    el.style.transform='';setTimeout(()=>el.style.transition='',180);
+    spriteHitFlash('#0077FF',350);
+    spriteRecoil(1,45,460);
+    impactRing(dst,'#0077FF',150,420);
+    await delay(100);impactRing(dst,'#88DDFF',100,300);
+    floatLabel(null,'💧 HYDRO CANNON','#3399FF','clamp(10px,1.1vw,14px)',1000);
+    await delay(450);
+    break;
+  }
+
+  // ══ 010 CATERPIE — String Shot ══════════════════════════════════
+  // Actual silk: 3 threads animate point-by-point with different phase.
+  // Web splat pattern at target. Opp stuck (glitch distort).
+  case 10: {
+    cardFlash(el,'#BBBB66',120);
+    const c10=getVfxCanvas(),ctx10=c10.getContext('2d');
+    const t010=performance.now(),dur10=440;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t010)/dur10);
+        ctx10.clearRect(0,0,c10.width,c10.height);
+        ctx10.save();ctx10.lineCap='round';
+        for(let thread=0;thread<4;thread++){
+          const phase=thread*0.12, freq=4+thread;
+          const threadT=Math.min(1,Math.max(0,(t-phase)/(1-phase)));
+          if(threadT<=0)continue;
+          ctx10.beginPath();ctx10.moveTo(src.x,src.y+thread*4-6);
+          const steps=20;
+          for(let i=1;i<=steps*threadT;i++){
+            const p=i/steps;
+            const px=src.x+(dst.x-src.x)*p;
+            const py=src.y+thread*4-6+(dst.y-src.y+thread*4-6)*p;
+            const norm=Math.sin(Math.atan2(dst.y-src.y,dst.x-src.x)+Math.PI/2);
+            const wave=Math.sin(p*Math.PI*freq+thread)*9*(1-p*0.4);
+            ctx10.lineTo(px+wave*norm,py+wave*Math.cos(Math.atan2(dst.y-src.y,dst.x-src.x)+Math.PI/2));
+          }
+          ctx10.strokeStyle=`rgba(${200+thread*10},${195+thread*8},${130+thread*5},${0.85-thread*0.12})`;
+          ctx10.lineWidth=2.5-thread*0.4;ctx10.stroke();
+        }
+        ctx10.restore();
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx10.clearRect(0,0,c10.width,c10.height);
+          // Web splat at target
+          for(let i=0;i<12;i++){
+            const a=i/12*Math.PI*2, r1=8+Math.random()*6, r2=22+Math.random()*16;
+            ctx10.beginPath();ctx10.moveTo(dst.x+Math.cos(a)*r1,dst.y+Math.sin(a)*r1);
+            ctx10.lineTo(dst.x+Math.cos(a)*r2,dst.y+Math.sin(a)*r2);
+            ctx10.strokeStyle='rgba(210,205,140,0.7)';ctx10.lineWidth=1.5;ctx10.stroke();
+            // Concentric web rings
+            if(i%3===0){
+              ctx10.beginPath();ctx10.arc(dst.x,dst.y,Math.max(0.1,r2*0.6),a-0.3,a+0.3);
+              ctx10.strokeStyle='rgba(190,185,120,0.4)';ctx10.lineWidth=1;ctx10.stroke();
+            }
+          }
+          setTimeout(()=>ctx10.clearRect(0,0,c10.width,c10.height),650);
+          res();
+        }
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteGlitch(350);
+    floatLabel(null,'🕸 DMG -10%','#AAAAAA','clamp(9px,1vw,12px)',800);
+    await delay(350);
+    break;
+  }
+
+  // ══ 011 METAPOD — Harden ════════════════════════════════════════
+  // Steel-grey hexagonal shell materialises over card in layers.
+  // Rings slam inward with a metallic clang feel.
+  case 11: {
+    const c11=getVfxCanvas(),ctx11=c11.getContext('2d');
+    const t011=performance.now(),dur11=600;
+    cardTint(el,'#8888AA',350);
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t011)/dur11);
+        ctx11.clearRect(0,0,c11.width,c11.height);
+        // 6 hex rings collapsing inward
+        for(let ring=0;ring<6;ring++){
+          const delay_r=ring*0.08;
+          const rt=Math.max(0,t-delay_r)/(1-delay_r);
+          const r=160*(1-rt*0.85);
+          ctx11.beginPath();
+          for(let k=0;k<6;k++){
+            const a=k/6*Math.PI*2-Math.PI/6+rt*0.2;
+            k===0?ctx11.moveTo(src.x+Math.cos(a)*r,src.y+Math.sin(a)*r)
+                 :ctx11.lineTo(src.x+Math.cos(a)*r,src.y+Math.sin(a)*r);
+          }
+          ctx11.closePath();
+          const alpha=Math.sin(rt*Math.PI)*0.8;
+          ctx11.strokeStyle=`rgba(${180+ring*10},${180+ring*8},${200+ring*5},${alpha})`;
+          ctx11.lineWidth=4*rt+0.5;ctx11.shadowColor='#9999CC';ctx11.shadowBlur=12;ctx11.stroke();
+          // Fill with faint chrome
+          ctx11.fillStyle=`rgba(140,140,180,${alpha*0.15})`;ctx11.fill();
+        }
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx11.clearRect(0,0,c11.width,c11.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    cardFlash(el,'#CCCCEE',350);
+    floatLabel(el,'🛡 BLOCK 70','#AAAACC','clamp(9px,1vw,12px)',800);
+    await delay(280);
+    break;
+  }
+
+  // ══ 012 BUTTERFREE — Sleep Powder ═══════════════════════════════
+  // Dense lavender spore cloud billows from wings. Individual spores have
+  // physics — drift and swirl. Opp sprite blurs and droops into sleep.
+  case 12: {
+    cardTint(el,'#AA66FF',300);
+    spriteTint(el,'#CC88FF',200);
+    const c12=getVfxCanvas(),ctx12=c12.getContext('2d');
+    // 36 spores with individual trajectories and sizes
+    const spores12=Array.from({length:36},(_,i)=>({
+      ox:src.x+(Math.random()-0.5)*50, oy:src.y+(Math.random()-0.5)*30,
+      phase:i*0.15+Math.random()*0.1, sz:5+Math.random()*10,
+      wx:Math.random()*30-15, wy:Math.random()*20-10,
+    }));
+    const t012=performance.now(),dur12=750;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t012)/dur12);
+        ctx12.clearRect(0,0,c12.width,c12.height);
+        spores12.forEach(s=>{
+          const st=Math.max(0,(t-s.phase*0.04))*1.3;
+          if(st<=0)return;
+          const p=Math.min(1,st);
+          const x=s.ox+(dst.x-s.ox)*p+Math.sin(p*5+s.wx)*s.wx;
+          const y=s.oy+(dst.y-s.oy)*p+Math.cos(p*4+s.wy)*s.wy;
+          const alpha=Math.sin(Math.min(1,p*1.5)*Math.PI)*0.8;
+          const sz=s.sz*(0.3+p*0.8);
+          // Soft glowing spore
+          const g=ctx12.createRadialGradient(x,y,0,x,y,sz);
+          g.addColorStop(0,`rgba(230,170,255,${alpha})`);
+          g.addColorStop(0.5,`rgba(180,100,240,${alpha*0.6})`);
+          g.addColorStop(1,'rgba(130,60,200,0)');
+          ctx12.beginPath();ctx12.arc(x,y,sz,0,Math.PI*2);
+          ctx12.fillStyle=g;ctx12.fill();
+          // Tiny star gleam
+          if(p>0.4&&p<0.8){
+            ctx12.beginPath();ctx12.arc(x,y,2,0,Math.PI*2);
+            ctx12.fillStyle=`rgba(255,230,255,${alpha*0.8})`;ctx12.fill();
+          }
+        });
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx12.clearRect(0,0,c12.width,c12.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    // Opp droops
+    const spr12=document.getElementById('opp-pokemon-sprite');
+    if(spr12){
+      spr12.style.transition='filter 0.4s ease, transform 0.6s ease';
+      spr12.style.filter='blur(1px) brightness(0.7)';
+      spr12.style.transform='rotate(8deg) translateY(10px)';
+      setTimeout(()=>{spr12.style.filter='';spr12.style.transform='';spr12.style.transition='';},1000);
+    }
+    spriteSleeping();
+    impactRing(dst,'#BB88FF',85,300);
+    floatLabel(null,'😴 SLEEP 35%','#BB88FF','clamp(9px,1vw,12px)',1000);
+    await delay(450);
+    break;
+  }
+
+  // ══ 013 WEEDLE — Poison Sting ══════════════════════════════════
+  // A single barbed needle with gradient shaft, visible barb and sharp tip.
+  // Flies fast and straight. Opp goes green-tinted and poisoned.
+  case 13: {
+    cardFlash(el,'#882299',130);
+    const c13=getVfxCanvas(),ctx13=c13.getContext('2d');
+    const ang13=Math.atan2(dst.y-src.y,dst.x-src.x);
+    const len13=Math.hypot(dst.x-src.x,dst.y-src.y);
+    const t013=performance.now(),dur13=240;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t013)/dur13);
+        ctx13.clearRect(0,0,c13.width,c13.height);
+        const x=src.x+(dst.x-src.x)*t, y=src.y+(dst.y-src.y)*t;
+        ctx13.save();ctx13.translate(x,y);ctx13.rotate(ang13);
+        // Shaft: gradient from dark to bright purple
+        const sg=ctx13.createLinearGradient(-22,0,16,0);
+        sg.addColorStop(0,'#441144');sg.addColorStop(0.5,'#993399');sg.addColorStop(1,'#FF88FF');
+        ctx13.beginPath();ctx13.moveTo(-22,0);ctx13.lineTo(14,0);
+        ctx13.strokeStyle=sg;ctx13.lineWidth=4.5;ctx13.shadowColor='#CC44CC';ctx13.shadowBlur=14;ctx13.stroke();
+        // Barb
+        ctx13.beginPath();ctx13.moveTo(-5,-5);ctx13.lineTo(5,-1.5);ctx13.lineTo(-5,0.5);ctx13.closePath();
+        ctx13.fillStyle='#BB33BB';ctx13.fill();
+        // Tip: sharp arrowhead
+        ctx13.beginPath();ctx13.moveTo(10,-5.5);ctx13.lineTo(18,0);ctx13.lineTo(10,5.5);ctx13.closePath();
+        ctx13.fillStyle='#FF99FF';ctx13.fill();
+        // Venom drip trail
+        if(t>0.2){
+          for(let d=0;d<4;d++){
+            const dp=d/4*0.8;
+            const dx=-22-dp*10;
+            ctx13.beginPath();ctx13.arc(dx,(d%2===0?-4:4),2.5,0,Math.PI*2);
+            ctx13.fillStyle=`rgba(180,60,200,${0.5*(1-dp)})`;ctx13.fill();
+          }
+        }
+        ctx13.restore();
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx13.clearRect(0,0,c13.width,c13.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteHitFlash('#993399',300);
+    spritePoisoned(750);
+    poisonCloud(dst,500);
+    impactRing(dst,'#AA33AA',65,260);
+    floatLabel(null,'☠ POISON 6','#CC55FF','clamp(9px,1vw,12px)',800);
+    await delay(330);
+    break;
+  }
+
+  // ══ 014 KAKUNA — Iron Cocoon ════════════════════════════════════
+  // Gold hexagonal shell materialises in layers — each one slightly rotated.
+  // Creates a genuine geometric lattice effect. No attack.
+  case 14: {
+    cardTint(el,'#AA8800',300);
+    const c14=getVfxCanvas(),ctx14=c14.getContext('2d');
+    const t014=performance.now(),dur14=700;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t014)/dur14);
+        ctx14.clearRect(0,0,c14.width,c14.height);
+        // 5 hex rings, each rotating slightly differently
+        for(let ring=0;ring<5;ring++){
+          const delay_r=ring*0.1;
+          const rt=Math.max(0,t-delay_r)/(1-delay_r);
+          const r=130*(1-rt*0.82);
+          const rot=rt*0.4+ring*0.2;
+          ctx14.beginPath();
+          for(let k=0;k<6;k++){
+            const a=k/6*Math.PI*2-Math.PI/6+rot;
+            k===0?ctx14.moveTo(src.x+Math.cos(a)*r,src.y+Math.sin(a)*r)
+                 :ctx14.lineTo(src.x+Math.cos(a)*r,src.y+Math.sin(a)*r);
+          }
+          ctx14.closePath();
+          const alpha=Math.sin(rt*Math.PI)*0.85;
+          ctx14.strokeStyle=`rgba(255,${200+ring*8},${ring*20},${alpha})`;
+          ctx14.lineWidth=3.5*rt+0.5;ctx14.shadowColor='#FFD700';ctx14.shadowBlur=16;ctx14.stroke();
+          ctx14.fillStyle=`rgba(255,200,0,${alpha*0.08})`;ctx14.fill();
+          // Inner facet lines
+          if(ring===2&&rt>0.5){
+            for(let k=0;k<6;k++){
+              const a=k/6*Math.PI*2-Math.PI/6+rot;
+              ctx14.beginPath();ctx14.moveTo(src.x,src.y);
+              ctx14.lineTo(src.x+Math.cos(a)*r,src.y+Math.sin(a)*r);
+              ctx14.strokeStyle=`rgba(255,220,50,${alpha*0.25})`;ctx14.lineWidth=1;ctx14.stroke();
+            }
+          }
+        }
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx14.clearRect(0,0,c14.width,c14.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    cardFlash(el,'#FFD700',400);
+    floatLabel(el,'🛡 BLOCK 90 ✦ UNBREAKABLE','#FFD700','clamp(8px,0.9vw,11px)',900);
+    await delay(280);
+    break;
+  }
+
+  // ══ 015 BEEDRILL — Twin Needle ══════════════════════════════════
+  // Card vibrates violently. Two barbed stingers with wing-blur silhouettes
+  // lunge in rapid succession. Each leaves a venom drip at impact.
+  case 15: {
+    await cardWobble(el,9,5,280);
+    spriteTint(el,'#FFCC00',180);
+    // Two stingers in quick succession
+    for(let pass=0;pass<2;pass++){
+      const off={x:dst.x+(pass===0?-12:12), y:dst.y+(pass===0?-10:8)};
+      const ang15=Math.atan2(off.y-src.y,off.x-src.x);
+      const c15=getVfxCanvas(),ctx15=c15.getContext('2d');
+      const t015=performance.now(),dur15=200;
+      await new Promise(res=>{
+        function frame(now){
+          const t=Math.min(1,(now-t015)/dur15);
+          ctx15.clearRect(0,0,c15.width,c15.height);
+          const x=src.x+(off.x-src.x)*t, y=src.y+(off.y-src.y)*t;
+          ctx15.save();ctx15.translate(x,y);ctx15.rotate(ang15);
+          // Body with gradient
+          const sg=ctx15.createLinearGradient(-20,0,16,0);
+          sg.addColorStop(0,'#8B8B00');sg.addColorStop(0.5,'#FFCC00');sg.addColorStop(1,'#FF9900');
+          ctx15.beginPath();ctx15.moveTo(-20,0);ctx15.lineTo(14,0);
+          ctx15.strokeStyle=sg;ctx15.lineWidth=5;ctx15.shadowColor='#FF8800';ctx15.shadowBlur=10;ctx15.stroke();
+          // Wing blur: translucent ellipses
+          [-1,1].forEach(wy=>{
+            ctx15.beginPath();ctx15.ellipse(-2,wy*12,14,5,0.3*wy,0,Math.PI*2);
+            ctx15.fillStyle='rgba(255,240,100,0.25)';ctx15.fill();
+          });
+          // Tip
+          ctx15.beginPath();ctx15.moveTo(10,-5.5);ctx15.lineTo(19,0);ctx15.lineTo(10,5.5);ctx15.closePath();
+          ctx15.fillStyle='#FF9900';ctx15.fill();
+          ctx15.restore();
+          if(t<1)requestAnimationFrame(frame);
+          else{ctx15.clearRect(0,0,c15.width,c15.height);res();}
+        }
+        requestAnimationFrame(frame);
+      });
+      // Venom drip at impact
+      const c15b=getVfxCanvas(),ctx15b=c15b.getContext('2d');
+      const t015b=performance.now(),dur15b=300;
+      await new Promise(res=>{
+        function fr(now){
+          const t=Math.min(1,(now-t015b)/dur15b);
+          ctx15b.clearRect(0,0,c15b.width,c15b.height);
+          for(let d=0;d<5;d++){
+            const dp=t+d*0.15;const drx=off.x+(Math.random()-0.5)*20;
+            ctx15b.beginPath();ctx15b.arc(drx,off.y+dp*30,Math.max(0.1,4*(1-t)),0,Math.PI*2);
+            ctx15b.fillStyle=`rgba(180,60,200,${(1-t)*0.7})`;ctx15b.fill();
+          }
+          if(t<1)requestAnimationFrame(fr);else{ctx15b.clearRect(0,0,c15b.width,c15b.height);res();}
+        }
+        requestAnimationFrame(fr);
+      });
+      impactRing(off,'#FFCC00',48,220);
+      spriteHitFlash('#FFCC00',200);
+      spriteRecoil(1,16,300);
+      await delay(100);
+    }
+    spritePoisoned(650);
+    poisonCloud(dst,440);
+    floatLabel(null,'☠ POISON 5','#CC55FF','clamp(9px,1vw,12px)',850);
+    await delay(300);
+    break;
+  }
+
+  // ══ 016 PIDGEY — Gust ══════════════════════════════════════════
+  // Actual feathers spiral off card and whip toward target.
+  // Wind distortion at impact — wavy lines radiate outward.
+  case 16: {
+    spriteTint(el,'#998877',180);
+    const c16=getVfxCanvas(),ctx16=c16.getContext('2d');
+    const feathers16=Array.from({length:8},(_,i)=>({
+      phase:i*0.08, angle:Math.random()*Math.PI*2,
+      size:8+Math.random()*5, spinRate:3+Math.random()*4
+    }));
+    const t016=performance.now(),dur16=480;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t016)/dur16);
+        ctx16.clearRect(0,0,c16.width,c16.height);
+        feathers16.forEach(f=>{
+          const ft=Math.min(1,Math.max(0,(t-f.phase)/(1-f.phase)));
+          if(ft<=0)return;
+          const x=src.x+(dst.x-src.x)*ft+Math.sin(ft*6+f.angle)*22;
+          const y=src.y+(dst.y-src.y)*ft+Math.cos(ft*5+f.angle)*15;
+          const alpha=(1-Math.max(0,ft-0.8)/0.2)*0.85;
+          ctx16.save();ctx16.translate(x,y);ctx16.rotate(ft*f.spinRate*Math.PI+f.angle);
+          // Feather shape: tapered ellipse with quill
+          ctx16.beginPath();ctx16.ellipse(0,0,f.size,f.size*0.35,0,0,Math.PI*2);
+          ctx16.fillStyle=`rgba(200,185,150,${alpha})`;ctx16.fill();
+          ctx16.beginPath();ctx16.moveTo(0,-f.size*0.35);ctx16.lineTo(0,f.size*0.35);
+          ctx16.strokeStyle=`rgba(160,145,120,${alpha*0.6})`;ctx16.lineWidth=1;ctx16.stroke();
+          ctx16.restore();
+        });
+        // Wind distortion at target: wavy expanding lines
+        if(t>0.6){
+          const wt=(t-0.6)/0.4;
+          for(let w=0;w<5;w++){
+            const wr=40*wt+w*12, wa=w/5*Math.PI*2;
+            ctx16.beginPath();
+            for(let a=0;a<Math.PI*2;a+=0.15){
+              const rx=dst.x+Math.cos(a)*wr+Math.sin(a*4+wa)*8*wt;
+              const ry=dst.y+Math.sin(a)*wr*0.5+Math.cos(a*3+wa)*6*wt;
+              a===0?ctx16.moveTo(rx,ry):ctx16.lineTo(rx,ry);
+            }
+            ctx16.strokeStyle=`rgba(200,190,160,${(1-wt)*0.5})`;ctx16.lineWidth=1.5;ctx16.stroke();
+          }
+        }
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx16.clearRect(0,0,c16.width,c16.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteWarp(10,350);
+    impactRing(dst,'#BBAA88',70,280);
+    floatLabel(null,'💨 DISPEL BUFF','#CCBBAA','clamp(9px,1vw,12px)',800);
+    await delay(320);
+    break;
+  }
+
+  // ══ 017 PIDGEOTTO — Wing Burst ══════════════════════════════════
+  // Two full wing silhouettes materialise from card sides and clap together.
+  // Shockwave ring + feather scatter at impact.
+  case 17: {
+    const c17=getVfxCanvas(),ctx17=c17.getContext('2d');
+    const t017=performance.now(),dur17=500;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t017)/dur17);
+        ctx17.clearRect(0,0,c17.width,c17.height);
+        [-1,1].forEach((side,si)=>{
+          // Wing moves from outside to center dst
+          const progress=t<0.7?t/0.7:1;
+          const x=dst.x+side*(150*(1-progress)+10);
+          const y=dst.y-20+si*5;
+          ctx17.save();ctx17.translate(x,y);ctx17.scale(side,1);
+          const alpha=t<0.85?1:1-(t-0.85)/0.15;
+          // Primary wing: large bezier shape
+          ctx17.beginPath();
+          ctx17.moveTo(0,0);
+          ctx17.bezierCurveTo(-25,-45,-65,-50,-80,-25);
+          ctx17.bezierCurveTo(-70,10,-35,22,0,0);
+          ctx17.fillStyle=`rgba(175,165,200,${alpha*0.75})`;ctx17.fill();
+          // Secondary feathers
+          ctx17.beginPath();
+          ctx17.moveTo(0,0);
+          ctx17.bezierCurveTo(-15,-10,-45,-12,-55,5);
+          ctx17.strokeStyle=`rgba(210,200,235,${alpha*0.6})`;ctx17.lineWidth=2;ctx17.stroke();
+          // Feather detail lines
+          for(let f=0;f<4;f++){
+            const fp=f/4;
+            const fx=-fp*60, fy=-fp*20+f*5;
+            ctx17.beginPath();ctx17.moveTo(fx,fy);ctx17.lineTo(fx-8,fy-12);
+            ctx17.strokeStyle=`rgba(190,180,215,${alpha*0.4})`;ctx17.lineWidth=1;ctx17.stroke();
+          }
+          ctx17.restore();
+        });
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx17.clearRect(0,0,c17.width,c17.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    // Feather scatter
+    const c17b=getVfxCanvas(),ctx17b=c17b.getContext('2d');
+    const t017b=performance.now(),dur17b=400;
+    await new Promise(res=>{
+      function fr(now){
+        const t=Math.min(1,(now-t017b)/dur17b);
+        ctx17b.clearRect(0,0,c17b.width,c17b.height);
+        for(let f=0;f<10;f++){
+          const a=f/10*Math.PI*2, r=60*t;
+          const x=dst.x+Math.cos(a)*r, y=dst.y+Math.sin(a)*r*0.6;
+          ctx17b.save();ctx17b.translate(x,y);ctx17b.rotate(a+t*4);
+          ctx17b.beginPath();ctx17b.ellipse(0,0,7*(1-t)+2,2.5*(1-t)+1,0,0,Math.PI*2);
+          ctx17b.fillStyle=`rgba(190,180,215,${(1-t)*0.7})`;ctx17b.fill();
+          ctx17b.restore();
+        }
+        if(t<1)requestAnimationFrame(fr);else{ctx17b.clearRect(0,0,c17b.width,c17b.height);res();}
+      }
+      requestAnimationFrame(fr);
+    });
+    spriteRecoil(1,25,380);
+    spriteHitFlash('#9988AA',280);
+    impactRing(dst,'#9988AA',85,300);
+    floatLabel(null,'💨 +10 PER CARD','#8877CC','clamp(9px,1vw,12px)',800);
+    await delay(320);
+    break;
+  }
+
+  // ══ 018 PIDGEOT — Hurricane ═════════════════════════════════════
+  // 90-point dense spiral vortex pulls everything inward.
+  // Debris, wind slashes, feathers all converge. Opp gets sucked in and warped.
+  case 18: {
+    cardTint(el,'#6677AA',280);
+    const c18=getVfxCanvas(),ctx18=c18.getContext('2d');
+    const t018=performance.now(),dur18=720;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t018)/dur18);
+        ctx18.clearRect(0,0,c18.width,c18.height);
+        // Dense inward vortex
+        for(let i=0;i<90;i++){
+          const phase=i/90;
+          const spiral=(phase+t*2.2)%1;
+          const r=160*spiral*(1-t*0.4);
+          const a=spiral*Math.PI*10;
+          const x=dst.x+Math.cos(a)*r, y=dst.y+Math.sin(a)*r*0.45;
+          const alpha=(1-spiral)*0.8;
+          const sz=4.5*(1-spiral)+0.5;
+          ctx18.beginPath();ctx18.arc(x,y,sz,0,Math.PI*2);
+          ctx18.fillStyle=`rgba(${160+spiral*60},${175+spiral*50},${230},${alpha})`;
+          ctx18.fill();
+          // Wind slash every 8th particle
+          if(i%8===0){
+            ctx18.save();ctx18.translate(x,y);ctx18.rotate(a);
+            ctx18.beginPath();ctx18.moveTo(-16,0);ctx18.lineTo(16,0);
+            ctx18.strokeStyle=`rgba(210,220,255,${alpha*0.7})`;ctx18.lineWidth=2;ctx18.stroke();
+            ctx18.restore();
+          }
+        }
+        if(t<1)requestAnimationFrame(frame);
+        else{ctx18.clearRect(0,0,c18.width,c18.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteWarp(20,480);
+    spriteRecoil(1,40,480);
+    impactRing(dst,'#8899CC',135,400);
+    impactRing(dst,'#CCDDFF',75,300);
+    floatLabel(null,'🌀 STUN 35%','#8899CC','clamp(9px,1vw,12px)',1000);
+    await delay(450);
+    break;
+  }
+
+  // ══ 019 RATTATA — Quick Bite ════════════════════════════════════
+  // Speed streak lines, card BLURS forward, two X bite marks slash.
+  // Whole thing over in under half a second — pure speed.
+  case 19: {
+    spriteTint(el,'#FF3333',150);
+    const c19=getVfxCanvas(),ctx19=c19.getContext('2d');
+    // Speed lines build up
+    const t019a=performance.now(),dur19a=150;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t019a)/dur19a);
+        ctx19.clearRect(0,0,c19.width,c19.height);
+        for(let i=0;i<8;i++){
+          const yOff=(i-3.5)*9, len=(60+i*8)*t;
+          ctx19.beginPath();
+          ctx19.moveTo(src.x-10,src.y+yOff);ctx19.lineTo(src.x-10-len,src.y+yOff);
+          ctx19.strokeStyle=`rgba(255,${120+i*10},${80+i*8},${t*0.6})`;ctx19.lineWidth=2;ctx19.stroke();
+        }
+        if(t<1)requestAnimationFrame(frame);else{ctx19.clearRect(0,0,c19.width,c19.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    // Card lunge
+    await cardLunge(el,dst,0.68,240);
+    // Bite marks: sharp double-X
+    const c19b=getVfxCanvas(),ctx19b=c19b.getContext('2d');
+    ctx19b.save();ctx19b.shadowColor='#FF0000';ctx19b.shadowBlur=16;
+    [[-18,-22,18,22],[18,-22,-18,22]].forEach(([x1,y1,x2,y2])=>{
+      ctx19b.beginPath();ctx19b.moveTo(dst.x+x1,dst.y+y1);ctx19b.lineTo(dst.x+x2,dst.y+y2);
+      ctx19b.strokeStyle='#FF2222';ctx19b.lineWidth=5;ctx19b.stroke();
+    });
+    // Extra zig detail
+    ctx19b.beginPath();ctx19b.moveTo(dst.x-8,dst.y-4);ctx19b.lineTo(dst.x+8,dst.y+4);
+    ctx19b.strokeStyle='rgba(255,100,100,0.7)';ctx19b.lineWidth=2;ctx19b.stroke();
+    ctx19b.restore();
+    spriteHitFlash('#FF2222',300);
+    spriteRecoil(1,28,360);
+    impactRing(dst,'#CC2222',75,260);
+    setTimeout(()=>ctx19b.getContext('2d').clearRect(0,0,c19b.width,c19b.height),600);
+    floatLabel(null,'⚡ EXECUTE <40%','#FF2222','clamp(9px,1vw,12px)',850);
+    await delay(350);
+    break;
+  }
+
+  // ══ 020 RATICATE — Savage Fang ══════════════════════════════════
+  // Card trembles with pre-attack tension, then SLAMS forward — largest lunge.
+  // 3 slashes draw in rapid sequence with glowing red trails.
+  // Opp recoils violently. Darkened red aftermath lingers.
+  case 20: {
+    cardTint(el,'#440000',280);
+    spriteTint(el,'#CC2222',220);
+    await cardWobble(el,13,4,300);
+    const c20pre=getVfxCanvas(),ctx20pre=c20pre.getContext('2d');
+    // Tension aura: dark red pulses from card
+    const t020p=performance.now(),dur20p=180;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t020p)/dur20p);
+        ctx20pre.clearRect(0,0,c20pre.width,c20pre.height);
+        ctx20pre.beginPath();ctx20pre.arc(src.x,src.y,50*t,0,Math.PI*2);
+        ctx20pre.strokeStyle=`rgba(200,0,0,${(1-t)*0.5})`;ctx20pre.lineWidth=3*(1-t);ctx20pre.stroke();
+        if(t<1)requestAnimationFrame(frame);else{ctx20pre.clearRect(0,0,c20pre.width,c20pre.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    // Hard lunge
+    await cardLunge(el,dst,0.72,260);
+    const c20=getVfxCanvas(),ctx20=c20.getContext('2d');
+    // 3 slashes in quick succession with glow
+    const slashes20=[[-22,-28,20,26],[-8,-30,24,18],[12,-26,-20,22]];
+    for(let si=0;si<3;si++){
+      const [x1,y1,x2,y2]=slashes20[si];
+      // Each slash: bright white core then red outer
+      ctx20.beginPath();ctx20.moveTo(dst.x+x1,dst.y+y1);ctx20.lineTo(dst.x+x2,dst.y+y2);
+      ctx20.strokeStyle='#ffffff';ctx20.lineWidth=3;ctx20.shadowColor='#FF0000';ctx20.shadowBlur=20;ctx20.stroke();
+      ctx20.beginPath();ctx20.moveTo(dst.x+x1,dst.y+y1);ctx20.lineTo(dst.x+x2,dst.y+y2);
+      ctx20.strokeStyle=`rgba(255,${30+si*30},${20+si*15},0.9)`;ctx20.lineWidth=5;ctx20.shadowBlur=12;ctx20.stroke();
+      spriteHitFlash('#FF0000',200);
+      await delay(60);
+    }
+    impactRing(dst,'#CC2222',95,320);
+    spriteRecoil(1,50,480);
+    setTimeout(()=>ctx20.getContext('2d').clearRect(0,0,c20.width,c20.height),700);
+    floatLabel(null,'🎯 CRIT 30%','#FF2222','clamp(9px,1vw,12px)',900);
+    await delay(420);
+    break;
+  }
+
+
+  // ══ 021 SPEAROW — Fury Peck ════════════════════════════════
+  case 21: {
+    spriteTint(el,'#CC8844',150);
+    await cardWobble(el,5,3,180);
+    const c21=getVfxCanvas(),ctx21=c21.getContext('2d');
+    for(let hit=0;hit<3;hit++){
+      const tx=dst.x+(hit-1)*10, ty=dst.y+hit*5;
+      const ang=Math.atan2(ty-src.y,tx-src.x);
+      const t0=performance.now(),dur=110;
+      await new Promise(res=>{
+        function frame(now){
+          const t=Math.min(1,(now-t0)/dur);
+          ctx21.clearRect(0,0,c21.width,c21.height);
+          const x=src.x+(tx-src.x)*t,y=src.y+(ty-src.y)*t;
+          ctx21.save();ctx21.translate(x,y);ctx21.rotate(ang);
+          ctx21.beginPath();ctx21.moveTo(-18,0);ctx21.lineTo(8,-3);ctx21.lineTo(11,0);ctx21.lineTo(8,3);ctx21.closePath();
+          ctx21.fillStyle=`rgba(200,160,80,${t})`;ctx21.shadowColor='#DDAA44';ctx21.shadowBlur=6;ctx21.fill();
+          ctx21.restore();
+          if(t<1)requestAnimationFrame(frame);else{ctx21.clearRect(0,0,c21.width,c21.height);res();}
+        }
+        requestAnimationFrame(frame);
+      });
+      spriteHitFlash('#DDAA44',100); impactRing({x:tx,y:ty},'#CCAA44',28,140); await delay(55);
+    }
+    spriteRecoil(1,16,260);
+    floatLabel(null,'HITS TWICE IF FIRST','#CCAA44','clamp(8px,0.85vw,11px)',700);
+    await delay(260);
+    break;
+  }
+
+  // ══ 022 FEAROW — Drill Strike ═══════════════════════════════
+  case 22: {
+    cardTint(el,'#AA6633',200);
+    await cardWobble(el,7,3,220);
+    const c22=getVfxCanvas(),ctx22=c22.getContext('2d');
+    const ang22=Math.atan2(dst.y-src.y,dst.x-src.x);
+    const t0=performance.now(),dur=360;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        const x=src.x+(dst.x-src.x)*t,y=src.y+(dst.y-src.y)*t;
+        ctx22.clearRect(0,0,c22.width,c22.height);
+        ctx22.save();ctx22.translate(x,y);ctx22.rotate(ang22+t*Math.PI*7);
+        for(let r=0;r<4;r++){
+          const ra=r/4*Math.PI*2;
+          ctx22.beginPath();ctx22.arc(0,0,11,ra,ra+Math.PI*0.35);
+          ctx22.strokeStyle=`rgba(${170+r*20},${130+r*15},70,0.9)`;
+          ctx22.lineWidth=3.5;ctx22.shadowColor='#FFAA44';ctx22.shadowBlur=5;ctx22.stroke();
+        }
+        ctx22.beginPath();ctx22.moveTo(13,0);ctx22.lineTo(21,0);
+        ctx22.strokeStyle='#FFF';ctx22.lineWidth=2.5;ctx22.stroke();
+        ctx22.restore();
+        if(t<1)requestAnimationFrame(frame);else{ctx22.clearRect(0,0,c22.width,c22.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    impactRing(dst,'#FFAA44',100,300); spriteHitFlash('#FFAA44',280); spriteRecoil(1,32,360);
+    floatLabel(null,'IGNORE BLOCK','#FFBB66','clamp(9px,1vw,12px)',800);
+    await delay(300);
+    break;
+  }
+
+  // ══ 023 EKANS — Venom Coil ══════════════════════════════════
+  case 23: {
+    cardFlash(el,'#993399',130);
+    const c23=getVfxCanvas(),ctx23=c23.getContext('2d');
+    const t0=performance.now(),dur=460;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        ctx23.clearRect(0,0,c23.width,c23.height);
+        ctx23.save();ctx23.strokeStyle='#AA33AA';ctx23.lineWidth=6;
+        ctx23.shadowColor='#CC44CC';ctx23.shadowBlur=8;ctx23.lineCap='round';
+        ctx23.beginPath();ctx23.moveTo(src.x,src.y);
+        const perp=Math.atan2(dst.y-src.y,dst.x-src.x)+Math.PI/2;
+        for(let i=0;i<=28*t;i++){
+          const p=i/28;
+          const wave=Math.sin(p*Math.PI*3)*20*(1-p*0.4);
+          ctx23.lineTo(src.x+(dst.x-src.x)*p+Math.cos(perp)*wave,src.y+(dst.y-src.y)*p+Math.sin(perp)*wave);
+        }
+        ctx23.stroke();ctx23.restore();
+        if(t<1)requestAnimationFrame(frame);else{ctx23.clearRect(0,0,c23.width,c23.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteWarp(8,380); spriteHitFlash('#993399',240); poisonCloud(dst,500); spritePoisoned(750);
+    floatLabel(null,'POISON 10','#CC55FF','clamp(9px,1vw,12px)',800);
+    await delay(320);
+    break;
+  }
+
+  // ══ 024 ARBOK — Intimidation ════════════════════════════════
+  case 24: {
+    spriteTint(el,'#660066',200);
+    const c24=getVfxCanvas(),ctx24=c24.getContext('2d');
+    const t0=performance.now(),dur=520;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        ctx24.clearRect(0,0,c24.width,c24.height);
+        for(let ring=0;ring<4;ring++){
+          const rt=Math.max(0,t-ring*0.12);
+          const g=ctx24.createRadialGradient(src.x,src.y,rt*80,src.x,src.y,rt*160);
+          g.addColorStop(0,'transparent');g.addColorStop(0.5,`rgba(100,0,100,${(1-rt)*0.25})`);g.addColorStop(1,'transparent');
+          ctx24.fillStyle=g;ctx24.beginPath();ctx24.arc(src.x,src.y,rt*160,0,Math.PI*2);ctx24.fill();
+        }
+        if(t<1)requestAnimationFrame(frame);else{ctx24.clearRect(0,0,c24.width,c24.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    const spr24=document.getElementById('opp-pokemon-sprite');
+    if(spr24){spr24.style.transition='transform 0.4s ease,filter 0.4s ease';spr24.style.transform='scale(0.84)';spr24.style.filter='brightness(0.65) saturate(0.4)';setTimeout(()=>{spr24.style.transform='';spr24.style.filter='';spr24.style.transition='';},900);}
+    floatLabel(null,'-25% ENEMY DMG','#CC44CC','clamp(9px,1vw,12px)',900);
+    await delay(400);
+    break;
+  }
+
+  // ══ 025 PIKACHU — Static Charge ═════════════════════════════
+  case 25: {
+    cardTint(el,'#AAAA00',180); spriteTint(el,'#FFD700',160);
+    const ctx25=getVfxCanvas().getContext('2d');
+    for(let pass=0;pass<3;pass++){
+      getVfxCanvas().getContext('2d').clearRect(0,0,getVfxCanvas().width,getVfxCanvas().height);
+      drawLightning(ctx25,src.x,src.y,dst.x,dst.y,'#FFD700',3.5);
+      drawLightning(ctx25,src.x,src.y,dst.x,dst.y,'#ffffff',1.5);
+      await delay(55); ctx25.clearRect(0,0,getVfxCanvas().width,getVfxCanvas().height); await delay(28);
+    }
+    spriteHitFlash('#FFD700',280); spriteGlitch(260); impactRing(dst,'#FFD700',75,270);
+    floatLabel(null,'DRAW 1','#FFDD44','clamp(9px,1vw,12px)',800);
+    await delay(270);
+    break;
+  }
+
+  // ══ 026 RAICHU — Voltage Loop ═══════════════════════════════
+  case 26: {
+    cardTint(el,'#CCAA00',200); spriteTint(el,'#FFD700',180);
+    await cardWobble(el,8,2,190);
+    const ctx26=getVfxCanvas().getContext('2d');
+    for(let loop=0;loop<4;loop++){
+      ctx26.clearRect(0,0,getVfxCanvas().width,getVfxCanvas().height);
+      drawLightning(ctx26,src.x,src.y,dst.x,dst.y,'#FFD700',4);
+      drawLightning(ctx26,src.x,src.y,dst.x,dst.y,'#FFFFFF',1.5);
+      drawLightning(ctx26,src.x-14,src.y,dst.x+10,dst.y,'#FFAA00',2.5);
+      spriteHitFlash('#FFD700',140); await delay(68); ctx26.clearRect(0,0,getVfxCanvas().width,getVfxCanvas().height); await delay(38);
+    }
+    spriteGlitch(320); spriteRecoil(1,22,340); impactRing(dst,'#FFD700',95,310);
+    floatLabel(null,'ELECTRIC RETRIGGER 25%','#FFDD44','clamp(8px,0.85vw,10px)',900);
+    await delay(320);
+    break;
+  }
+
+  // ══ 027 SANDSHREW — Dig ═════════════════════════════════════
+  case 27: {
+    cardTint(el,'#CC9944',200);
+    const t0=performance.now(),dur=380;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        el.style.transform=`translateY(${t*28}px) scale(${1-t*0.12})`;
+        el.style.opacity=String(1-t*0.75);
+        if(t<1)requestAnimationFrame(frame);else res();
+      }
+      requestAnimationFrame(frame);
+    });
+    el.style.transform='';el.style.opacity='';
+    await groundCrack(dst,480);
+    floatLabel(null,'NEXT TURN: 90 DMG','#CC9944','clamp(9px,1vw,12px)',1000);
+    await delay(350);
+    break;
+  }
+
+  // ══ 028 SANDSLASH — Burrowing Strike ════════════════════════
+  case 28: {
+    cardTint(el,'#AA7733',200); await cardWobble(el,6,2,170);
+    el.style.transition='transform 0.18s ease,opacity 0.18s';
+    el.style.transform='translateY(22px)';el.style.opacity='0.18';
+    await delay(200);
+    const c28=getVfxCanvas(),ctx28=c28.getContext('2d');
+    const clumps28=Array.from({length:12},()=>({a:Math.random()*Math.PI-Math.PI,spd:55+Math.random()*75,sz:5+Math.random()*7}));
+    const t0=performance.now(),dur=360;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        ctx28.clearRect(0,0,c28.width,c28.height);
+        clumps28.forEach(cl=>{
+          const x=dst.x+Math.cos(cl.a)*cl.spd*t, y=dst.y+Math.sin(cl.a)*cl.spd*t+180*t*t;
+          ctx28.beginPath();ctx28.arc(x,y,Math.max(0.1,cl.sz*(1-t*0.5)),0,Math.PI*2);
+          ctx28.fillStyle=`rgba(160,110,50,${(1-t*0.7)})`;ctx28.fill();
+        });
+        if(t<1)requestAnimationFrame(frame);else{ctx28.clearRect(0,0,c28.width,c28.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    el.style.transform='';el.style.opacity='';setTimeout(()=>el.style.transition='',200);
+    spriteHitFlash('#CC9944',260); spriteRecoil(1,28,340); impactRing(dst,'#AA7733',78,270);
+    floatLabel(null,'NEXT TURN: +30 BLOCK','#CC9944','clamp(9px,1vw,12px)',900);
+    await delay(300);
+    break;
+  }
+
+  // ══ 029 NIDORAN-F — Toxic Spark ═════════════════════════════
+  case 29: {
+    spriteTint(el,'#993399',170);
+    const c29=getVfxCanvas(),ctx29=c29.getContext('2d');
+    const t0a=performance.now(),dura=220;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0a)/dura);
+        ctx29.clearRect(0,0,c29.width,c29.height);
+        for(let s=0;s<6;s++){const a=s/6*Math.PI*2+t*Math.PI*3;const r=25+Math.sin(t*8+s)*6;ctx29.beginPath();ctx29.arc(src.x+Math.cos(a)*r,src.y+Math.sin(a)*r,Math.max(0.1,r>0?3:0.1),0,Math.PI*2);ctx29.fillStyle=`rgba(180,60,200,${0.6+Math.sin(t*10+s)*0.4})`;ctx29.fill();}
+        if(t<1)requestAnimationFrame(frame);else{ctx29.clearRect(0,0,c29.width,c29.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    const ang29=Math.atan2(dst.y-src.y,dst.x-src.x);
+    const t0b=performance.now(),durb=210;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0b)/durb);
+        ctx29.clearRect(0,0,c29.width,c29.height);
+        const x=src.x+(dst.x-src.x)*t,y=src.y+(dst.y-src.y)*t;
+        ctx29.save();ctx29.translate(x,y);ctx29.rotate(ang29);
+        ctx29.beginPath();ctx29.moveTo(-10,0);ctx29.lineTo(12,0);ctx29.strokeStyle='#CC44CC';ctx29.lineWidth=3.5;ctx29.shadowColor='#FF66FF';ctx29.shadowBlur=10;ctx29.stroke();
+        ctx29.beginPath();ctx29.moveTo(8,-4);ctx29.lineTo(14,0);ctx29.lineTo(8,4);ctx29.closePath();ctx29.fillStyle='#FF99FF';ctx29.fill();ctx29.restore();
+        if(t<1)requestAnimationFrame(frame);else{ctx29.clearRect(0,0,c29.width,c29.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteHitFlash('#993399',240); spritePoisoned(580); poisonCloud(dst,440);
+    floatLabel(null,'NEXT STATUS +50%','#CC55FF','clamp(9px,1vw,12px)',800);
+    await delay(300);
+    break;
+  }
+
+  // ══ 030 NIDORINA — Protective Bond ══════════════════════════
+  case 30: {
+    cardTint(el,'#AA3399',240);
+    const c30=getVfxCanvas(),ctx30=c30.getContext('2d');
+    const t0=performance.now(),dur=480;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        ctx30.clearRect(0,0,c30.width,c30.height);
+        [0,0.25,0.5].forEach(off=>{const rt=(t+off)%1;ctx30.beginPath();ctx30.arc(src.x,src.y,Math.max(0.1,58*rt),0,Math.PI*2);ctx30.strokeStyle=`rgba(180,100,220,${(1-rt)*0.7})`;ctx30.lineWidth=2.5*(1-rt)+0.5;ctx30.stroke();});
+        if(t>0.3){const lt=(t-0.3)/0.7;ctx30.beginPath();ctx30.moveTo(src.x,src.y);ctx30.lineTo(src.x+(dst.x-src.x)*lt,src.y+(dst.y-src.y)*lt);ctx30.strokeStyle=`rgba(200,120,240,${0.4*lt})`;ctx30.lineWidth=1.5;ctx30.setLineDash([6,4]);ctx30.stroke();ctx30.setLineDash([]);}
+        if(t<1)requestAnimationFrame(frame);else{ctx30.clearRect(0,0,c30.width,c30.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    impactRing(dst,'#AA33AA',62,270); impactRing(src,'#AA33AA',55,270);
+    floatLabel(null,'SHARED BLOCK +10','#CC66FF','clamp(9px,1vw,12px)',800);
+    await delay(300);
+    break;
+  }
+
+  // ══ 031 NIDOQUEEN — Royal Poison ════════════════════════════
+  case 31: {
+    cardTint(el,'#660044',260); spriteTint(el,'#AA22AA',190);
+    await cardWobble(el,8,2,240);
+    const c31=getVfxCanvas(),ctx31=c31.getContext('2d');
+    const t0=performance.now(),dur=330;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        ctx31.clearRect(0,0,c31.width,c31.height);
+        for(let s=0;s<8;s++){const a=s/8*Math.PI*2-Math.PI/2;const r=75*Math.sin(t*Math.PI);const x1=src.x+Math.cos(a)*r*0.3,y1=src.y+Math.sin(a)*r*0.3,x2=src.x+Math.cos(a)*r,y2=src.y+Math.sin(a)*r;ctx31.beginPath();ctx31.moveTo(x1,y1);ctx31.lineTo(x2,y2);ctx31.strokeStyle=`rgba(${150+s*10},${40+s*8},${180+s*5},0.8)`;ctx31.lineWidth=3.5;ctx31.shadowColor='#CC44CC';ctx31.shadowBlur=10;ctx31.stroke();ctx31.beginPath();ctx31.arc(x2,y2,Math.max(0.1,4*(t<0.5?t*2:1)),0,Math.PI*2);ctx31.fillStyle='rgba(220,100,255,0.7)';ctx31.fill();}
+        if(t<1)requestAnimationFrame(frame);else{ctx31.clearRect(0,0,c31.width,c31.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    await fireballArc(src,dst,'#880088','#CC44CC',18,360);
+    spriteHitFlash('#993399',280); poisonCloud(dst,650); spritePoisoned(850); impactRing(dst,'#993399',105,340);
+    floatLabel(null,'POISON SPREADS','#CC55FF','clamp(9px,1vw,12px)',900);
+    await delay(380);
+    break;
+  }
+
+  // ══ 032 NIDORAN-M — Horn Charge ═════════════════════════════
+  case 32: {
+    spriteTint(el,'#5533AA',170); await cardLunge(el,dst,0.52,260);
+    const c32=getVfxCanvas(),ctx32=c32.getContext('2d');
+    const ang32=Math.atan2(dst.y-src.y,dst.x-src.x);
+    const t0=performance.now(),dur=240;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        const x=src.x+(dst.x-src.x)*t,y=src.y+(dst.y-src.y)*t;
+        ctx32.clearRect(0,0,c32.width,c32.height);
+        ctx32.save();ctx32.translate(x,y);ctx32.rotate(ang32);
+        ctx32.beginPath();ctx32.moveTo(-5,-5);ctx32.lineTo(20,0);ctx32.lineTo(-5,5);ctx32.closePath();
+        const hg=ctx32.createLinearGradient(-5,0,20,0);hg.addColorStop(0,'#9966CC');hg.addColorStop(1,'#CCAAFF');
+        ctx32.fillStyle=hg;ctx32.shadowColor='#9966CC';ctx32.shadowBlur=10;ctx32.fill();ctx32.restore();
+        if(t<1)requestAnimationFrame(frame);else{ctx32.clearRect(0,0,c32.width,c32.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteHitFlash('#9966CC',240); spriteRecoil(1,18,310); impactRing(dst,'#9966CC',62,255);
+    floatLabel(null,'+5 PERM DMG','#CCAAFF','clamp(9px,1vw,12px)',800);
+    await delay(270);
+    break;
+  }
+
+  // ══ 033 NIDORINO — Battle Instinct ══════════════════════════
+  case 33: {
+    cardTint(el,'#882222',210); spriteTint(el,'#CC2244',170);
+    const c33=getVfxCanvas(),ctx33=c33.getContext('2d');
+    const t0=performance.now(),dur=280;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        ctx33.clearRect(0,0,c33.width,c33.height);
+        for(let s=0;s<10;s++){const a=s/10*Math.PI*2+t*5;const r=22+Math.sin(t*8+s)*12;ctx33.beginPath();ctx33.arc(src.x+Math.cos(a)*r,src.y+Math.sin(a)*r,Math.max(0.1,2+Math.random()*3),0,Math.PI*2);ctx33.fillStyle=`rgba(${200+Math.random()*55},${30+Math.random()*40},${30},0.85)`;ctx33.fill();}
+        if(t<1)requestAnimationFrame(frame);else{ctx33.clearRect(0,0,c33.width,c33.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    await cardLunge(el,dst,0.48,230);
+    spriteHitFlash('#CC2244',240); spriteRecoil(1,20,310); impactRing(dst,'#CC2244',68,260);
+    floatLabel(null,'+10 DMG AFTER HIT','#FF4466','clamp(9px,1vw,12px)',800);
+    await delay(270);
+    break;
+  }
+
+  // ══ 034 NIDOKING — Earth Breaker ════════════════════════════
+  case 34: {
+    cardTint(el,'#440088',240); spriteTint(el,'#6622AA',190);
+    await cardWobble(el,10,3,260); await cardLunge(el,dst,0.58,290);
+    await groundCrack(dst,530,12);
+    spriteHitFlash('#6622AA',320); spriteRecoil(1,42,460);
+    impactRing(dst,'#6622AA',130,380); impactRing(dst,'#CC88FF',75,280);
+    floatLabel(null,'STUN 35%','#CC88FF','clamp(9px,1vw,12px)',900);
+    await delay(400);
+    break;
+  }
+
+  // ══ 035 CLEFAIRY — Lucky Star ═══════════════════════════════
+  case 35: {
+    spriteTint(el,'#FFAACC',190);
+    const c35=getVfxCanvas(),ctx35=c35.getContext('2d');
+    const stars35=Array.from({length:14},(_,i)=>({x:src.x+(Math.random()-0.5)*38,y:src.y+(Math.random()-0.5)*28,vx:(dst.x-src.x)/28+(Math.random()-0.5)*7,vy:(dst.y-src.y)/28+(Math.random()-0.5)*7-1.8,rot:Math.random()*Math.PI*2,rotV:(Math.random()-0.5)*0.3,sz:4+Math.random()*5,delay:Math.random()*0.28}));
+    const t0=performance.now(),dur=580;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        ctx35.clearRect(0,0,c35.width,c35.height);
+        stars35.forEach(s=>{
+          const st=Math.max(0,t-s.delay);if(st<=0)return;
+          const x=s.x+s.vx*st*28,y=s.y+s.vy*st*28;
+          const alpha=Math.sin(Math.min(1,st/0.7)*Math.PI)*0.85;
+          ctx35.save();ctx35.translate(x,y);ctx35.rotate(s.rot+s.rotV*t*18);
+          ctx35.beginPath();
+          for(let p=0;p<4;p++){const a=p/4*Math.PI*2;ctx35.lineTo(Math.cos(a)*s.sz,Math.sin(a)*s.sz);ctx35.lineTo(Math.cos(a+Math.PI/4)*s.sz*0.4,Math.sin(a+Math.PI/4)*s.sz*0.4);}
+          ctx35.closePath();ctx35.fillStyle=`rgba(255,200,220,${alpha})`;ctx35.shadowColor='#FFAADD';ctx35.shadowBlur=7;ctx35.fill();ctx35.restore();
+        });
+        if(t<1)requestAnimationFrame(frame);else{ctx35.clearRect(0,0,c35.width,c35.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    impactRing(dst,'#FFAACC',68,270);
+    floatLabel(null,'EFFECTS +25%','#FFAACC','clamp(9px,1vw,12px)',800);
+    await delay(300);
+    break;
+  }
+
+  // ══ 036 CLEFABLE — Moon Wish ════════════════════════════════
+  case 36: {
+    spriteTint(el,'#DDBBFF',190);
+    const c36=getVfxCanvas(),ctx36=c36.getContext('2d');
+    const t0=performance.now(),dur=480;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        ctx36.clearRect(0,0,c36.width,c36.height);
+        const beamY=dst.y-180*(1-t);const beamW=28;
+        const g=ctx36.createLinearGradient(0,beamY-70,0,dst.y+18);
+        g.addColorStop(0,'transparent');g.addColorStop(0.4,'rgba(220,200,255,0.12)');g.addColorStop(0.8,'rgba(200,180,255,0.45)');g.addColorStop(1,'rgba(180,160,255,0.15)');
+        ctx36.fillStyle=g;ctx36.fillRect(dst.x-beamW/2,beamY-70,beamW,dst.y-beamY+90);
+        ctx36.beginPath();ctx36.moveTo(dst.x,beamY);ctx36.lineTo(dst.x,dst.y);
+        ctx36.strokeStyle=`rgba(240,230,255,${t*0.75})`;ctx36.lineWidth=2;ctx36.stroke();
+        if(t<1)requestAnimationFrame(frame);else{ctx36.clearRect(0,0,c36.width,c36.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteHitFlash('#DDBBFF',240); impactRing(dst,'#DDBBFF',72,270);
+    floatLabel(null,'HEAL 15','#DDBBFF','clamp(9px,1vw,12px)',800);
+    await delay(290);
+    break;
+  }
+
+  // ══ 037 VULPIX — Will-O-Wisp ════════════════════════════════
+  case 37: {
+    spriteTint(el,'#FF6633',175);
+    const c37=getVfxCanvas(),ctx37=c37.getContext('2d');
+    const t0=performance.now(),dur=520;
+    const trail37=[];
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        const wobble=Math.sin(t*Math.PI*5)*16;
+        const x=src.x+(dst.x-src.x)*t+wobble,y=src.y+(dst.y-src.y)*t-Math.sin(t*Math.PI)*38;
+        trail37.push({x,y});if(trail37.length>14)trail37.shift();
+        ctx37.clearRect(0,0,c37.width,c37.height);
+        trail37.forEach((p,i)=>{const frac=i/trail37.length;const g=ctx37.createRadialGradient(p.x,p.y,0,p.x,p.y,13*frac);g.addColorStop(0,`rgba(100,180,255,${frac*0.55})`);g.addColorStop(1,'transparent');ctx37.fillStyle=g;ctx37.beginPath();ctx37.arc(p.x,p.y,13*frac,0,Math.PI*2);ctx37.fill();});
+        ctx37.save();ctx37.translate(x,y);
+        ctx37.beginPath();ctx37.moveTo(0,11);ctx37.bezierCurveTo(-9,-4,-9,-15,0,-19);ctx37.bezierCurveTo(9,-15,9,-4,0,11);
+        const fg=ctx37.createLinearGradient(0,11,0,-19);fg.addColorStop(0,'rgba(180,220,255,0.9)');fg.addColorStop(0.6,'rgba(100,160,255,0.8)');fg.addColorStop(1,'rgba(200,230,255,0.25)');
+        ctx37.fillStyle=fg;ctx37.shadowColor='#88CCFF';ctx37.shadowBlur=14;ctx37.fill();ctx37.restore();
+        if(t<1)requestAnimationFrame(frame);else{ctx37.clearRect(0,0,c37.width,c37.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteHitFlash('#FF6633',270); spriteOnFire(680); impactRing(dst,'#FF6633',78,285);
+    floatLabel(null,'BURN 6','#FF6644','clamp(9px,1vw,12px)',800);
+    await delay(300);
+    break;
+  }
+
+  // ══ 038 NINETALES — Cursed Flame ════════════════════════════
+  case 38: {
+    cardTint(el,'#CC4400',230); spriteTint(el,'#FF6600',195);
+    const c38=getVfxCanvas(),ctx38=c38.getContext('2d');
+    const t0a=performance.now(),dura=280;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0a)/dura);
+        ctx38.clearRect(0,0,c38.width,c38.height);
+        for(let tail=0;tail<9;tail++){
+          const a=(tail/9-0.5)*Math.PI*0.75+Math.PI;const len=55+tail*4;const wave=Math.sin(t*6+tail)*11;
+          const ex=src.x+Math.cos(a)*len+wave,ey=src.y+Math.sin(a)*len;
+          ctx38.beginPath();ctx38.moveTo(src.x,src.y);
+          ctx38.quadraticCurveTo(src.x+Math.cos(a)*len*0.5+wave*0.5,src.y+Math.sin(a)*len*0.5,ex,ey);
+          const tg=ctx38.createLinearGradient(src.x,src.y,ex,ey);tg.addColorStop(0,`rgba(255,${80+tail*10},0,${t*0.8})`);tg.addColorStop(1,'transparent');
+          ctx38.strokeStyle=tg;ctx38.lineWidth=3.5-tail*0.25;ctx38.shadowColor='#FF5500';ctx38.shadowBlur=7;ctx38.stroke();
+        }
+        if(t<1)requestAnimationFrame(frame);else{ctx38.clearRect(0,0,c38.width,c38.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    await fireballArc(src,dst,'#CC3300','#FF8800',15,340);
+    spriteHitFlash('#CC3300',270); spriteOnFire(780); impactRing(dst,'#CC3300',82,295);
+    floatLabel(null,'BURNED: -20% DMG','#FF6644','clamp(9px,1vw,12px)',850);
+    await delay(320);
+    break;
+  }
+
+  // ══ 039 JIGGLYPUFF — Lullaby ════════════════════════════════
+  case 39: {
+    spriteTint(el,'#FFAABB',190);
+    const c39=getVfxCanvas(),ctx39=c39.getContext('2d');
+    const notes=['♩','♪','♫','♬'];
+    const noteObjs39=Array.from({length:8},(_,i)=>({char:notes[i%4],x:src.x+(Math.random()-0.5)*33,y:src.y+(Math.random()-0.5)*23,vx:(dst.x-src.x)/24+(Math.random()-0.5)*4,vy:(dst.y-src.y)/24+(Math.random()-0.5)*4-1.4,delay:i*0.07,sz:13+Math.random()*7}));
+    const t0=performance.now(),dur=650;
+    await new Promise(res=>{
+      function frame(now){
+        const t=Math.min(1,(now-t0)/dur);
+        ctx39.clearRect(0,0,c39.width,c39.height);
+        ctx39.textAlign='center';ctx39.textBaseline='middle';
+        noteObjs39.forEach(n=>{const nt=Math.max(0,t-n.delay);if(nt<=0)return;const x=n.x+n.vx*nt*24,y=n.y+n.vy*nt*24;const alpha=Math.sin(Math.min(1,nt/0.75)*Math.PI)*0.85;ctx39.font=`bold ${n.sz}px serif`;ctx39.fillStyle=`rgba(255,160,180,${alpha})`;ctx39.shadowColor='#FFAACC';ctx39.shadowBlur=7;ctx39.fillText(n.char,x,y);});
+        if(t<1)requestAnimationFrame(frame);else{ctx39.clearRect(0,0,c39.width,c39.height);res();}
+      }
+      requestAnimationFrame(frame);
+    });
+    spriteSleeping();
+    const spr39=document.getElementById('opp-pokemon-sprite');
+    if(spr39){spr39.style.transition='filter 0.45s ease,transform 0.45s ease';spr39.style.filter='blur(0.5px) brightness(0.72)';spr39.style.transform='rotate(5deg) translateY(7px)';setTimeout(()=>{spr39.style.filter='';spr39.style.transform='';spr39.style.transition='';},880);}
+    impactRing(dst,'#FFAABB',72,275);
+    floatLabel(null,'SLEEP 40%','#FFAACC','clamp(9px,1vw,12px)',900);
+    await delay(380);
+    break;
+  }
+
+  // ══ 040 WIGGLYTUFF — Encore ═════════════════════════════════
+  case 40: {
+    cardTint(el,'#FFAACC',210); spriteTint(el,'#FF88BB',185);
+    await cardWobble(el,7,3,240);
+    const rect40=el.getBoundingClientRect();
+    const echo40=document.createElement('div');
+    echo40.style.cssText=`position:fixed;left:${rect40.left}px;top:${rect40.top}px;width:${rect40.width}px;height:${rect40.height}px;background:#fff;border:2px solid rgba(255,150,200,0.7);border-radius:8px;z-index:8100;pointer-events:none;opacity:0.55;filter:hue-rotate(310deg) saturate(1.4);transition:transform 0.38s ease,opacity 0.38s ease;overflow:hidden;`;
+    const echoArt=el.querySelector('.hc-art');if(echoArt){const ei=echoArt.cloneNode();ei.style.cssText=echoArt.style.cssText;echo40.appendChild(ei);}
+    document.body.appendChild(echo40);
+    await delay(40);
+    echo40.style.transform=`translate(${dst.x-rect40.left-rect40.width/2}px,${dst.y-rect40.top-rect40.height/2}px) scale(0.65)`;echo40.style.opacity='0';
+    await delay(400);
+    echo40.remove();
+    spriteHitFlash('#FFAACC',240); impactRing(dst,'#FFAACC',78,280);
+    floatLabel(null,'REPEAT LAST: 50%','#FFAACC','clamp(9px,1vw,12px)',900);
+    await delay(290);
+    break;
+  }
+
+
+  } // end switch
+
+  // Apply status effects after animation
+  if(move && move.effect && move.effect !== 'null') {
+    const statusEffects = ['poison','burn','sleep','freeze','stun','block','heal','draw','permup','gold','drain','dblblock','debuff'];
+    if(statusEffects.includes(move.effect)) {
+      setTimeout(()=>applyStatus(move.effect, move.val, move), 300);
+    }
+  }
+  } catch(animErr) {
+    console.warn('[MoveAnim] Error in case', dex, animErr);
+    // Clear vfx canvas so nothing gets stuck
+    try { const c=document.getElementById('vfx-canvas'); if(c) c.getContext('2d').clearRect(0,0,c.width,c.height); } catch(e){}
+    // Restore card transform
+    if(el) { el.style.transform=''; el.style.opacity=''; el.style.filter=''; }
+    const spr=document.getElementById('opp-pokemon-sprite');
+    if(spr) { spr.style.transform=''; spr.style.filter=''; spr.style.transition=''; }
+  }
+} // end playMoveAnimation
+
+// ════════════════════════════════════════════════════════════
+// HAND REORDER — Balatro-style pointer drag
+// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// HEARTHSTONE-STYLE HAND REORDER
+// Ghost floats freely. Slot card becomes invisible (no placeholder).
+// Other cards smoothly part to show insertion point.
+// Selected cards deselect with a smooth animation on drag start.
+// ════════════════════════════════════════════════════════
+let _hDrag = null;
+
+function initHandDrag() {
+  const hc = document.getElementById('hand-container');
+  if(!hc || hc._hDragInited) return;
+  hc._hDragInited = true;
+  hc.addEventListener('pointerdown', e => {
+    if(G.animating || !G.ourTurn) return;
+    const cardEl = e.target.closest('.hc');
+    if(!cardEl) return;
+    const sx=e.clientX, sy=e.clientY;
+    let started=false;
+    const doBegin=(cx,cy)=>{
+      if(started) return;
+      started=true;
+      clearTimeout(pt);
+      window.removeEventListener('pointermove',onM);
+      window.removeEventListener('pointerup',onU);
+      window.removeEventListener('pointercancel',onU);
+      beginHandDrag(cardEl,cx,cy);
+    };
+    const pt = setTimeout(()=>doBegin(sx,sy), 75);
+    const onM = me=>{ if(!started && Math.hypot(me.clientX-sx,me.clientY-sy)>6) doBegin(me.clientX,me.clientY); };
+    const onU = ()=>{ clearTimeout(pt); window.removeEventListener('pointermove',onM); };
+    window.addEventListener('pointermove',onM,{passive:true});
+    window.addEventListener('pointerup',onU,{once:true,passive:true});
+    window.addEventListener('pointercancel',onU,{once:true,passive:true});
+  });
+}
+
+function beginHandDrag(cardEl, sx, sy) {
+  if(_hDrag) return;
+  const hc  = document.getElementById('hand-container');
+  const els = [...hc.querySelectorAll('.hc')];
+  const idx = els.indexOf(cardEl);
+  if(idx < 0) return;
+
+  // Smooth deselect
+  els.forEach((el, i) => {
+    if(G_selected.has(i)) {
+      el.style.transition = 'transform 0.18s cubic-bezier(0.34,1.4,0.5,1)';
+      el.classList.remove('selected-hand');
+      el.style.removeProperty('--sel-ty');
+      el.style.zIndex = String(2 + i);
+    }
+  });
+  G_selected.clear();
+  updateActionBar();
+
+  // Snapshot unlifted rect
+  cardEl.classList.remove('selected-hand');
+  cardEl.style.removeProperty('--sel-ty');
+  void cardEl.offsetHeight;
+  const rect = cardEl.getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+
+  // Ghost — never disappears, springs to slot on drop
+  const ghost = document.createElement('div');
+  ghost.style.cssText = [
+    'position:fixed', `left:${rect.left}px`, `top:${rect.top}px`,
+    `width:${W}px`, `height:${H}px`,
+    'z-index:9900','pointer-events:none','border-radius:8px','overflow:hidden',
+    'background:#fff','border:2px solid rgba(50,70,140,0.8)',
+    'box-shadow:0 22px 60px rgba(0,0,0,0.88),0 0 0 2px rgba(110,175,255,0.9),0 0 36px rgba(80,140,255,0.35)',
+    'transform:scale(1.05)','transform-origin:50% 80%','transition:none',
+  ].join(';');
+  const srcArt = cardEl.querySelector('.hc-art');
+  if(srcArt) {
+    const img = new Image();
+    img.src = srcArt.src; img.draggable = false;
+    img.style.cssText = 'position:absolute;top:6%;left:50%;transform:translateX(-50%);height:84%;width:auto;object-fit:contain;image-rendering:pixelated;';
+    ghost.appendChild(img);
+  }
+  const srcBadge = cardEl.querySelector('.hc-type1');
+  if(srcBadge) ghost.appendChild(srcBadge.cloneNode(true));
+  document.body.appendChild(ghost);
+
+  // Collapse slot width → hand closes the gap smoothly
+  cardEl.style.transition = 'width 0.16s cubic-bezier(0.4,0,0.2,1), margin 0.16s cubic-bezier(0.4,0,0.2,1), opacity 0.1s ease';
+  cardEl.style.visibility = 'hidden';
+  cardEl.style.opacity    = '0';
+  cardEl.style.overflow   = 'hidden';
+  requestAnimationFrame(() => {
+    cardEl.style.width  = '0px';
+    cardEl.style.margin = '0';
+  });
+
+  _hDrag = {
+    cardEl, ghost, idx, insertIdx: idx,
+    offsetX: sx - rect.left, offsetY: sy - rect.top,
+    prevX: sx, vx: 0,
+    cardW: W, cardH: H,
+    slotLeft: rect.left, slotTop: rect.top,
+  };
+
+  window.addEventListener('pointermove', onHandDragMove, {passive:false});
+  window.addEventListener('pointerup',   onHandDragEnd,  {once:true, passive:true});
+  window.addEventListener('pointercancel', onHandDragEnd, {once:true, passive:true});
+  document.body.classList.add('hand-dragging');
+  if(typeof SFX !== 'undefined') SFX.deckClick();
+}
+
+function onHandDragMove(e) {
+  if(!_hDrag) return;
+  e.preventDefault && e.preventDefault();
+  const d = _hDrag, cx = e.clientX, cy = e.clientY;
+
+  d.vx = (cx - d.prevX) * 0.6 + d.vx * 0.4;
+  d.prevX = cx;
+
+  const tilt = Math.max(-15, Math.min(15, d.vx * 0.3));
+  d.ghost.style.left      = (cx - d.offsetX) + 'px';
+  d.ghost.style.top       = (cy - d.offsetY) + 'px';
+  d.ghost.style.transform = `scale(1.07) rotate(${tilt}deg)`;
+  d.ghost.style.transition = 'transform 0.07s ease';
+
+  // Insertion: count how many visible cards have their natural centre left of ghost
+  const hc  = document.getElementById('hand-container');
+  const els = [...hc.querySelectorAll('.hc')];
+  const ghostCx = cx - d.offsetX + d.cardW * 0.5;
+
+  // Hysteresis: use different entry/exit thresholds based on direction
+  // This creates a dead zone that stops jitter at the boundary.
+  let ins = 0;
+  els.forEach(el => {
+    if(el === d.cardEl) return;
+    const r = el.getBoundingClientRect();
+    const slideOff = parseFloat(el.style.getPropertyValue('--slide-dx') || '0') || 0;
+    const natLeft  = r.left - slideOff;
+    // Moving right: card joins right group at 42% — snappy
+    // Moving left:  card exits right group at 58% — needs clear intent
+    const movingRight = (d.vx >= 0);
+    const frac = movingRight ? 0.42 : 0.58;
+    if(ghostCx > natLeft + r.width * frac) ins++;
+  });
+  ins = Math.max(0, Math.min(ins, els.length - 1));
+
+  if(ins !== d.insertIdx) {
+    d.insertIdx = ins;
+    _applySlide(els, d.cardW, ins);
+  }
+}
+
+// Split hand at insertion point: left half shifts left, right half shifts right.
+// Uses direct style.transform (not CSS vars) to bypass animation interference.
+function _applySlide(els, cardW, ins) {
+  const half = Math.round((cardW - 24) * 0.65); // ~55px each side = ~110px total gap
+  let logIdx = 0;
+  els.forEach(el => {
+    if(el === _hDrag?.cardEl) return;
+    const dx = logIdx < ins ? -half : half;
+    // Also set the CSS var for landing-position calculation
+    el.style.setProperty('--slide-dx', dx + 'px');
+    // Direct transform overrides animation and hover
+    const tilt = parseFloat(el.style.getPropertyValue('--tilt') || '0');
+    const mTilt= parseFloat(el.style.getPropertyValue('--motion-tilt') || '0');
+    el.style.transform = `rotate(${tilt+mTilt}deg) translateX(${dx}px)`;
+    el.style.transition = 'transform 0.13s cubic-bezier(0.25,1.5,0.5,1)';
+    logIdx++;
+  });
+}
+
+function onHandDragEnd() {
+  if(!_hDrag) return;
+  window.removeEventListener('pointermove', onHandDragMove);
+  const d = _hDrag;
+  _hDrag  = null;
+  document.body.classList.remove('hand-dragging');
+
+  const hc  = document.getElementById('hand-container');
+  const els = [...hc.querySelectorAll('.hc')];
+  const from = d.idx;
+  const to   = Math.max(0, Math.min(d.insertIdx, G.hand.length - 1));
+
+  // Find landing position: centre of the gap between left and right card clusters
+  let landX = d.slotLeft, landY = d.slotTop;
+  const half_land = Math.round((d.cardW - 24) * 0.6);
+  let leftEdge = null, rightEdge = null, refTop = d.slotTop;
+  let visIdx = 0;
+  els.forEach(el => {
+    if(el === d.cardEl) return;
+    const r = el.getBoundingClientRect();
+    refTop = r.top;
+    if(visIdx < to) {
+      // Last card on the left side — its natural right edge
+      const slideOff = parseFloat(el.style.getPropertyValue('--slide-dx') || '0') || 0;
+      leftEdge = (r.left - slideOff) + r.width;
+    } else if(rightEdge === null) {
+      // First card on the right side — its natural left edge
+      const slideOff = parseFloat(el.style.getPropertyValue('--slide-dx') || '0') || 0;
+      rightEdge = r.left - slideOff;
+    }
+    visIdx++;
+  });
+  landY = refTop;
+  if(leftEdge !== null && rightEdge !== null) {
+    // Centre of gap minus half the card width to position ghost centred in gap
+    landX = (leftEdge + rightEdge) / 2 - d.cardW / 2;
+  } else if(rightEdge !== null) {
+    landX = rightEdge;          // inserting at start
+  } else if(leftEdge !== null) {
+    landX = leftEdge - d.cardW; // inserting at end
+  }
+
+  // Spring ghost to slot position, then it snaps invisible
+  d.ghost.style.transition = [
+    'left 0.2s cubic-bezier(0.4,0,0.2,1)',
+    'top 0.2s cubic-bezier(0.4,0,0.2,1)',
+    'transform 0.2s cubic-bezier(0.4,0,0.2,1)',
+    'opacity 0.08s ease 0.18s',
+  ].join(',');
+  d.ghost.style.left      = landX + 'px';
+  d.ghost.style.top       = landY + 'px';
+  d.ghost.style.transform = 'scale(1) rotate(0deg)';
+  d.ghost.style.opacity   = '0';
+
+  // Clear all direct slide transforms immediately — no spring back.
+  // We DON'T reset --slide-dx to 0 first (that causes the close-then-reopen).
+  // Instead just strip the inline transform so the card is layout-neutral,
+  // then renderHand() immediately places everything at the right final positions.
+  els.forEach(el => {
+    el.style.transform  = '';      // remove direct override, no transition
+    el.style.transition = 'none';  // instant — renderHand will re-apply transitions
+    el.style.setProperty('--slide-dx', '0px');
+    el.style.removeProperty('--sel-ty');
+  });
+
+  // Restore slot card to full width immediately (no transition) so
+  // renderHand measures it correctly.
+  ['visibility','opacity','overflow','transition','width','margin'].forEach(p => d.cardEl.style.removeProperty(p));
+
+  // Reorder G.hand data
+  if(from !== to) {
+    const selCards = new Set(Array.from(G_selected).map(i => G.hand[i]).filter(Boolean));
+    const [card] = G.hand.splice(from, 1);
+    G.hand.splice(to, 0, card);
+    G_selected = new Set(G.hand.map((c,i) => selCards.has(c) ? i : -1).filter(i => i >= 0));
+    if(typeof SFX !== 'undefined') SFX.confirm();
+  }
+
+  // renderHand immediately — cards snap to final positions, no intermediate state
+  renderHand();
+  if(typeof renderHandsPanel === 'function') renderHandsPanel();
+  updateActionBar();
+
+  // Ghost springs to landing position then disappears
+  // (happens in parallel — ghost fades out as real card appears)
+  setTimeout(() => d.ghost.remove(), 230);
+}
+function slideHandPreview(){}
+
+
+// ════════════════════════════════════════════════════════════
+// STATUS EFFECT SYSTEM
+// G.oppStatus tracks active effects on the opponent Pokémon
+// Processed at end of each turn via processOppStatus()
+// ════════════════════════════════════════════════════════════
+
+// Apply a status effect to the opponent
+function applyStatus(effect, val, source) {
+  if(!G.oppStatus) G.oppStatus = {};
+  const s = G.oppStatus;
+  switch(effect) {
+    case 'poison':
+      s.poison = (s.poison||0) + val;
+      floatLabel(null, `POISON ${val}`, '#CC55FF', 'clamp(9px,1vw,12px)', 900);
+      spritePoisoned(600);
+      break;
+    case 'burn':
+      s.burn = Math.max(s.burn||0, val);
+      floatLabel(null, `BURN ${val}`, '#FF4422', 'clamp(9px,1vw,12px)', 900);
+      spriteOnFire(700);
+      break;
+    case 'sleep':
+      if(Math.random()*100 < val) {
+        s.sleep = 2; // lasts 2 turns
+        floatLabel(null, 'ASLEEP', '#BB88FF', 'clamp(9px,1vw,12px)', 900);
+        spriteSleeping();
+      }
+      break;
+    case 'freeze':
+      if(Math.random()*100 < val) {
+        s.freeze = 1;
+        floatLabel(null, 'FROZEN', '#99DDFF', 'clamp(9px,1vw,12px)', 900);
+        iceShards(oppCenter(), 400);
+      }
+      break;
+    case 'stun':
+      if(Math.random()*100 < val) {
+        s.stun = 1;
+        floatLabel(null, 'STUNNED', '#FFD700', 'clamp(9px,1vw,12px)', 900);
+      }
+      break;
+    case 'debuff':
+      s.dmgReduction = (s.dmgReduction||0) + val;
+      floatLabel(null, `↓ ATK -${val}%`, '#AAAAAA', 'clamp(9px,1vw,12px)', 700);
+      break;
+    case 'block':
+      G.ourBlock = (G.ourBlock||0) + val;
+      floatLabel(null, `🛡 BLOCK +${val}`, '#66AAFF', 'clamp(9px,1vw,12px)', 800);
+      break;
+    case 'heal':
+      G.ourHp = Math.min(G.ourMaxHp||100, (G.ourHp||100) + val);
+      floatLabel(null, `💚 HEAL +${val}`, '#44FF88', 'clamp(9px,1vw,12px)', 800);
+      break;
+    case 'draw':
+      for(let i=0;i<val;i++){
+        if(G.deck.length&&G.hand.length<8){ G.hand.push({...G.deck.shift()}); }
+      }
+      floatLabel(null, `🃏 DRAW ${val}`, '#AADDFF', 'clamp(9px,1vw,12px)', 800);
+      setTimeout(()=>renderHand(), 400);
+      break;
+    case 'permup':
+      G._permDmgBonus = (G._permDmgBonus||0) + val;
+      floatLabel(null, `📈 +${val} PERM DMG`, '#FFDDAA', 'clamp(9px,1vw,12px)', 900);
+      break;
+    case 'gold':
+      G.gold = (G.gold||0) + val;
+      floatLabel(null, `💰 +$${val}`, '#FFD700', 'clamp(9px,1vw,12px)', 800);
+      break;
+    case 'drain':
+      const healed = Math.floor((move?.dmg||30) * val/100);
+      G.ourHp = Math.min(G.ourMaxHp||100, (G.ourHp||100) + healed);
+      floatLabel(null, `🩸 DRAIN +${healed}`, '#FF88AA', 'clamp(9px,1vw,12px)', 800);
+      break;
+    case 'dblblock':
+      G._blockMultiplier = 2;
+      floatLabel(null, '🛡×2 BLOCK', '#66AAFF', 'clamp(9px,1vw,12px)', 800);
+      break;
+  }
+  updateStatusDisplay();
+}
+
+// Process status effects at end of turn (poison/burn tick)
+
+// Opponent pokemon counter-attacks the player
+async function oppPokemonAttack() {
+  if(!G.oppPokemon) return;
+  const dex   = parseInt(G.oppPokemon.dexA || G.oppPokemon.dexNum) || 1;
+  const move  = (typeof POKEMON_MOVES!=='undefined') ? POKEMON_MOVES[dex] : null;
+  const atk   = move ? Math.max(5, Math.floor(move.dmg * 0.25)) : 8; // 25% of move dmg
+  const color = (move && typeof TYPE_COLORS!=='undefined') ? (TYPE_COLORS[move.type]||'#ff4444') : '#ff4444';
+
+  // Source: opp sprite position. Target: bottom center (our hand area)
+  const spriteEl = document.getElementById('opp-pokemon-sprite');
+  const spriteRect = spriteEl ? spriteEl.getBoundingClientRect() : null;
+  const srcX = spriteRect ? spriteRect.left + spriteRect.width/2  : window.innerWidth/2;
+  const srcY = spriteRect ? spriteRect.top  + spriteRect.height/2 : window.innerHeight*0.3;
+  const dstX = window.innerWidth  * 0.5;  // bottom center of screen
+  const dstY = window.innerHeight * 0.82;
+
+  // Move label floats from sprite
+  if(move) floatLabel(spriteEl, move.name.toUpperCase(), color, 'clamp(7px,0.8vw,10px)', 900);
+
+  // Opp sprite briefly lunges down toward player
+  const oppSpr = document.getElementById('opp-pokemon-sprite');
+  if(oppSpr) {
+    oppSpr.style.transition = 'transform 0.18s ease';
+    oppSpr.style.transform = `translateY(20px) scale(1.08)`;
+    setTimeout(()=>{ oppSpr.style.transform=''; setTimeout(()=>oppSpr.style.transition='',200); }, 200);
+  }
+
+  await delay(180);
+
+  // Fire projectile from opp toward player hand area
+  const c = getVfxCanvas(), ctx = c.getContext('2d');
+  const t0 = performance.now(), dur = 380;
+  await new Promise(res=>{
+    function frame(now){
+      const t = Math.min(1,(now-t0)/dur);
+      const x = srcX+(dstX-srcX)*t, y = srcY+(dstY-srcY)*t - Math.sin(t*Math.PI)*40;
+      c.getContext('2d').clearRect(0,0,c.width,c.height);
+      const g = ctx.createRadialGradient(x,y,0,x,y,14);
+      g.addColorStop(0,'#fff'); g.addColorStop(0.3,color); g.addColorStop(1,'transparent');
+      ctx.beginPath(); ctx.arc(x,y,14,0,Math.PI*2);
+      ctx.fillStyle=g; ctx.shadowColor=color; ctx.shadowBlur=18; ctx.fill();
+      ctx.shadowBlur=0;
+      if(t<1) requestAnimationFrame(frame);
+      else { ctx.clearRect(0,0,c.width,c.height); res(); }
+    }
+    requestAnimationFrame(frame);
+  });
+
+  // Impact flash at bottom of screen
+  const flash = document.createElement('div');
+  flash.style.cssText = `position:fixed;left:${dstX-60}px;top:${dstY-40}px;width:120px;height:80px;
+    background:radial-gradient(circle,${color}88,transparent);pointer-events:none;z-index:8000;
+    border-radius:50%;transition:opacity 0.4s ease;`;
+  document.body.appendChild(flash);
+  setTimeout(()=>{flash.style.opacity='0';setTimeout(()=>flash.remove(),400);},100);
+
+  // Apply damage to player (using G.ourHp or just show it)
+  G.ourHp = Math.max(0, (G.ourHp||100) - atk);
+  // Damage number floats up at bottom center
+  const dmgEl = document.createElement('div');
+  dmgEl.style.cssText = `position:fixed;left:${dstX}px;top:${dstY-20}px;
+    font-family:'PokemonClassic',monospace;font-weight:bold;
+    font-size:clamp(20px,2.8vw,44px);color:#ff4444;
+    text-shadow:2px 2px 0 #000;z-index:8900;pointer-events:none;
+    transform:translateX(-50%);animation:floatDmg 1.2s ease forwards;`;
+  dmgEl.textContent = '-'+atk;
+  document.body.appendChild(dmgEl);
+  setTimeout(()=>dmgEl.remove(),1300);
+
+  // Update health display
+  const handsEl = document.getElementById('rp-hands');
+  if(handsEl) handsEl.textContent = G.ourHp;
+
+  await delay(300);
+}
+function processOppStatus() {
+  if(!G.oppStatus) return;
+  const s = G.oppStatus;
+  let totalTick = 0;
+  if(s.poison > 0) {
+    totalTick += s.poison;
+    floatLabel(null, `☠ POISON -${s.poison}`, '#CC55FF', 'clamp(8px,0.8vw,10px)', 700);
+    spritePoisoned(400);
+    // Poison doesn't decrease (Bulbasaur's stays, etc.)
+  }
+  if(s.burn > 0) {
+    totalTick += s.burn;
+    floatLabel(null, `🔥 BURN -${s.burn}`, '#FF4422', 'clamp(8px,0.8vw,10px)', 700);
+    // Burn decreases by 1 per turn
+    s.burn = Math.max(0, s.burn - 1);
+  }
+  if(s.sleep > 0) { s.sleep--; if(s.sleep <= 0) floatLabel(null, '😴 WOKE UP', '#BBBBFF', 'clamp(8px,0.8vw,10px)', 700); }
+  if(s.freeze > 0) { s.freeze--; if(s.freeze <= 0) floatLabel(null, '❄ THAWED', '#99EEFF', 'clamp(8px,0.8vw,10px)', 700); }
+  if(s.stun > 0) { s.stun--; }
+  if(totalTick > 0) {
+    G.oppPokemonHp = Math.max(0, G.oppPokemonHp - totalTick);
+    G.trainerHp    = Math.max(0, G.trainerHp    - totalTick);
+    renderOppPokemon();
+    setTimeout(hitPokemonSprite, 200);
+  }
+  updateStatusDisplay();
+}
+
+function updateStatusDisplay() {
+  const row = document.getElementById('opp-status-row');
+  if(!row || !G.oppStatus) return;
+  const s = G.oppStatus;
+  const badges = [];
+  if(s.poison > 0)       badges.push({text:`PSN ${s.poison}`, bg:'#7722AA'});
+  if(s.burn > 0)         badges.push({text:`BRN ${s.burn}`, bg:'#CC3300'});
+  if(s.sleep > 0)        badges.push({text:`SLP ${s.sleep}T`, bg:'#553399'});
+  if(s.freeze > 0)       badges.push({text:`FRZ`, bg:'#2266AA'});
+  if(s.stun > 0)         badges.push({text:`STN`, bg:'#886600'});
+  if(s.dmgReduction > 0) badges.push({text:`-${s.dmgReduction}% ATK`, bg:'#334455'});
+  row.innerHTML = '';
+  badges.forEach(b=>{
+    const el=document.createElement('span');
+    el.className='opp-status-badge';
+    el.style.background=b.bg;
+    el.textContent=b.text;
+    row.appendChild(el);
+  });
+}
+
+// Clear status when new pokemon comes out
+const _origPickOpp = typeof pickOppPokemon === 'function' ? pickOppPokemon : null;
+
+
 function evaluateHand(cards) {
   if(!cards || cards.length === 0) return null;
   const n = cards.length;
@@ -4603,180 +7792,111 @@ function showHandScore(handName, chips, mult, totalDmg, cards) {
 
 async function playSelectedHand() {
   if(typeof SFX!=='undefined') SFX.playHand();
-  if(!G.ourTurn || G.animating || G_selected.size === 0) return;
+  if(!G.ourTurn || G.animating) return;
+  if(!G.hand || G.hand.length === 0) return;
   G.animating = true;
 
-  const selectedIndices = Array.from(G_selected).sort((a,b)=>a-b);
+  // Always play the first 5 cards (as ordered in hand)
+  const playCount = Math.min(5, G.hand.length);
+  const selectedIndices = Array.from({length: playCount}, (_, i) => i);
   const selectedCards = selectedIndices.map(i => G.hand[i]).filter(Boolean);
   G_selected.clear();
   _activeHandType = null;
   if(typeof renderHandsPanel === 'function') renderHandsPanel();
   updateActionBar();
 
-  // Evaluate hand before animation
-  const result = evaluateHand(selectedCards);
-  const handName = result?.name || 'No Hand';
-  const chips = result?.chips || 50;
-  const mult = result?.mult || 1;
-  const totalDmg = chips * mult;
-
-  // Deduct hand, update run stats
+  // Deduct hand
   G.handsLeft = Math.max(0, G.handsLeft - 1);
-  const _handNum = 4 - G.handsLeft; // which hand in this battle (1,2,3)
-  // Apply trainer modifier multiplier
-  let _modMult = 1.0;
-  if(typeof getModifierMultiplier === 'function') _modMult = getModifierMultiplier(_handNum);
-  const _isDisabled = typeof isHandTypeDisabled==='function' && isHandTypeDisabled(result?.name||'');
-  if(_isDisabled) { totalDmg = 0; showHandScore(result.name+' DISABLED', 0, 0, 0, selectedCards); }
-  else if(_modMult !== 1.0) { totalDmg = Math.round(totalDmg * _modMult); }
-  G.roundScore += totalDmg;
-  G.roundChips = chips;
-  G.roundMult = mult;
   updateRunPanel();
 
-  // ── BALATRO PLAY ANIMATION ──────────────────────────────────
-  // 1. Grab the screen positions of each selected hand card element
+  // Sort cards by play order: Status first, then Attack, then Defend
+  const catOrder = {status:0, setup:0, attack:1, defend:2};
+  const orderedCards = [...selectedCards].sort((a,b)=>{
+    const ma = getMove(a), mb = getMove(b);
+    return (catOrder[ma?.cat||'attack']||1) - (catOrder[mb?.cat||'attack']||1);
+  });
+
+  // Calculate total damage (keep Balatro scoring for now)
+  const result = evaluateHand(selectedCards);
+  const chips = result?.chips || 50;
+  const mult  = result?.mult  || 1;
+  let totalDmg = chips * mult;
+  const _handNum = 4 - G.handsLeft;
+  if(typeof getModifierMultiplier==='function') totalDmg = Math.round(totalDmg * (getModifierMultiplier(_handNum)));
+  G.roundScore += totalDmg;
+  G.roundChips = chips;
+  G.roundMult  = mult;
+
+  // ── Play each card's move animation in sequence ─────────────
   const hcEls = [...document.querySelectorAll('#hand-container .hc')];
-  const cardGhosts = [];
-  const cardW = hcEls[0]?.offsetWidth || 120;
-  const cardH = hcEls[0]?.offsetHeight || 180;
-  const n = selectedCards.length;
-  const cx = window.innerWidth / 2;
-  const cy = window.innerHeight * 0.38; // centre of played area
 
-  selectedIndices.forEach((idx, rank) => {
-    const el = hcEls[idx];
-    if(!el) return;
-    const r = el.getBoundingClientRect();
-
-    // Clone the card as a flying ghost
-    const ghost = document.createElement('div');
-    ghost.style.cssText = [
-      'position:fixed','z-index:900',
-      `width:${r.width}px`,`height:${r.height}px`,
-      `left:${r.left}px`,`top:${r.top}px`,
-      'border-radius:8px','overflow:hidden',
-      'background:#ffffff',
-      'border:2px solid rgba(50,70,140,0.8)',
-      'box-shadow:0 4px 14px rgba(0,0,0,0.8)',
-      'pointer-events:none',
-      'transition:none',
-      'will-change:transform,opacity',
-      'transform:rotate('+getComputedStyle(el).getPropertyValue('--tilt')+'deg)',
-    ].join(';');
-
-    // Copy artwork
-    const img = el.querySelector('.hc-art');
-    if(img) {
-      const gi = document.createElement('img');
-      gi.src = img.src;
-      gi.style.cssText = 'position:absolute;top:6%;bottom:10%;left:50%;transform:translateX(-50%);height:84%;width:auto;object-fit:contain;image-rendering:pixelated;';
-      ghost.appendChild(gi);
-    }
-    // Copy type badge
-    const t1 = el.querySelector('.hc-type1');
-    if(t1) { const tc=t1.cloneNode(true); ghost.appendChild(tc); }
-
-    document.body.appendChild(ghost);
-    cardGhosts.push({ ghost, rank, srcX: r.left+r.width/2, srcY: r.top+r.height/2 });
-
-    // Hide original immediately
-    el.style.opacity = '0';
-    el.style.pointerEvents = 'none';
-  });
-
-  // 2. Phase 1: cards fly up slightly and tilt to vertical (0.18s staggered)
-  await delay(20);
-  cardGhosts.forEach(({ghost}, i) => {
-    ghost.style.transition = `transform ${0.22}s cubic-bezier(0.2,0.8,0.3,1) ${i*0.04}s, box-shadow 0.2s ease`;
-    ghost.style.transform = `translateY(-22px) scale(1.08) rotate(0deg)`;
-    ghost.style.boxShadow = '0 4px 20px rgba(0,0,0,0.9),0 16px 32px rgba(0,0,0,0.8)';
-  });
-  await delay(260 + n * 40);
-
-  // 3. Phase 2: fan them out in the centre of screen (played area)
-  const spread = Math.min(cardW * 1.05, (window.innerWidth * 0.6) / Math.max(n, 1));
-  cardGhosts.forEach(({ghost, rank, srcX, srcY}, i) => {
-    const destX = cx + (i - (n-1)/2) * spread;
-    const destY = cy;
-    const dx = destX - (srcX);
-    const dy = destY - (srcY + 22); // offset for the lift
-    const tilt = (i - (n-1)/2) * 3; // slight fan
-    const delay_i = i * 60;
-    ghost.style.transition = `transform 0.42s cubic-bezier(0.22,1.0,0.36,1) ${delay_i}ms, box-shadow 0.3s ease ${delay_i}ms, opacity 0.1s ease`;
-    ghost.style.transform = `translate(${dx}px,${dy}px) scale(1.18) rotate(${tilt}deg)`;
-    ghost.style.boxShadow = '0 4px 24px rgba(0,0,0,0.95),0 20px 40px rgba(0,0,0,0.9)';
-  });
-  await delay(420 + n * 60 + 80);
-
-  // 4. Phase 3: flash white then pulse — score reveal
-  cardGhosts.forEach(({ghost}) => {
-    ghost.style.transition = 'filter 0.12s ease, transform 0.12s ease';
-    ghost.style.filter = 'brightness(3) saturate(0)';
-    ghost.style.transform = ghost.style.transform.replace(/scale\([^)]+\)/, 'scale(1.28)');
-  });
-  await delay(120);
-  cardGhosts.forEach(({ghost}) => {
-    ghost.style.transition = 'filter 0.18s ease, transform 0.18s ease';
-    ghost.style.filter = 'brightness(1.4) saturate(1.3)';
-    ghost.style.transform = ghost.style.transform.replace(/scale\([^)]+\)/, 'scale(1.12)');
-  });
-  await delay(100);
-
-  // 5. Phase 4: cards scatter/fly off screen downward
-  cardGhosts.forEach(({ghost}, i) => {
-    const scatter = (i - (n-1)/2) * 120;
-    ghost.style.transition = `transform 0.4s cubic-bezier(0.4,0,1,1) ${i*25}ms, opacity 0.25s ease ${i*25+60}ms`;
-    ghost.style.transform = ghost.style.transform + ` translateY(200px) translateX(${scatter}px) scale(0.4)`;
-    ghost.style.opacity = '0';
-  });
-  // Show score slightly before cards fully gone (120ms into scatter)
-  await delay(120);
-  showHandScore(handName, chips, mult, totalDmg, []);
-  await delay(280 + n * 25 + 60);  // wait for scatter to finish
-  cardGhosts.forEach(({ghost}) => ghost.remove());
-  await delay(2200);  // score visible for 2.2s
-  document.getElementById('hand-score-overlay')?.remove();
-
-  // Apply to game state AFTER animation
-  selectedCards.forEach(card => {
-    const handIdx = G.hand.findIndex(c => c === card);
-    if(handIdx > -1) G.hand.splice(handIdx, 1);
-    // Don't put played cards on board — they just deal damage and go away
-  });
+  for(const card of orderedCards) {
+    const origIdx = selectedIndices[selectedCards.indexOf(card)];
+    const el = hcEls[origIdx];
+    const move = getMove(card);
+    if(el) { el.style.pointerEvents='none'; }
+    await playMoveAnimation(card, el, move);
+    // Ensure no leftover transform/filter from animation
+    if(el) { el.style.transform=''; el.style.filter=''; el.style.opacity=''; }
+    await delay(100);
+  }
 
   // Deal damage
-  if(typeof SFX!=='undefined' && totalDmg>0) setTimeout(()=>SFX.damageHit(totalDmg), 400);
-  G.trainerHp = Math.max(0, G.trainerHp - totalDmg);
+  const totalMoved = totalDmg;
+  if(typeof SFX!=='undefined' && totalMoved>0) SFX.damageHit(totalMoved);
+  G.oppPokemonHp = Math.max(0, (G.oppPokemonHp||0) - totalMoved);
+  G.trainerHp    = Math.max(0, G.trainerHp - totalMoved);
+
+  // Hit reaction on opponent sprite
+  if(totalMoved > 0) hitPokemonSprite();
+
+  // Damage number over opponent sprite
+  const oppCard2 = document.getElementById('opp-pokemon-card');
+  const oppRect2 = oppCard2 ? oppCard2.getBoundingClientRect() : null;
+  if(oppRect2) {
+    const dmgEl2 = document.createElement('div');
+    dmgEl2.style.cssText = `position:fixed;left:${oppRect2.left+oppRect2.width/2}px;top:${oppRect2.top+oppRect2.height*0.25}px;font-family:'PokemonClassic',monospace;font-weight:bold;font-size:clamp(28px,4vw,60px);color:#ff2222;text-shadow:2px 2px 0 #000,0 0 20px rgba(255,40,0,0.9);z-index:8900;pointer-events:none;transform:translateX(-50%);animation:floatDmg 1.4s ease forwards;`;
+    dmgEl2.textContent = '-'+totalMoved;
+    document.body.appendChild(dmgEl2);
+    setTimeout(()=>dmgEl2.remove(), 1500);
+  }
+
+  renderOppPokemon();
   updatePortraits();
 
-  // damage number spawned after score overlay disappears
-
-  // Spawn damage number now that score overlay is removed
-  // Spawn damage number over the trainer portrait
-  const dmgEl2 = document.createElement('div');
-  const portraitWrap = document.getElementById('rp-portrait-img-wrap');
-  const pRect = portraitWrap ? portraitWrap.getBoundingClientRect() : null;
-  const dmgLeft = pRect ? (pRect.left + pRect.width/2) : window.innerWidth*0.1;
-  const dmgTop  = pRect ? (pRect.top  + pRect.height*0.4) : window.innerHeight*0.2;
-  dmgEl2.style.cssText = `position:fixed;left:${dmgLeft}px;top:${dmgTop}px;font-family:'PokemonClassic',monospace;font-weight:bold;font-size:clamp(24px,3.5vw,52px);color:#ff2222;text-shadow:2px 2px 0 #000,0 0 16px rgba(255,40,0,0.8);z-index:800;pointer-events:none;transform:translateX(-50%);animation:floatDmg 1.4s ease forwards;`;
-  dmgEl2.textContent = '-'+totalDmg;
-  document.body.appendChild(dmgEl2);
-  setTimeout(()=>dmgEl2.remove(), 1500);
-  document.getElementById('hand-score-overlay')?.remove();
-  await delay(300);
+  // Check pokemon faint
+  if(G.oppPokemonHp <= 0 && G.trainerHp > 0) {
+    hitPokemonSprite(true); // KO animation
+    G.oppPokemonsLeft = Math.max(0, G.oppPokemonsLeft - 1);
+    updatePokeballs();
+    await delay(700);
+    if(G.oppPokemonsLeft > 0) pickOppPokemon();
+    else { setTimeout(advanceTrainer, 500); return; }
+  } else if(G.oppPokemonHp > 0) {
+    // Opp pokemon survived — it counter-attacks us!
+    await delay(400);
+    await oppPokemonAttack();
+  }
+  // Tick status effects
+  processOppStatus();
 
   if(G.trainerHp <= 0) {
-    // Trainer defeated — keep G.animating = true so ALL UI stays locked
-    // No hand select, no discard, no deck viewer, no hand chips until next battle
-    renderHand(); // re-render hand (cards are gone) but buttons stay disabled via G.animating
+    // Remove played cards then advance
+    const toRemove = selectedIndices.slice().sort((a,b)=>b-a);
+    toRemove.forEach(i=>{ if(G.hand[i]) G.hand.splice(i,1); });
+    renderHand();
     setTimeout(advanceTrainer, 400);
     return;
   }
 
-  G.animating = false;
-  renderHand();
-  autoFillHand(() => { renderHand(); checkAutoEndTurn(); });
+  // Remove played cards, draw new ones via animateHandReflow
+  await animateHandReflow(selectedIndices, () => {
+    G.animating = false;
+    G_selected.clear();
+    renderHandsPanel();
+    updateRunPanel();
+    updateActionBar();
+  });
 }
 
 
@@ -5017,6 +8137,7 @@ function closeInterludeScreens() {
 function hideGameUIForInterlude() {
   if(typeof hideRotomRadio==='function') hideRotomRadio();
   if(typeof hideTrainerDialogue==='function') hideTrainerDialogue();
+  const oz=document.getElementById('opp-pokemon-zone'); if(oz) oz.style.display='none';
   _popoverEnabled = false; hideItemPopover();
   ['hand-container','game-hud','deck-ours','balatro-bottom','run-panel','hd-row','owned-items-panel','hands-panel','gold-display'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
@@ -5058,7 +8179,7 @@ function makeCardVisual(card, sizeCss) {
 let _dvSort = 'species';
 
 const DV_HIDE_IDS = [
-  'run-panel','hd-row','hands-panel','hand-container','balatro-bottom',
+  'run-panel','hands-panel','hand-container','balatro-bottom',
   'owned-items-panel','deck-ours','game-hud',
   'route-screen','daycare-screen','shop-screen','route-map-screen','cinnabar-screen',
   'rotom-widget','gold-display'
@@ -5203,8 +8324,25 @@ function renderHandsPanel() {
   const panel = document.getElementById('hands-panel');
   if(!panel || panel.style.display === 'none') return;
   panel.innerHTML = '';
+
+  // If there's a current opponent pokemon, show its move as a single chip
+  if(G.oppPokemon) {
+    const dex  = parseInt(G.oppPokemon.dexA || G.oppPokemon.dexNum) || 0;
+    const move = (typeof POKEMON_MOVES !== 'undefined' && dex > 0) ? POKEMON_MOVES[dex] : null;
+    if(move) {
+      const chip = document.createElement('div');
+      chip.className = 'hand-chip';
+      chip.style.cursor = 'default';
+      chip.innerHTML = `<span style="color:#ffdd66">${move.name}</span> <span class="hand-chip-mult">${move.desc||''}</span>`;
+      chip.title = move.desc || '';
+      panel.appendChild(chip);
+      return;
+    }
+  }
+
+  // Otherwise show available hand types
   const achievable = getAchievableHands();
-  if(!achievable.size) return; // nothing to show
+  if(!achievable.size) return;
   ALL_HAND_TYPES.filter(ht => achievable.has(ht.name)).forEach(ht => {
     const chip = document.createElement('div');
     chip.className = 'hand-chip' + (_activeHandType === ht.name ? ' active' : '');
@@ -5741,7 +8879,7 @@ function setTrainerPortrait(trainer) {
   // Update name + HP in panel
   const tcName=document.getElementById('tc-opp-name'); if(tcName) tcName.textContent=trainer.name.toUpperCase();
   const trainerName=document.getElementById('rp-trainer-name'); if(trainerName) trainerName.textContent=trainer.name.toUpperCase();
-  const trainerHpEl=document.getElementById('rp-trainer-hp'); if(trainerHpEl) trainerHpEl.textContent='❤️ '+trainer.hp+' / '+trainer.hp;
+  const trainerHpEl=document.getElementById('rp-trainer-hp'); if(trainerHpEl) trainerHpEl.textContent='❤️ '+(G.trainerHp||trainer.hp)+' / '+(G.trainerMaxHp||trainer.hp);
   const hpBar=document.getElementById('rp-hp-bar'); if(hpBar) hpBar.style.width='100%';
   // Hero power
   const tcEmoji=document.getElementById('tc-opp-hp-emoji'); if(tcEmoji) tcEmoji.textContent=trainer.hpEmoji||'⚔️';
@@ -5987,6 +9125,7 @@ function updateRunPanel() {
   if(hpBar)       hpBar.style.width = Math.max(0, (G.trainerHp / G.trainerMaxHp) * 100) + '%';
   // Hands / Discards
   const handsEl    = document.getElementById('rp-hands');
+  if(handsEl) handsEl.textContent = G.ourHp !== undefined ? G.ourHp : '♥';
   const discardsEl = document.getElementById('rp-discards');
   if(handsEl)    handsEl.textContent    = G.handsLeft;
   showRotomRadio();
@@ -6022,6 +9161,196 @@ function initHpTooltips(){
       showHpTip(t.hpName||'Hero Power', t.hpDesc||'', t.hpCost||2, oppBtn);
     });
   }
+}
+
+
+function pickOppPokemon() {
+  G.oppStatus = {}; // clear status on new pokemon
+  setTimeout(updateStatusDisplay, 50);
+  // Pick a random pokemon from trainer's pool (or random Kanto for test)
+  const nonLeg = KANTO_POKEMON.filter(([d])=>!LEGENDARIES.has(d));
+  const [dex] = nonLeg[Math.floor(Math.random()*nonLeg.length)];
+  const card = mkBasicCard(dex);
+  G.oppPokemon = card;
+  G.oppPokemonHp = Math.max(30, (card.hp||2)*15);
+  G.oppPokemonMaxHp = G.oppPokemonHp;
+  renderOppPokemon();
+}
+
+// Shake + flash the opponent pokemon sprite on hit
+function hitPokemonSprite(isKO=false) {
+  const sprite = document.getElementById('opp-pokemon-sprite');
+  if(!sprite) return;
+  const zone = document.getElementById('opp-pokemon-zone');
+
+  if(isKO) {
+    // KO: spin and shrink away
+    sprite.style.transition = 'transform 0.5s ease-in, opacity 0.5s ease-in, filter 0.3s';
+    sprite.style.filter = 'brightness(0) saturate(0)';
+    sprite.style.transform = 'scale(0) rotate(180deg)';
+    sprite.style.opacity = '0';
+    setTimeout(()=>{ sprite.style.transition=''; sprite.style.filter=''; sprite.style.transform=''; sprite.style.opacity='1'; }, 700);
+    return;
+  }
+
+  // Hit: flash white, shake, then recover
+  sprite.style.transition = 'none';
+  sprite.style.filter = 'brightness(10) saturate(0)';
+  let shakes = 0;
+  const maxShakes = 6;
+  function shake() {
+    const dx = (Math.random()-0.5)*16;
+    const dy = (Math.random()-0.5)*8;
+    sprite.style.transform = `translate(${dx}px,${dy}px)`;
+    shakes++;
+    if(shakes < maxShakes) setTimeout(shake, 40);
+    else {
+      sprite.style.transform = '';
+      sprite.style.transition = 'filter 0.25s ease';
+      sprite.style.filter = '';
+      setTimeout(()=>{ sprite.style.transition=''; }, 300);
+    }
+  }
+  setTimeout(shake, 40);
+  setTimeout(()=>{ sprite.style.filter=''; }, 120);
+}
+
+
+// Auto-crop transparent padding from opponent sprite
+// Loads sprite on offscreen canvas, finds non-transparent bounding box,
+// then sets the card container height to match the actual sprite content
+function trimOppSprite() {
+  // Always do fresh DOM lookups — never close over stale references
+  const doTrim = () => {
+    try {
+      const card   = document.getElementById('opp-pokemon-card');
+      const sprite = document.getElementById('opp-pokemon-sprite');
+      if(!card || !sprite) return;
+      const sw = sprite.naturalWidth  || 0;
+      const sh = sprite.naturalHeight || 0;
+      if(sw < 4 || sh < 4) return;
+
+      const cvs = document.createElement('canvas');
+      cvs.width = sw; cvs.height = sh;
+      const ctx = cvs.getContext('2d');
+      ctx.drawImage(sprite, 0, 0, sw, sh);
+      const data = ctx.getImageData(0, 0, sw, sh).data;
+
+      let minX=sw, maxX=0, minY=sh, maxY=0;
+      for(let y=0;y<sh;y++){
+        for(let x=0;x<sw;x++){
+          if(data[(y*sw+x)*4+3] > 12){
+            if(x<minX) minX=x; if(x>maxX) maxX=x;
+            if(y<minY) minY=y; if(y>maxY) maxY=y;
+          }
+        }
+      }
+      if(maxX<=minX || maxY<=minY) return;
+
+      const contentH = (maxY - minY + 6) / sh;
+      const offsetY  = Math.max(0, minY - 3) / sh;
+      card.style.aspectRatio = '';
+      const cardW   = card.offsetWidth || 180;
+      const scaleX  = cardW / sw;
+      const spriteH = sh * scaleX;
+      card.style.height    = Math.ceil(contentH * spriteH + 4) + 'px';
+      card.style.overflow  = 'hidden';
+      sprite.style.position = 'absolute';
+      sprite.style.top     = (-offsetY * spriteH) + 'px';
+      sprite.style.left    = '0';
+      sprite.style.width   = '100%';
+      sprite.style.height  = spriteH + 'px';
+    } catch(e) {
+      // CORS/file:// — silently skip, show full sprite
+    }
+  };
+
+  // Schedule fresh after current src load
+  const sprite = document.getElementById('opp-pokemon-sprite');
+  if(!sprite) return;
+  if(sprite.complete && sprite.naturalWidth > 0) {
+    doTrim();
+  } else {
+    sprite.addEventListener('load', doTrim, {once:true});
+  }
+}
+function renderOppPokemon() {
+  const zone    = document.getElementById('opp-pokemon-zone');
+  const sprite  = document.getElementById('opp-pokemon-sprite');
+  const bar     = document.getElementById('opp-pokemon-hp-bar');
+  const hpText  = document.getElementById('opp-pokemon-hp-label-right');
+  if(!zone || !G.oppPokemon) return;
+  zone.style.display = 'flex';
+  const card = G.oppPokemon;
+  const dex  = parseInt(card.dexA || card.dexNum) || 1;
+  // Reset DOM card element dimensions
+  const cardEl = document.getElementById('opp-pokemon-card');
+  if(cardEl) { cardEl.style.height = ''; cardEl.style.aspectRatio = '1/1'; }
+  sprite.style.position = ''; sprite.style.top = ''; sprite.style.left = '';
+  sprite.style.width = ''; sprite.style.height = '';
+  sprite.crossOrigin = 'anonymous';
+  sprite.src = `https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/sprites/${dex}.png`;
+  sprite.onerror = ()=>{ sprite.src=''; };
+  trimOppSprite();
+  const pct = G.oppPokemonMaxHp>0 ? (G.oppPokemonHp/G.oppPokemonMaxHp*100) : 100;
+  if(bar)    bar.style.width = Math.max(0,pct)+'%';
+  if(hpText) hpText.textContent = G.oppPokemonHp+' / '+G.oppPokemonMaxHp;
+  // Populate move info panel
+  renderOppMovePanel(card, dex);
+  updatePokeballs();
+}
+
+function renderOppMovePanel(card, dex) {
+  const panel    = document.getElementById('opp-move-panel');
+  const chip     = document.getElementById('opp-move-chip');
+  const nameEl   = document.getElementById('opp-move-name');
+  const typeBadge= document.getElementById('opp-move-type-badge');
+  const descEl   = document.getElementById('opp-move-desc');
+  if(!panel) return;
+
+  // Get the move for this pokemon's dex number
+  const move = (typeof POKEMON_MOVES !== 'undefined' && dex > 0) ? POKEMON_MOVES[dex] : null;
+  if(!move) { panel.style.display='none'; return; }
+
+  panel.style.display = 'flex';
+  // Start hidden, reveal on hover of the opp-pokemon-zone
+  chip.classList.remove('visible');
+  descEl.style.display = 'none';
+
+  nameEl.textContent = move.name || '???';
+  typeBadge.textContent = move.type || '';
+  typeBadge.style.background = (typeof TYPE_COLORS !== 'undefined' ? TYPE_COLORS[move.type] : null) || '#555';
+  descEl.textContent = move.desc || '';
+
+  // Hover to reveal desc, click to toggle
+  const zone = document.getElementById('opp-pokemon-zone');
+  if(zone && !zone._moveInfoBound) {
+    zone._moveInfoBound = true;
+    zone.style.pointerEvents = 'all';
+    zone.style.cursor = 'pointer';
+    zone.addEventListener('mouseenter', ()=>{
+      chip.classList.add('visible');
+      descEl.style.display = 'block';
+    });
+    zone.addEventListener('mouseleave', ()=>{
+      chip.classList.remove('visible');
+      descEl.style.display = 'none';
+    });
+    // Touch: tap to toggle
+    zone.addEventListener('click', ()=>{
+      const showing = chip.classList.contains('visible');
+      chip.classList.toggle('visible');
+      descEl.style.display = showing ? 'none' : 'block';
+    });
+  }
+}
+
+function updatePokeballs() {
+  const balls = document.querySelectorAll('.rp-pokeball');
+  balls.forEach((b,i)=>{
+    if(i < G.oppPokemonsLeft) b.classList.remove('fainted');
+    else b.classList.add('fainted');
+  });
 }
 
 function updatePortraits(){
@@ -6914,7 +10243,8 @@ function beginBattleWithDeck(deckId){
   const bb=document.getElementById('balatro-bottom');if(bb)bb.style.display='flex';
   const rp=document.getElementById('run-panel');if(rp){rp.style.display='flex';setTimeout(updateRunPanel,200);}
   // gold is inside owned-items-panel
-  const hdr=document.getElementById('hd-row');if(hdr)hdr.style.display='flex';
+  const hdr = document.getElementById('hd-row');
+  if(hdr) hdr.style.display='flex';
   const oip=document.getElementById('owned-items-panel');if(oip){oip.style.display='flex';}
   _popoverEnabled = true;
   renderOwnedItemsPanel();
@@ -6939,8 +10269,21 @@ function beginBattleWithDeck(deckId){
 <div id="starter-particles"></div>
 
 <script>
-// Now the DOM element exists — safe to call
-initStarterDeckScreen();
+// ── TEST MODE: skip starter screen, launch directly ─────────────
+(function launchTestBattle() {
+  const ss = document.getElementById('starter-screen');
+  const sp = document.getElementById('starter-particles');
+  if(ss) ss.classList.add('hidden');
+  if(sp) sp.remove();
+
+  const firstDeck = STARTER_DECKS[0];
+  G.bonusCards = [];
+  G._starterDeckCards = firstDeck ? firstDeck.buildDeck() : [];
+
+  // Use the same flow as beginBattleWithDeck
+  beginBattleWithDeck(firstDeck ? firstDeck.id : (STARTER_DECKS[0]?.id || 'starter'));
+})();
+// initStarterDeckScreen(); // disabled during test mode
 
 // Autoplay music immediately — browsers may block, fallback to first interaction
 (function tryAutoplay() {
@@ -7273,7 +10616,7 @@ const SHOP_ITEMS = [
   { id:'rainbow_wing', name:"Rainbow Wing", emoji:'🌈', cost:8, category:'Legendary', desc:'All type bonuses stack together.' },
 ];
 
-let G_items = []; // owned items
+// G_items declared earlier near G_selected
 let _shopItemPool = []; // current shop items for sale
 
 function getShopItems() {
@@ -7369,11 +10712,42 @@ function startNextBattle() {
   renderOwnedItemsPanel();
   G.handsLeft=3; G.discardsLeft=3; G.roundScore=0; G.roundChips=0; G.roundMult=0;
 
+  // ── TEST MODE: battle 1 only ─────────────────────────────────
+  const IS_TEST_BATTLE = (G.trainerIdx === 0);
+  if(IS_TEST_BATTLE) {
+    // Override trainer HP to huge value
+    G.trainerHp = 99999; G.trainerMaxHp = 99999;
+    // Give all 151 kanto pokemon in dex order
+    G.deck = [];
+    for(let d = 1; d <= 151; d++) {
+      const c = mkBasicCard(d);
+      if(c) G.deck.push(c);
+    }
+    // Infinite discards
+    G.discardsLeft = 9999;
+    // Don't allow hands to run out
+    G.handsLeft = 99;
+    console.log('[TEST MODE] Battle 1: all 151 Pokémon, infinite discards, 99999 HP');
+    // Show test mode banner
+    setTimeout(()=>{
+      const banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(20,8,40,0.97);border:2px solid rgba(180,100,255,0.8);border-radius:8px;padding:14px 28px;font-family:PokemonClassic,monospace;font-size:clamp(8px,1vw,12px);color:#cc88ff;letter-spacing:2px;z-index:9000;pointer-events:none;text-align:center;';
+      banner.innerHTML = '🧪 TEST MODE ACTIVE<br><span style="font-size:0.8em;color:#8855cc;letter-spacing:1px;">ALL 151 POKéMON · INFINITE DISCARDS · 99999 HP</span>';
+      document.body.appendChild(banner);
+      setTimeout(()=>banner.remove(), 3000);
+    }, 1500);
+  }
+  // ── END TEST MODE ─────────────────────────────────────────────
+
   const fuseLabel = document.getElementById('fuse-lbl');
   if (fuseLabel) { fuseLabel.style.display = 'flex'; fuseLabel.textContent = 'END TURN'; }
 
   buildUI(); renderAll();
   G_selected.clear();
+  // Pick first opponent pokemon
+  G.oppPokemonsLeft = 6;
+  G.oppPokemonIdx = 0;
+  pickOppPokemon();
   const DRAW = 8;
   for (let i = 0; i < DRAW; i++) {
     setTimeout(() => { if (G.deck.length && G.hand.length < 8) { G.hand.push({ ...G.deck.shift() }); renderHand(true); } }, 150 + i * 180);
