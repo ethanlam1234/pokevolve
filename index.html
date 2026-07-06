@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Riftborn</title>
+<title>Pokévolve</title>
 <style>
 @font-face {
   font-family: 'PokemonClassic';
@@ -225,9 +225,17 @@ html { overflow: hidden; }
   user-select:none;
 }
 .hc:hover {
-  transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 6px)) scale(1.03) rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)) !important;
-  z-index:200 !important; box-shadow:0 10px 22px rgba(0,0,0,0.9);
   transition:transform 0.08s ease, box-shadow 0.1s !important;
+}
+@media (hover: hover) and (pointer: fine) {
+  /* Hover-lift + z-index escalation only for real mouse/trackpad input.
+     On touch devices, a tap sticks :hover until you tap elsewhere — if this
+     also forced z-index:200, a previously-tapped card would stay stuck on
+     top of every other card, breaking the left-to-right stacking order. */
+  .hc:hover {
+    transform: rotate(var(--tilt,0deg)) translateX(var(--dx,0px)) translateY(calc(var(--sel-ty,0px) + var(--dy,0px) - 6px)) scale(1.03) rotateX(var(--tilt3d-rx,0deg)) rotateY(var(--tilt3d-ry,0deg)) !important;
+    z-index:200 !important; box-shadow:0 10px 22px rgba(0,0,0,0.9);
+  }
 }
 .hc-select-ring {
   position:absolute; inset:0; border-radius:8px; pointer-events:none;
@@ -555,6 +563,13 @@ html { overflow: hidden; }
   color:#7799bb; cursor:pointer; letter-spacing:1px; transition:all 0.15s;
 }
 #route-view-deck-btn:hover { color:#aaccff; border-color:rgba(100,140,255,0.7); }
+#cinnabar-view-deck-btn {
+  font-family:'PokemonClassic',monospace; font-size:clamp(9px,0.9vw,13px);
+  padding:7px 18px; background:rgba(20,30,60,0.85);
+  border:1px solid rgba(60,90,180,0.5); border-radius:6px;
+  color:#7799bb; cursor:pointer; letter-spacing:1px; transition:all 0.15s;
+}
+#cinnabar-view-deck-btn:hover { color:#aaccff; border-color:rgba(100,140,255,0.7); }
 
 /* ── STARTER DECK PILE CHOOSER ── */
 #starter-arc-wrap {
@@ -880,8 +895,9 @@ html { overflow: hidden; }
 #dv-close:hover { color:#ff8888; border-color:rgba(220,60,60,0.8); }
 /* deck viewer type sizes inherit global */
 #dv-grid-wrap {
-  flex:1; overflow-y:auto; width:100%; max-width:1100px;
-  padding:clamp(14px,2.5vh,28px) clamp(16px,3vw,40px) clamp(16px,3vh,36px);
+  flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain; width:100%; max-width:1100px;
+  padding:clamp(14px,2.5vh,28px) clamp(16px,3vw,40px) calc(clamp(16px,3vh,36px) + 40px);
   display:flex; justify-content:flex-start;
   box-sizing:border-box;
 }
@@ -894,6 +910,60 @@ html { overflow: hidden; }
   width:clamp(110px,9.5vw,145px); aspect-ratio:2/3;
   animation:shopItemIn 0.3s var(--sd,0s) both;
 }
+#pokedex-viewer {
+  position:fixed; inset:0; z-index:1500; display:none;
+  flex-direction:column; align-items:center; justify-content:flex-start;
+  padding:0;
+  background:rgba(4,6,18,0.72); overflow:hidden;
+  font-family:'PokemonClassic',monospace;
+  pointer-events:all;
+}
+#pokedex-viewer.open { display:flex; }
+#pdx-header {
+  display:flex; align-items:center; gap:16px;
+  flex-shrink:0; width:100%; max-width:1100px;
+  padding:clamp(28px,4vh,52px) clamp(16px,3vw,40px) 18px;
+  background:transparent;
+  z-index:2;
+  border-bottom:2px solid rgba(255,255,255,0.18);
+}
+#pdx-title { font-size:clamp(14px,1.8vw,24px); color:#ffdd66; letter-spacing:3px; flex:1; }
+#pdx-count { font-size:clamp(10px,1.1vw,15px); color:#7799bb; letter-spacing:1px; }
+#pdx-sort-row { display:flex; gap:6px; }
+#pdx-close {
+  background:rgba(30,10,10,0.8); border:1px solid rgba(160,40,40,0.6);
+  border-radius:6px; padding:6px 16px; color:#cc6666;
+  font-family:'PokemonClassic',monospace; font-size:clamp(9px,0.9vw,12px);
+  cursor:pointer; letter-spacing:1px; transition:all 0.15s;
+}
+#pdx-close:hover { color:#ff8888; border-color:rgba(220,60,60,0.8); }
+#pdx-grid-wrap {
+  flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain; width:100%; max-width:1100px;
+  padding:clamp(14px,2.5vh,28px) clamp(16px,3vw,40px) calc(clamp(16px,3vh,36px) + 40px);
+  display:flex; justify-content:flex-start;
+  box-sizing:border-box;
+}
+#pdx-grid {
+  display:flex; flex-wrap:wrap;
+  gap:10px;
+  width:100%; align-content:flex-start; align-items:flex-start;
+}
+.pdx-mystery {
+  width:100%; height:100%; background:#0a0d1c; border:2px solid rgba(60,70,100,0.5);
+  border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.pdx-mystery .q { font-size:clamp(28px,4vw,44px); color:#334a; }
+.pdx-mystery .lbl { font-size:clamp(7px,0.8vw,10px); color:#445; letter-spacing:2px; margin-top:6px; }
+.pdx-load-more-row { flex-basis:100%; width:100%; display:flex; justify-content:center; margin-top:14px; }
+.pdx-load-more-btn {
+  width:auto; box-sizing:border-box;
+  font-family:'PokemonClassic',monospace; font-size:clamp(9px,1vw,13px);
+  padding:13px 32px; border-radius:8px; cursor:pointer; letter-spacing:1px;
+  background:rgba(18,26,54,0.9); color:#aaccff;
+  border:2px solid rgba(100,140,255,0.5); transition:all 0.15s;
+}
+.pdx-load-more-btn:hover { background:rgba(28,40,76,0.95); border-color:rgba(140,180,255,0.8); }
 
 #balatro-bottom {
   position:fixed; bottom:0; left:0; right:0; z-index:108;
@@ -943,6 +1013,15 @@ html { overflow: hidden; }
 }
 .action-btn.discard:hover:not([disabled]) { filter:brightness(1.3); transform:translateY(-2px); }
 .action-btn.discard[disabled] { opacity:0.35; pointer-events:none; }
+.action-btn.hero {
+  font-size:clamp(11px,1.2vw,16px); padding:10px 28px;
+  background:linear-gradient(180deg,#2a1144,#160a26);
+  border-color:#aa66ff;
+  box-shadow:0 4px 0 #0c0518, 0 0 16px rgba(170,100,255,0.3);
+  color:#fff; min-width:clamp(120px,12vw,175px);
+}
+.action-btn.hero:hover:not([disabled]) { filter:brightness(1.3); transform:translateY(-2px); }
+.action-btn.hero[disabled] { opacity:0.35; pointer-events:none; }
 /* Selected count badge — removed */
 #selected-badge { display:none !important; }
 /* play-hand-btn hidden (legacy) */
@@ -1436,7 +1515,7 @@ html { overflow: hidden; }
   #shop-title    { font-size:16px !important; margin-bottom:2px !important; }
   #shop-subtitle { font-size:8px !important; margin-bottom:8px !important; }
   #shop-gold     { font-size:12px !important; margin-bottom:8px !important; }
-  .shop-item     { width:clamp(95px,17vw,130px) !important; padding:7px 6px !important; border-radius:8px !important; }
+  .shop-item     { width:clamp(95px,17vw,130px) !important; min-height:150px !important; padding:7px 6px 38px 6px !important; border-radius:8px !important; }
   .shop-item-emoji { font-size:20px !important; margin-bottom:4px !important; }
   .shop-item-name  { font-size:7px !important; margin-bottom:3px !important; }
   .shop-item-desc  { font-size:6px !important; margin-bottom:5px !important; }
@@ -1772,6 +1851,13 @@ void main(){
 
 
 <!-- Portrait rotation overlay -->
+<div id="asset-loading-screen" style="position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#04060f;font-family:'PokemonClassic',monospace;color:#ffdd66;">
+  <div style="font-size:clamp(18px,3vw,32px);letter-spacing:3px;text-shadow:3px 3px 0 #000;margin-bottom:22px;">POKÉVOLVE</div>
+  <div style="width:min(70vw,360px);height:14px;border:2px solid #445;border-radius:8px;overflow:hidden;background:rgba(255,255,255,0.06);margin-bottom:12px;">
+    <div id="asset-loading-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#4488ff,#66ffaa);transition:width 0.15s ease;"></div>
+  </div>
+  <div id="asset-loading-label" style="font-size:clamp(9px,1.1vw,13px);color:#7799bb;letter-spacing:1px;">LOADING SPRITES... 0%</div>
+</div>
 <div id="rotate-overlay" style="display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;font-family:'PokemonClassic',monospace;color:#ffdd66;text-align:center;pointer-events:all;" onclick="if(document.getElementById('rot-step2').style.display!=='none'){ if(typeof SFX!=='undefined') SFX.confirm(); tryFullscreen();}">
   <!-- Scanlines overlay (CRT effect inside overlay) -->
   <div style="position:absolute;inset:0;z-index:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.15) 0px,rgba(0,0,0,0.15) 2px,transparent 2px,transparent 4px);mix-blend-mode:multiply;"></div>
@@ -1806,6 +1892,10 @@ function checkOrientationStep() {
   const isPortrait = window.innerHeight > window.innerWidth;
   const isMobile = Math.min(window.screen.width, window.screen.height) < 600;
   const gw = document.getElementById('gameWrap');
+  if(isMobile){
+    // Music toggle is desktop-only clutter on small phones — hide it once, permanently.
+    document.querySelectorAll('[data-desktop-only="1"]').forEach(el => { el.style.display = 'none'; el.dataset.desktopHidden = '1'; });
+  }
   if(!isMobile) { overlay.style.display='none'; if(gw) gw.style.visibility=''; return; }
   if(isPortrait) {
     overlay.style.display='flex';
@@ -2010,7 +2100,7 @@ document.addEventListener('keydown',e=>{
 <!-- sits to the right of hd-row at same bottom position, managed by show/hideRotomRadio --></div><!-- /hd-row -->
 
 <!-- ── MUSIC TOGGLE BUTTON ── -->
-<div id="rotom-widget" style="display:none;position:fixed;z-index:200;font-family:'PokemonClassic',monospace;">
+<div id="rotom-widget" style="display:none;position:fixed;z-index:200;font-family:'PokemonClassic',monospace;" data-desktop-only="1">
   <div id="rotom-box" onclick="rotomToggle()" title="Toggle Music"
     style="border-radius:8px;padding:8px 14px;cursor:pointer;
            background:#0a1a33;border:2px solid #1a3366;
@@ -2087,6 +2177,7 @@ document.addEventListener('keydown',e=>{
   <div id="action-row">
     <button class="action-btn discard" id="discard-btn" onclick="discardSelected()" disabled>DISCARD</button>
     <button class="action-btn play" id="play-btn" onclick="playSelectedHand()" disabled>PLAY HAND</button>
+    <button class="action-btn hero" id="hero-btn" onclick="useHeroAbility()" style="display:none;" disabled>ABILITY</button>
   </div>
 </div>
 
@@ -2450,9 +2541,9 @@ function initGame() {
   } else {
     G.deck = shuffle(FUSIONS.map(mkCard));
   }
-  // Build opponent deck from random basic Kanto pokemon (not old fusions)
-  const nonLeg2 = KANTO_POKEMON.filter(([d])=>!LEGENDARIES.has(d));
-  G.theirDeck = shuffle(nonLeg2.slice(0,40).map(([d])=>mkBasicCard(d)).filter(Boolean));
+  // (G.theirDeck removed — leftover from the pre-rummy battling system;
+  // nothing in the rummy engine reads it, and it was silently marking 40
+  // unrelated species as Pokédex-"seen" every single battle.)
   G.ourBoard   = new Array(6).fill(null);
   G.theirBoard = new Array(4).fill(null);
   G.theirMana=1; G.theirMaxMana=1;
@@ -2626,7 +2717,13 @@ function makeHcEl(card, i, isHidden) {
   const ring = document.createElement('div'); ring.className = 'hc-select-ring';
   el.appendChild(ring);
   el.title = card.name;
-  el.addEventListener('click', () => toggleHandSelect(i));
+  el.dataset.hIdx = i;
+  el.addEventListener('click', (e) => {
+    if(_handDragSuppressClick){ e.stopPropagation(); return; }
+    toggleHandSelect(i);
+  });
+  el.addEventListener('mousedown', (e) => { if(e.button===0) startHandRangeSelect(i); });
+  el.addEventListener('touchstart', () => startHandRangeSelect(i), {passive:true});
   el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
   const floatDur = 2.8 + (i * 0.22) % 1.0; // 2.8-3.8s range
   // Negative delays = animation already in progress (staggered, no waiting)
@@ -2694,6 +2791,81 @@ function toggleHandSelect(idx) {
   // Update action bar without rebuilding hand DOM
   updateActionBar();
 }
+
+// ── BALATRO-STYLE CLICK-AND-DRAG RANGE SELECT ──────────────────
+// Mousedown on a card, drag to another: every card in between gets selected
+// as one contiguous range, replacing whatever was selected before.
+let _handDrag = null;               // {startIdx, moved, lastIdx}
+let _handDragSuppressClick = false; // true right after a real drag, so the
+                                     // browser's own click on mouseup doesn't
+                                     // re-toggle the card the drag ended on
+
+function startHandRangeSelect(idx) {
+  if(!G.ourTurn || G.animating || (typeof G._rummyPhase!=='undefined' && G._rummyPhase!=='play')) return;
+  // Dragging FROM an already-selected card deselects the range; from an
+  // unselected card it selects the range. Cards outside the dragged span
+  // keep whatever state they had before the drag started.
+  const mode = G_selected.has(idx) ? 'deselect' : 'select';
+  _handDrag = { startIdx: idx, moved: false, lastIdx: idx, mode, snapshot: new Set(G_selected) };
+}
+
+function _applyHandDragRange(a, b) {
+  if(!_handDrag) return;
+  const lo = Math.min(a,b), hi = Math.max(a,b);
+  const range = []; for(let i=lo;i<=hi;i++) range.push(i);
+  const maxN = (typeof getMaxPlay==='function') ? getMaxPlay() : 8;
+  const finalSet = new Set(_handDrag.snapshot);   // start from pre-drag state
+  if(_handDrag.mode === 'deselect') {
+    range.forEach(i => finalSet.delete(i));
+  } else {
+    // Add in drag direction so if the cap is hit, we trim the FARTHEST new
+    // card first rather than the one the drag anchored on.
+    const ordered = (b >= a) ? range : [...range].reverse();
+    for(const i of ordered) {
+      if(finalSet.size >= maxN && !finalSet.has(i)) continue;
+      finalSet.add(i);
+    }
+  }
+  G_selected = finalSet;
+  const hcEls = [...document.querySelectorAll('#hand-container .hc')];
+  hcEls.forEach((el, i) => {
+    const sel = G_selected.has(i);
+    el.classList.toggle('selected-hand', sel);
+    el.style.zIndex = sel ? (110 + i) : (2 + i);
+  });
+  updateActionBar();
+  if(typeof SFX!=='undefined') SFX[_handDrag.mode === 'deselect' ? 'cardDeselect' : 'cardSelect']();
+}
+
+function _handDragMove(clientX, clientY) {
+  if(!_handDrag) return;
+  const el = document.elementFromPoint(clientX, clientY);
+  const hcEl = el && el.closest ? el.closest('.hc') : null;
+  if(!hcEl || hcEl.dataset.hIdx === undefined) return;
+  const idx = parseInt(hcEl.dataset.hIdx, 10);
+  if(isNaN(idx) || idx === _handDrag.lastIdx) return;
+  _handDrag.lastIdx = idx;
+  if(idx !== _handDrag.startIdx) _handDrag.moved = true;
+  _applyHandDragRange(_handDrag.startIdx, idx);
+}
+
+document.addEventListener('mousemove', (e) => { if(_handDrag) _handDragMove(e.clientX, e.clientY); });
+document.addEventListener('touchmove', (e) => {
+  if(_handDrag && e.touches && e.touches[0]) _handDragMove(e.touches[0].clientX, e.touches[0].clientY);
+}, {passive:true});
+function _endHandDrag() {
+  if(!_handDrag) return;
+  const moved = _handDrag.moved;
+  _handDrag = null;
+  if(moved) {
+    _handDragSuppressClick = true;
+    setTimeout(() => { _handDragSuppressClick = false; }, 0);
+  }
+}
+document.addEventListener('mouseup', _endHandDrag);
+document.addEventListener('touchend', _endHandDrag);
+document.addEventListener('touchcancel', _endHandDrag);
+
 
 function updateActionBar() {
   const sel = G_selected.size;
@@ -2899,13 +3071,26 @@ async function animateHandReflow(deadIndices, callback) {
   });
 
   // ── Step 2: update G.hand (remove dead, draw new, sort) ──────────
+  // Removed cards — whether discarded or just melded onto the board — go
+  // into a discard pile instead of vanishing. When the draw deck empties
+  // mid-battle, that pile shuffles back in so you never just run dry.
   const toRemove = deadIndices.slice().sort((a,b)=>b-a);
-  toRemove.forEach(i=>{if(G.hand[i])G.hand.splice(i,1);});
+  toRemove.forEach(i=>{
+    if(G.hand[i]){
+      if(!G._discardPile) G._discardPile = [];
+      G._discardPile.push({...G.hand[i]});
+      G.hand.splice(i,1);
+    }
+  });
   G_selected.clear(); _activeHandType=null;
 
-  const toDraw = Math.min(RUMMY_HAND_START()-G.hand.length, G.deck.length);
+  const needed = RUMMY_HAND_START()-G.hand.length;
   const newCards = [];
-  for(let i=0;i<toDraw;i++){
+  for(let i=0;i<needed;i++){
+    if(!G.deck.length && G._discardPile && G._discardPile.length){
+      G.deck = G._discardPile.sort(()=>Math.random()-0.5);
+      G._discardPile = [];
+    }
     if(!G.deck.length||G.hand.length>=RUMMY_HAND_START())break;
     const c={...G.deck.shift()};
     G.hand.push(c);
@@ -3211,6 +3396,22 @@ function openCinnabarMansion() {
   screen.classList.add('visible');
 }
 
+function fusionKey(dA, dB){ const lo=Math.min(dA,dB), hi=Math.max(dA,dB); return lo+'-'+hi; }
+function getFusionSeenMap() {
+  try { return new Map(JSON.parse(localStorage.getItem('pokedexFusionsSeen')||'[]')); }
+  catch(e){ return new Map(); }
+}
+function markFusionSeen(dexA, dexB, spriteUrl) {
+  try {
+    if(!dexA || !dexB || dexA === dexB || !spriteUrl) return;
+    const key = fusionKey(dexA, dexB);
+    if(!window._pokedexFusionsSeen) window._pokedexFusionsSeen = getFusionSeenMap();
+    if(!window._pokedexFusionsSeen.has(key)){
+      window._pokedexFusionsSeen.set(key, spriteUrl);
+      localStorage.setItem('pokedexFusionsSeen', JSON.stringify([...window._pokedexFusionsSeen]));
+    }
+  } catch(e){ /* localStorage unavailable — harmless, Pokédex just won't persist */ }
+}
 function buildFusedCard(a, b) {
   const aHalf = a.name.slice(0, Math.ceil(a.name.length/2));
   const bHalf = b.name.slice(Math.floor(b.name.length/2));
@@ -3219,6 +3420,7 @@ function buildFusedCard(a, b) {
   const traitsB = typeof getCardTraits==='function' ? getCardTraits(b) : [];
   // Use the confirmed sprite URL (checked during selection), or fall back to URL construction
   const spriteUrl = b._fusionSpriteUrl || fusionSpriteUrls(a.name, b.name)[0];
+  { const _dA = parseInt(a.dexA)||0, _dB = parseInt(b.dexA)||0; if(_dA && _dB) markFusionSeen(_dA, _dB, spriteUrl); }
   // Fusion inherits EVERY parent type (up to 4, deduped)
   const _allT = [...new Set([a.type1, b.type1, a.type2, b.type2].filter(Boolean))];
   const type1 = _allT[0]||null, type2 = _allT[1]||null, type3 = _allT[2]||null, type4 = _allT[3]||null;
@@ -3473,25 +3675,6 @@ function _runFusionCore(cardA, cardB, rA, rB, allWraps, elA, elB) {
     if(typeof SFX!=='undefined') SFX.fusionReveal();
     wA._img.style.transition = 'filter 0.7s ease';
     wA._img.style.filter = 'brightness(1) saturate(1)';
-    // Reveal the fusion's FULL type spread on the card, grouped top/bottom like normal cards
-    try {
-      const _rT = [...new Set([cardA.type1, cardB.type1, cardA.type2, cardB.type2].filter(Boolean))].slice(0,4);
-      const topRow = document.createElement('div'); topRow.className = 'hc-type-row-top';
-      const botRow = document.createElement('div'); botRow.className = 'hc-type-row-bottom';
-      wA.appendChild(topRow); wA.appendChild(botRow);
-      _rT.forEach((t, i) => {
-        const cls = 'hc-type'+(i+1);
-        const row = (i%2===0) ? topRow : botRow;
-        setTimeout(()=>{
-          const badge = typeBadge(t, cls);
-          badge.style.opacity = '0';
-          badge.style.transition = 'opacity 0.3s ease, transform 0.25s cubic-bezier(0.2,1.6,0.3,1)';
-          badge.style.transform = 'scale(0.4)';
-          row.appendChild(badge);
-          requestAnimationFrame(()=>{ badge.style.opacity='1'; badge.style.transform='scale(1)'; });
-        }, 450 + i*130);
-      });
-    } catch(e){}
     wA.style.transition = 'background 0.5s, border 0.4s';
     wA.style.background = '#ffffff';
     wA.style.border = '2px solid rgba(50,70,140,0.8)';
@@ -3770,21 +3953,11 @@ function rotomVolDown() { rotomSetVol(_rotomVol-0.12); }
 function toggleRotomPanel() { rotomToggle(); }
 function showRotomRadio() {
   const el=document.getElementById('rotom-widget');
+  const isMobile = Math.min(window.screen.width, window.screen.height) < 600;
+  if(isMobile){ if(el) el.style.display='none'; return; }  // music toggle is desktop-only
   if(el) {
     el.style.display='block';
-    const isMobile = Math.min(window.screen.width, window.screen.height) < 600;
-    if(isMobile) {
-      // On mobile: position directly below the trainer name/HP overlay
-      const overlay = document.getElementById('rp-portrait-overlay');
-      const rp      = document.getElementById('run-panel');
-      const anchor  = overlay || rp;
-      if(anchor) {
-        const r = anchor.getBoundingClientRect();
-        el.style.left   = r.left + 'px';
-        el.style.top    = (r.bottom + 4) + 'px';
-        el.style.bottom = 'auto';
-      }
-    } else {
+    {
       // Desktop: above the hd-row (bottom-left)
       const hdRow = document.getElementById('hd-row');
       if(hdRow) {
@@ -5462,18 +5635,20 @@ function updateItemsFade() {
 }
 
 function renderOwnedItemsPanel() {
-  const panel = document.getElementById('owned-items-panel');
-  if(!panel) return;
-  // Remove all chips except the label
-  [...panel.querySelectorAll('.owned-item-chip')].forEach(c=>c.remove());
+  const list = document.getElementById('owned-items-list');
+  if(!list) return;
+  list.innerHTML = '';
   G_items.forEach((item, i) => {
     const chip = document.createElement('div');
     chip.className = 'owned-item-chip';
     chip.style.animationDelay = (i * 0.05) + 's';
     chip.textContent = item.emoji + ' ' + item.name;
     attachPopover(chip, item.desc);
-    panel.appendChild(chip);
+    list.appendChild(chip);
   });
+  // Scrollable, no visible scrollbar, fading top/bottom edges when it overflows
+  requestAnimationFrame(updateItemsFade);
+  list.onscroll = updateItemsFade;
 }
 
 
@@ -5560,10 +5735,24 @@ async function openRouteScreen() {
 
 // Builds (or reuses) the 5-card offer and renders it into the row.
 // Reused as-is when returning from VIEW DECK so the offer never changes mid-visit.
+function _drawRouteCard(row, card, i) {
+  const wrap = makeCardVisual(card, 'width:clamp(110px,11vw,155px);aspect-ratio:2/3;animation:shopItemIn 0.4s '+(i*0.08)+'s cubic-bezier(0.15,1.1,0.35,1) both;');
+  wrap.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+  wrap.addEventListener('click', () => {
+    row.querySelectorAll('.card-visual').forEach(c=>c.classList.remove('cv-selected'));
+    wrap.classList.add('cv-selected');
+    _routePicked = card;
+    const rcb=document.getElementById('route-confirm-btn');if(rcb){rcb.style.opacity='1';rcb.style.pointerEvents='all';rcb.style.filter='none';}
+  });
+  if (_routePicked && _routePicked === card) wrap.classList.add('cv-selected');
+  return wrap;
+}
+
 async function renderRouteRow() {
   const myGen = ++_routeRenderGen;   // this call's ticket
   const row = document.getElementById('route-pokemon-row');
   const routeData = G._routeData;
+  row.innerHTML = '';   // clear immediately — never show last visit's cards while this one loads
 
   if(!_routeOffer) {
     // 2 route-themed picks + 3 wild picks from all of Kanto — fresh every visit
@@ -5576,13 +5765,23 @@ async function renderRouteRow() {
     }
     const pickedDex = [...themed, ...wild].sort(()=>Math.random()-0.5);
 
-    // Build cards: 40% chance a slot becomes a REAL fusion (same pipeline as Cinnabar —
-    // two real Pokémon, a verified sprite, all inherited types)
-    const built = [];
-    for (const dex of pickedDex) {
-      const useFusion = Math.random() < 0.4;
-      let card = mkBasicCard(dex);
-      if (useFusion) {
+    // Render every slot as its BASIC Pokémon IMMEDIATELY — no waiting on
+    // anything. ~40% of slots will then silently upgrade into a real fusion
+    // (verified sprite, same pipeline as Cinnabar) a moment later, in place,
+    // once that specific lookup resolves. Nothing ever blocks the first paint.
+    _routeOffer = pickedDex.map(dex => mkBasicCard(dex));
+    if (myGen !== _routeRenderGen) return;
+    row.innerHTML = '';
+    _routeOffer.forEach((card, i) => row.appendChild(_drawRouteCard(row, card, i)));
+    if (!_routePicked) {
+      const cards = row.querySelectorAll('.card-visual');
+      const midIdx = Math.floor(cards.length / 2);
+      if(cards[midIdx]) setTimeout(() => cards[midIdx].click(), 50);
+    }
+
+    pickedDex.forEach((dex, i) => {
+      if (Math.random() >= 0.4) return;   // this slot stays a basic card
+      (async () => {
         let partner = null, tries = 0;
         while (!partner && tries++ < 6) {
           const d2 = 1 + Math.floor(Math.random()*151);
@@ -5591,43 +5790,34 @@ async function renderRouteRow() {
           const found = await checkFusionCached(a.name, b.name);
           if (found) { partner = { d2, found }; break; }
         }
-        if (partner) {
-          const a = mkBasicCard(dex), b = mkBasicCard(partner.d2);
-          b._fusionSpriteUrl = partner.found.url;
-          card = buildFusedCard(a, b);
-        }
-        // else: real fusion couldn't be found in a few tries — keep the basic card, no fake data
-      }
-      built.push(card);
-    }
-    // If a NEWER render started while we were awaiting fusion lookups, abandon
-    // this one entirely — don't publish stale data or touch the DOM.
-    if (myGen !== _routeRenderGen) return;
-    _routeOffer = built;
+        if (myGen !== _routeRenderGen || !partner) return;   // superseded, or no fusion found — leave the basic card
+        const a = mkBasicCard(dex), b = mkBasicCard(partner.d2);
+        b._fusionSpriteUrl = partner.found.url;
+        const fused = buildFusedCard(a, b);
+        const wasPicked = _routePicked === _routeOffer[i];
+        _routeOffer[i] = fused;
+        const slotEl = row.children[i];
+        if (!slotEl) return;
+        const newWrap = _drawRouteCard(row, fused, i);
+        newWrap.style.animation = 'none';   // already-visible slot — no re-entrance animation, just swap
+        if (wasPicked) { newWrap.classList.add('cv-selected'); _routePicked = fused; }
+        slotEl.replaceWith(newWrap);
+      })();
+    });
+    return;
   }
 
-  if (myGen !== _routeRenderGen) return;   // superseded — never draw
+  // Cached offer (e.g. returning from VIEW DECK) — draw immediately, no async needed
+  if (myGen !== _routeRenderGen) return;
   row.innerHTML = '';
-  _routeOffer.forEach((card, i) => {
-    const wrap = makeCardVisual(card, 'width:clamp(110px,11vw,155px);aspect-ratio:2/3;animation:shopItemIn 0.4s '+(i*0.08)+'s cubic-bezier(0.15,1.1,0.35,1) both;');
-    wrap.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
-    wrap.addEventListener('click', () => {
-      row.querySelectorAll('.card-visual').forEach(c=>c.classList.remove('cv-selected'));
-      wrap.classList.add('cv-selected');
-      _routePicked = card;
-      const rcb=document.getElementById('route-confirm-btn');if(rcb){rcb.style.opacity='1';rcb.style.pointerEvents='all';rcb.style.filter='none';}
-    });
-    if (_routePicked && _routePicked === card) wrap.classList.add('cv-selected');
-    row.appendChild(wrap);
-  });
-
-  // Auto-select the middle card only on a fresh offer (not on a re-render)
+  _routeOffer.forEach((card, i) => row.appendChild(_drawRouteCard(row, card, i)));
   if (!_routePicked) {
     const cards = row.querySelectorAll('.card-visual');
     const midIdx = Math.floor(cards.length / 2);
     if(cards[midIdx]) setTimeout(() => cards[midIdx].click(), 50);
   }
 }
+
 
 function confirmRoutePick() {
   if(!_routePicked) return;
@@ -5754,7 +5944,8 @@ function hideGameUIForInterlude() {
 
 
 // ── Shared visual card builder (same look as hand cards) ──────────
-function makeCardVisual(card, sizeCss) {
+function makeCardVisual(card, sizeCss, opts) {
+  opts = opts || {};
   const el = document.createElement('div');
   el.className = 'card-visual';
   // Idle float animation vars (same stagger logic as hand cards)
@@ -5768,21 +5959,23 @@ function makeCardVisual(card, sizeCss) {
   if(sizeCss) el.style.cssText += sizeCss;
 
   const art = document.createElement('img');
-  art.className = 'cv-art'; art.draggable = false;
+  art.className = 'cv-art'; art.draggable = false; art.loading = 'lazy';
   removeWhiteBg(card.fusionImg||card.img, url=>{art.src=url;});
   el.appendChild(art);
 
-  if(card.type1 || card.type3){
-    const topRow = document.createElement('div'); topRow.className = 'hc-type-row-top';
-    if(card.type1) topRow.appendChild(typeBadge(card.type1, 'hc-type1'));
-    if(card.type3) topRow.appendChild(typeBadge(card.type3, 'hc-type3'));
-    el.appendChild(topRow);
-  }
-  if(card.type2 || card.type4){
-    const botRow = document.createElement('div'); botRow.className = 'hc-type-row-bottom';
-    if(card.type2) botRow.appendChild(typeBadge(card.type2, 'hc-type2'));
-    if(card.type4) botRow.appendChild(typeBadge(card.type4, 'hc-type4'));
-    el.appendChild(botRow);
+  if(!opts.hideTypes){
+    if(card.type1 || card.type3){
+      const topRow = document.createElement('div'); topRow.className = 'hc-type-row-top';
+      if(card.type1) topRow.appendChild(typeBadge(card.type1, 'hc-type1'));
+      if(card.type3) topRow.appendChild(typeBadge(card.type3, 'hc-type3'));
+      el.appendChild(topRow);
+    }
+    if(card.type2 || card.type4){
+      const botRow = document.createElement('div'); botRow.className = 'hc-type-row-bottom';
+      if(card.type2) botRow.appendChild(typeBadge(card.type2, 'hc-type2'));
+      if(card.type4) botRow.appendChild(typeBadge(card.type4, 'hc-type4'));
+      el.appendChild(botRow);
+    }
   }
   el.title = card.name;
 
@@ -5828,6 +6021,128 @@ function openDeckViewer() {
 }
 
 let _deckViewerFromRoute = false;
+// ── POKÉDEX — every possible FUSION pairing (C(151,2) = 11,325 combos) ──
+let _pdxTab = 'seen';
+
+// Built once, reused — 11,325 pairs is cheap to hold in memory, expensive
+// to recompute every render.
+let _allFusionPairs = null;
+function getAllFusionPairs() {
+  if(_allFusionPairs) return _allFusionPairs;
+  const dexes = [];
+  for(let d=1; d<=151; d++) if(KANTO_BY_DEX[d]) dexes.push(d);
+  const pairs = [];
+  for(let i=0;i<dexes.length;i++) for(let j=i+1;j<dexes.length;j++) pairs.push([dexes[i], dexes[j]]);
+  _allFusionPairs = pairs;
+  return pairs;
+}
+
+// SEEN tab = every possible pairing, always — ones you've actually created
+// (in Cinnabar Mansion, or found on a route) show their real discovered
+// fusion sprite; anything you haven't is a plain mystery placeholder (no
+// network request — with 11,000+ possible pairs, fetching/blacking out a
+// real sprite for each one you've never made isn't practical or meaningful).
+// NOT SEEN tab = just the filtered subset of undiscovered pairings.
+function makeFusionSlot(dexA, dexB, spriteUrl, forceColor) {
+  const slot = document.createElement('div');
+  slot.className = 'dv-card-slot';
+  const pa = KANTO_BY_DEX[dexA], pb = KANTO_BY_DEX[dexB];
+  const allT = [...new Set([pa.type1, pb.type1, pa.type2, pb.type2].filter(Boolean))];
+  const isSeen = !!spriteUrl;
+  const [urlAB, urlBA] = fusionSpriteUrls(pa.name, pb.name);
+  // forceColor = the NOT SEEN tab: every entry there is unseen by definition,
+  // so blackout adds no information — show real color there instead, and
+  // reserve the seen/unseen blackout distinction for the SEEN (full roster) tab.
+  const showColor = isSeen || forceColor;
+  const card = {
+    name: isSeen ? (pa.name + ' \u00d7 ' + pb.name) : '???',
+    img: isSeen ? spriteUrl : urlAB,
+    fusionImg: isSeen ? spriteUrl : urlAB,
+    type1: allT[0]||null, type2: allT[1]||null, type3: allT[2]||null, type4: allT[3]||null,
+  };
+  const cv = makeCardVisual(card, 'width:100%;height:100%;', showColor ? {} : {hideTypes:true});
+  cv.style.cursor = 'default';
+  if(!showColor){
+    // Not seen, SEEN-tab context — the real fusion sprite's SHAPE, blacked
+    // out (brightness:0). We don't verify via network first (11,000+ HEAD
+    // checks isn't practical); the browser just requests it lazily like any
+    // other image. If that ordering has no rendered sprite, try the other
+    // pairing direction; if genuinely neither exists, fall back to a blank
+    // dark card rather than a broken-image icon.
+    const art = cv.querySelector('.cv-art');
+    if(art){
+      art.style.filter = 'brightness(0)';
+      art.onerror = () => {
+        if(art.dataset.triedAlt){ art.style.opacity = '0'; return; }
+        art.dataset.triedAlt = '1';
+        art.src = urlBA;
+      };
+    }
+  }
+  slot.appendChild(cv);
+  return slot;
+}
+const PDX_PAGE_SIZE = 200;
+let _pdxCurrentList = [];
+let _pdxLoadedCount = 0;
+function renderPokedexGrid() {
+  const grid = document.getElementById('pdx-grid'); if(!grid) return;
+  grid.innerHTML = '';
+  const seenMap = getFusionSeenMap();
+  const allPairs = getAllFusionPairs();
+  const countEl = document.getElementById('pdx-count');
+  if(countEl) countEl.textContent = seenMap.size + ' / ' + allPairs.length + ' SEEN';
+  // Real pagination, not just staggered creation — 11,325 live DOM nodes
+  // causes ongoing scroll/layout jank no matter how fast they were built.
+  // Only ONE page's worth of nodes ever exists until you ask for more.
+  _pdxCurrentList = _pdxTab === 'seen' ? allPairs : allPairs.filter(([a,b]) => !seenMap.has(fusionKey(a,b)));
+  _pdxLoadedCount = 0;
+  pdxLoadMore();
+}
+function pdxLoadMore() {
+  const grid = document.getElementById('pdx-grid'); if(!grid) return;
+  const seenMap = getFusionSeenMap();
+  const oldBtn = document.getElementById('pdx-load-more');
+  if(oldBtn) oldBtn.remove();
+  const end = Math.min(_pdxLoadedCount + PDX_PAGE_SIZE, _pdxCurrentList.length);
+  const frag = document.createDocumentFragment();
+  for(let i = _pdxLoadedCount; i < end; i++){
+    const [dA, dB] = _pdxCurrentList[i];
+    frag.appendChild(makeFusionSlot(dA, dB, seenMap.get(fusionKey(dA, dB)), _pdxTab === 'unseen'));
+  }
+  _pdxLoadedCount = end;
+  grid.appendChild(frag);
+  const remaining = _pdxCurrentList.length - _pdxLoadedCount;
+  if(remaining > 0){
+    const row = document.createElement('div');
+    row.className = 'pdx-load-more-row';
+    row.id = 'pdx-load-more';
+    const btn = document.createElement('button');
+    btn.className = 'pdx-load-more-btn';
+    btn.textContent = 'LOAD MORE (' + remaining.toLocaleString() + ' remaining)';
+    btn.onclick = () => { if(typeof SFX!=='undefined') SFX.uiClick(); pdxLoadMore(); };
+    row.appendChild(btn);
+    grid.appendChild(row);
+  }
+}
+function pdxSetTab(tab) {
+  _pdxTab = tab;
+  document.getElementById('pdx-tab-seen')?.classList.toggle('active', tab === 'seen');
+  document.getElementById('pdx-tab-unseen')?.classList.toggle('active', tab === 'unseen');
+  renderPokedexGrid();
+}
+function openPokedex() {
+  const v = document.getElementById('pokedex-viewer');
+  if(!v) return;
+  document.getElementById('starter-screen')?.classList.add('hidden');
+  v.classList.add('open');
+  pdxSetTab(_pdxTab);
+}
+function closePokedex() {
+  document.getElementById('pokedex-viewer')?.classList.remove('open');
+  document.getElementById('starter-screen')?.classList.remove('hidden');
+}
+
 function closeDeckViewer() {
   const viewer = document.getElementById('deck-viewer');
   if(!viewer) return;
@@ -5836,9 +6151,12 @@ function closeDeckViewer() {
   DV_HIDE_IDS.forEach(id => {
     const el = document.getElementById(id);
     if(el && el.dataset.dvWasHidden !== undefined) {
-      const prev = el.dataset.dvWasHidden;
-      if(prev && prev !== 'none') el.style.display = prev;
-      else el.style.display = '';
+      // Restore the EXACT captured value — including 'none' itself. The
+      // previous version specifically excluded 'none' and reset to '' instead,
+      // which meant anything legitimately hidden for an interlude (the main
+      // battle UI, while a route/shop/cinnabar screen is open) got revealed
+      // the moment the deck viewer closed, showing both screens at once.
+      el.style.display = el.dataset.dvWasHidden;
       // Restore visible class if it had one
       if(el.dataset.dvHadVisible === '1') el.classList.add('visible');
       delete el.dataset.dvWasHidden;
@@ -5859,7 +6177,12 @@ function renderDeckViewer() {
   const count = document.getElementById('dv-count');
   if(!grid) return;
   grid.innerHTML = '';
-  const all = [...G.deck, ...G.hand];
+  // G._board holds melds from the battle that JUST finished — those cards
+  // aren't reshuffled back into G.deck until the next battle's setup runs,
+  // so right after a win, skipping them here made the viewer show your
+  // deck minus whatever you'd just played.
+  const boardCards = (typeof G !== 'undefined' && G._board) ? G._board.flatMap(m => m.cards || []) : [];
+  const all = [...G.deck, ...G.hand, ...boardCards];
   if(count) count.textContent = all.length + ' cards';
   // Sort
   let sorted = [...all];
@@ -5879,7 +6202,7 @@ function renderDeckViewer() {
     const slot = document.createElement('div');
     slot.className = 'dv-card-slot';
     slot.style.setProperty('--sd', (i*0.02)+'s');
-    const cv = makeCardVisual(card, 'width:100%;height:100%;');
+    const cv = makeCardVisual(card, 'width:100%;height:100%;', {hideTypes:true});
     cv.style.cursor = 'default';
     // hover already wired inside makeCardVisual
     slot.appendChild(cv);
@@ -6129,8 +6452,7 @@ async function dealFromDeckToHand(destEl, card, side, cardTilt, cardIndex) {
     img.style.cssText=`position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);height:100%;width:auto;object-fit:contain;image-rendering:pixelated;`;
     removeWhiteBg(card.fusionImg||card.img, url=>{ img.src=url; });
     frontFace.appendChild(img);
-    if(card.type1) frontFace.appendChild(typeBadge(card.type1,'hc-type1'));
-    if(card.type2) frontFace.appendChild(typeBadge(card.type2,'hc-type2'));
+    // No type badges on the deal animation either — matches the live hand card it becomes.
   }
   ghost.appendChild(frontFace);
   ghostWrap.appendChild(ghost);
@@ -7377,9 +7699,21 @@ function checkFusionCached(nameA, nameB) {
 }
 
 // Make a card from a basic Kanto sprite (not a fusion)
+let _suppressPokedexTracking = false;   // true while building cards purely for a preview, not real exposure
+function markPokedexSeen(dexNum) {
+  if(_suppressPokedexTracking) return;
+  try {
+    if(!window._pokedexSeen) window._pokedexSeen = new Set(JSON.parse(localStorage.getItem('pokedexSeen')||'[]'));
+    if(!window._pokedexSeen.has(dexNum)){
+      window._pokedexSeen.add(dexNum);
+      localStorage.setItem('pokedexSeen', JSON.stringify([...window._pokedexSeen]));
+    }
+  } catch(e){ /* localStorage unavailable — Pokédex just won't persist, harmless */ }
+}
 function mkBasicCard(dexNum) {
   const pk = KANTO_BY_DEX[dexNum];
   if(!pk) return null;
+  markPokedexSeen(dexNum);
   const sprite = `https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/sprites/${dexNum}.png`;
   const cost = Math.floor(Math.random()*4)+1;
   return {
@@ -7404,42 +7738,63 @@ function mkBasicCard(dexNum) {
 
 // ── Species Mastery deck ────────────────────────────────────────
 function buildSpeciesDeck() {
-  // 6 species × 4 copies + 2 species × 3 copies — shown grouped by species
-  const pool = [16,19,21,23,25,27,29,32,35,37,39,41,43,48,50,52,54,56,58,60,63,66,69,74,77,79,81,84,90,92,96,98,102,104,109,111,116,118,120,129,133];
+  // 5 species × 3 copies = 15 cards. Pool spans ALL evolution stages —
+  // basics, middles, and finals alike — so a run isn't only baby Pokémon.
+  const pool = [
+    16,19,21,23,25,27,29,32,35,37,39,41,43,48,50,52,54,56,58,60,63,66,69,74,77,79,81,84,90,92,96,98,102,104,109,111,116,118,120,129,133, // basics
+    17,20,26,42,44,51,53,55,57,59,61,64,67,70,75,78,80,82,85,93,97,99,110,112,117,119, // middles
+    18,31,34,36,40,45,49,65,68,71,76,94,103,105,121,130,134,135,136, // finals
+  ];
   const sh = arr => { for(let i=arr.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
-  const chosen = sh([...pool]).slice(0,8).sort((a,b)=>a-b);
+  const chosen = sh([...pool]).slice(0,5).sort((a,b)=>a-b);
   const deck = [];
-  chosen.forEach((d, i) => { const n = i < 6 ? 4 : 3; for(let k=0;k<n;k++){ const c = mkBasicCard(d); if(c) deck.push(c); } });
+  chosen.forEach(d => { for(let k=0;k<3;k++){ const c = mkBasicCard(d); if(c) deck.push(c); } });
   return deck;   // pokédex-sorted for the preview; shuffled at battle start
 }
 function buildTypeDeck() {
-  // 2 types × 15 species — shown grouped by type, pokédex order inside each
+  // 15 cards total, grouped by type, pokédex order inside each group
+  const TARGET = 15;
   const sh = arr => { for(let i=arr.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
   const bigTypes = ['Water','Poison','Normal','Grass','Psychic','Fire','Electric'];
   const ofType = t => { const r=[]; for(let d=1;d<=151;d++){ const p=KANTO_BY_DEX[d]; if(p && (p.type1===t||p.type2===t)) r.push(d); } return r; };
   const picks = sh([...bigTypes]);
   const used = new Set();
   const groups = [];
-  // pull from as many types as needed to reach 30, 15 max per type
   for(const t of picks){
-    if(groups.reduce((s,g)=>s+g.length,0) >= 30) break;
-    const room = 30 - groups.reduce((s,g)=>s+g.length,0);
-    const g = sh(ofType(t)).filter(d=>!used.has(d)).slice(0, Math.min(15, room)).sort((a,b)=>a-b);
+    if(groups.reduce((s,g)=>s+g.length,0) >= TARGET) break;
+    const room = TARGET - groups.reduce((s,g)=>s+g.length,0);
+    const g = sh(ofType(t)).filter(d=>!used.has(d)).slice(0, Math.min(9, room)).sort((a,b)=>a-b);
     if(g.length >= 3){ g.forEach(d=>used.add(d)); groups.push(g); }
   }
   const deck = [];
   groups.forEach(g => g.forEach(d => { const c=mkBasicCard(d); if(c) deck.push(c); }));
   return deck;   // grouped by type for the preview; shuffled at battle start
 }
-function buildEvolutionDeck() {
-  // Exactly 10 full 3-stage lines × 1 copy each = 30 unique Pokémon, pokédex order
+const STARTER_DEXES = [1, 4, 7];   // Bulbasaur, Charmander, Squirtle
+function buildStarterEvolutionDeck(starterDex) {
+  // Guarantees the chosen starter's full 3-stage line is in the deck —
+  // the hero ability is gated on having that line in hand, so it must
+  // always be reachable. Fills out to 15 with 4 OTHER random evolution
+  // lines — explicitly excluding every starter line (including the other
+  // two), so each deck has exactly ONE starter chain: its own.
   const sh = arr => { for(let i=arr.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
   const fams = EVO_FAMILIES.filter(f => f.length >= 3 && f.slice(0,3).every(d => KANTO_BY_DEX[d]));
-  const chosen = sh([...fams]).slice(0,10);
+  const starterFam = fams.find(f => f.includes(starterDex)) || fams[0];
+  const others = sh(fams.filter(f => f !== starterFam && !STARTER_DEXES.some(sd => f.includes(sd)))).slice(0, 4);
+  const dexes = [starterFam, ...others].flatMap(f => f.slice(0,3)).sort((a,b)=>a-b);
+  const deck = [];
+  dexes.forEach(d => { const c = mkBasicCard(d); if(c) deck.push(c); });
+  return deck;
+}
+function buildEvolutionDeck() {
+  // Exactly 5 full 3-stage lines × 1 copy each = 15 unique Pokémon, pokédex order
+  const sh = arr => { for(let i=arr.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
+  const fams = EVO_FAMILIES.filter(f => f.length >= 3 && f.slice(0,3).every(d => KANTO_BY_DEX[d]));
+  const chosen = sh([...fams]).slice(0,5);
   const dexes = chosen.flatMap(f => f.slice(0,3)).sort((a,b)=>a-b);
   const deck = [];
   dexes.forEach(d => { const c = mkBasicCard(d); if(c) deck.push(c); });
-  return deck;   // 30 unique cards, sorted for the preview; shuffled at battle start
+  return deck;   // 15 unique cards, sorted for the preview; shuffled at battle start
 }
 function buildDeckOf(coreDexNums, fillDexNums, target) {
   target = target || 30;
@@ -7461,35 +7816,56 @@ function buildDeckOf(coreDexNums, fillDexNums, target) {
 
 const STARTER_DECKS = [
   {
-    id:'type', name:'TYPE TECHNICIAN', difficulty:'Beginner', emoji:'🔥', accent:'#ff6633',
-    subtitle:'Master a single type',
-    ability:'Easy TYPE SETS — 3+ different Pokémon sharing a type',
-    weakness:'Struggles with Species Sets and Evolution Runs',
-    handFocus:'TYPE SETS',
-    buildDeck: buildTypeDeck,
-  },
-  {
-    id:'species', name:'SPECIES SPECIALIST', difficulty:'Normal', emoji:'⚡', accent:'#ffdd00',
-    subtitle:'Duplicates everywhere',
-    ability:'Easy SPECIES SETS — 3+ copies meld fast & extend big',
-    weakness:'Bosses can steal your discarded duplicates',
-    handFocus:'SPECIES SETS',
-    buildDeck: buildSpeciesDeck,
-  },
-  {
-    id:'evolution', name:'EVOLUTION ENGINEER', difficulty:'Expert', emoji:'🌿', accent:'#44dd66',
-    subtitle:'Full evolution lines',
-    ability:'EVOLUTION RUNS — the highest-damage meld (×3.5)',
+    id:'bulbasaur', name:'IVY EVOLUTIONIST', difficulty:'Normal', emoji:'\u{1F33F}', accent:'#44dd66',
     weakness:'Needs all 3 stages in hand — hold and pray',
-    handFocus:'EVOLUTION RUNS',
-    buildDeck: buildEvolutionDeck,
+    heroAbility:'evolve', starterDex:1,
+    ability:'EVOLVE: advance 1 selected card to its next stage. Usable whenever Bulbasaur\u2019s line is in hand.',
+    buildDeck: () => buildStarterEvolutionDeck(1),
+  },
+  {
+    id:'charmander', name:'EMBER SPLICER', difficulty:'Normal', emoji:'\u{1F9EC}', accent:'#ff6633',
+    weakness:'Needs all 3 stages in hand — hold and pray',
+    heroAbility:'splice', starterDex:4,
+    ability:'SPLICE: fuse 2 selected cards into their real fusion, then draw. Usable whenever Charmander\u2019s line is in hand.',
+    buildDeck: () => buildStarterEvolutionDeck(4),
+  },
+  {
+    id:'squirtle', name:'TIDE SCOUT', difficulty:'Normal', emoji:'\u{1F52D}', accent:'#4488ff',
+    weakness:'Needs all 3 stages in hand — hold and pray',
+    heroAbility:'scout', starterDex:7,
+    ability:'SCOUT: peek at the top 3 deck cards, draw 1 of your choice. Usable whenever Squirtle\u2019s line is in hand.',
+    buildDeck: () => buildStarterEvolutionDeck(7),
   },
 ];
 
 let G_starterDeckId = null;
 let _selectedDeckEl = null;
 
+// Fire-and-forget browser cache warm-up — by the time a screen actually
+// needs an image, it's already been requested once and sits in HTTP cache.
+const _preloadedSprites = new Set();
+function preloadSprites(urls) {
+  urls.forEach(u => {
+    if(!u || _preloadedSprites.has(u)) return;
+    _preloadedSprites.add(u);
+    const img = new Image();
+    img.src = u;
+  });
+}
+function preloadAllBaseSprites() {
+  const urls = [];
+  for(let d=1; d<=151; d++){
+    const p = KANTO_BY_DEX[d];
+    if(p) urls.push(`https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/sprites/${d}.png`);
+  }
+  preloadSprites(urls);
+}
+
 function initStarterDeckScreen() {
+  // The loading screen already preloaded all 151 base sprites before this
+  // screen ever appears — nothing further to warm here, and deliberately NOT
+  // calling buildDeck() on every candidate deck, since that would mark their
+  // species as Pokédex-"seen" before the player has even chosen one.
   // Start music on first user interaction
   document.addEventListener('click', ()=>{
     if(!_rotomAudio) { rotomLoad(_rotomIdx, true); _rotomPlaying=true; }
@@ -7500,7 +7876,7 @@ function initStarterDeckScreen() {
   const screen = document.getElementById('starter-screen');
   if(!screen) return;
   screen.classList.remove('hidden','exiting');
-  document.getElementById('starter-main-title').textContent = 'RIFTBORN';
+  document.getElementById('starter-main-title').textContent = 'POKÉVOLVE';
   document.getElementById('starter-sub').textContent = 'CHOOSE YOUR STARTER DECK';
   // Hide confirm until deck selected
   const cb=document.getElementById('starter-confirm-btn');
@@ -7521,7 +7897,9 @@ function initStarterDeckScreen() {
     // Single card — no stack behind it
     const stack=document.createElement('div');
     stack.className='dpc-stack';
+    _suppressPokedexTracking = true;
     const deckFusions = deck.buildDeck().slice(0,1);
+    _suppressPokedexTracking = false;
     const bc=document.createElement('div');
     bc.className='dpc-card dpc-top';
     bc.style.zIndex=1;
@@ -7565,8 +7943,6 @@ function openDeckDetail(deckId, pileEl) {
   const starterScr = document.getElementById('starter-screen');
   if(starterScr) starterScr.style.visibility = 'hidden';
   document.getElementById('dds-deck-name').textContent = deck.name;
-  document.getElementById('dds-subtitle').textContent = deck.subtitle;
-  document.getElementById('dds-focus').textContent = deck.handFocus;
   document.getElementById('dds-bonus').textContent = deck.ability;
   document.getElementById('dds-risk').textContent  = deck.weakness;
   // Render deck cards
@@ -7577,7 +7953,7 @@ function openDeckDetail(deckId, pileEl) {
     const slot = document.createElement('div');
     slot.className='dds-card-slot';
     slot.style.setProperty('--sd', (i*0.03)+'s');
-    const cv = makeCardVisual(card, 'width:100%;height:100%;');
+    const cv = makeCardVisual(card, 'width:100%;height:100%;', {hideTypes:true});
     cv.style.cursor='default';
     slot.appendChild(cv);
     cardsWrap.appendChild(slot);
@@ -7613,6 +7989,8 @@ function confirmStarterDeck(){
 function beginBattleWithDeck(deckId){
   const deckDef=STARTER_DECKS.find(d=>d.id===deckId);
   if(!deckDef) return;
+  G._heroAbilityId = deckDef.heroAbility || null;
+  G._heroStarterDex = deckDef.starterDex || null;
   G.bonusCards=[];
   G._starterDeckCards=deckDef.buildDeck();
   ['hand-container','game-hud','deck-ours','balatro-bottom'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='flex';});
@@ -7634,19 +8012,53 @@ function beginBattleWithDeck(deckId){
 
 <div id="starter-screen">
   <div id="starter-header">
-    <div id="starter-main-title">RIFTBORN</div>
+    <div id="starter-main-title">POKÉVOLVE</div>
     <div id="starter-sub">CHOOSE YOUR STARTER DECK</div>
   </div>
   <div id="starter-arc-wrap"></div>
   <!-- confirm button only shown from deck detail screen -->
+  <button id="pokedex-open-btn" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); openPokedex();" style="position:fixed;right:clamp(6px,1vw,14px);bottom:clamp(14px,2vh,28px);z-index:50;font-family:'PokemonClassic',monospace;font-size:clamp(9px,1vw,13px);letter-spacing:1.5px;padding:9px 18px;border-radius:8px;cursor:pointer;background:rgba(10,14,30,0.9);color:#ffdd66;border:2px solid rgba(255,210,80,0.5);box-shadow:0 3px 10px rgba(0,0,0,0.6);">VIEW POKÉDEX</button>
 </div>
 
 <div id="starter-particles"></div>
 
 <script>
-// ── TEST MODE: skip starter screen, launch directly ─────────────
-// Starter deck screen is back — pick your deck to begin the run
-initStarterDeckScreen();
+// ── ASSET PRELOADER — wait for every base sprite before the game begins ──
+function loadAllAssetsThenStart() {
+  const bar = document.getElementById('asset-loading-bar');
+  const label = document.getElementById('asset-loading-label');
+  const screen = document.getElementById('asset-loading-screen');
+  const urls = [];
+  for(let d=1; d<=151; d++){
+    const p = KANTO_BY_DEX[d];
+    if(p) urls.push(`https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/sprites/${d}.png`);
+  }
+  const total = urls.length || 1;
+  let done = 0;
+  const bump = () => {
+    done++;
+    const pct = Math.round((done/total)*100);
+    if(bar) bar.style.width = pct + '%';
+    if(label) label.textContent = 'LOADING SPRITES... ' + pct + '%';
+  };
+  const loadOne = (url) => new Promise(res => {
+    const img = new Image();
+    img.onload = () => { bump(); res(); };
+    img.onerror = () => { bump(); res(); };   // a broken URL can't hang the loading screen
+    img.src = url;
+  });
+  const allLoaded = Promise.all(urls.map(loadOne));
+  const maxWait = new Promise(res => setTimeout(res, 2000));   // never block the player long — this is just a cache warm-up, not a requirement
+  Promise.race([allLoaded, maxWait]).then(() => {
+    if(screen){
+      screen.style.transition = 'opacity 0.35s ease';
+      screen.style.opacity = '0';
+      setTimeout(() => { screen.style.display = 'none'; }, 380);
+    }
+    initStarterDeckScreen();
+  });
+}
+loadAllAssetsThenStart();
 
 // Autoplay music immediately — browsers may block, fallback to first interaction
 (function tryAutoplay() {
@@ -8035,9 +8447,9 @@ function startNextBattle() {
   G.theirBoard = new Array(4).fill(null);
   G.ourTurn = true; G.animating = false; G.heroPowerUsed = false; G.ourMana = 10; G.maxMana = 10;
   G.hand = []; G.theirHand = [];
-  // Build opponent deck from random basic Kanto pokemon (not old fusions)
-  const nonLeg2 = KANTO_POKEMON.filter(([d])=>!LEGENDARIES.has(d));
-  G.theirDeck = shuffle(nonLeg2.slice(0,40).map(([d])=>mkBasicCard(d)).filter(Boolean));
+  // (G.theirDeck removed — leftover from the pre-rummy battling system;
+  // nothing in the rummy engine reads it, and it was silently marking 40
+  // unrelated species as Pokédex-"seen" every single battle.)
   // Rebuild deck fresh each round from starter deck + bonuses
   const starterBase = G._starterDeckCards && G._starterDeckCards.length
     ? G._starterDeckCards.map(c=>({...c,id:Math.random().toString(36).slice(2)}))
@@ -8150,6 +8562,7 @@ function startNextBattle() {
   <div id="cinnabar-hand-row" style="display:flex;gap:clamp(8px,1.5vw,20px);flex-wrap:wrap;justify-content:center;align-items:flex-end;margin-bottom:clamp(12px,2vh,24px);overflow:visible;padding:10px 0;max-width:min(95vw,800px);"></div>
   <div id="cinnabar-preview" style="display:none;"></div>
   <div style="display:flex;gap:12px;margin-top:8px;align-items:center;">
+    <button id="cinnabar-view-deck-btn" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); openDeckViewer();">VIEW DECK</button>
     <button onclick="if(typeof SFX!=='undefined') SFX.skip(); skipCinnabar();" class="between-skip">SKIP →</button>
   </div>
 </div>
@@ -8196,6 +8609,20 @@ function startNextBattle() {
   <div id="dv-grid-wrap"><div id="dv-grid"></div></div>
 </div>
 
+<!-- ── POKÉDEX — visually identical to the deck viewer above ── -->
+<div id="pokedex-viewer">
+  <div id="pdx-header">
+    <div id="pdx-title">POKÉDEX</div>
+    <div id="pdx-count">0 / 11325 SEEN</div>
+    <div id="pdx-sort-row">
+      <button class="dv-sort-btn active" id="pdx-tab-seen" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); pdxSetTab('seen');">SEEN</button>
+      <button class="dv-sort-btn" id="pdx-tab-unseen" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); pdxSetTab('unseen');">NOT SEEN</button>
+    </div>
+    <button id="pdx-close" onclick="if(typeof SFX!=='undefined') SFX.back(); closePokedex();">✕ CLOSE</button>
+  </div>
+  <div id="pdx-grid-wrap"><div id="pdx-grid"></div></div>
+</div>
+
 
 <!-- ── DECK DETAIL SCREEN ── -->
 <div id="deck-detail-screen">
@@ -8206,12 +8633,6 @@ function startNextBattle() {
   </div>
   <div id="dds-body">
     <div id="dds-info">
-      <div id="dds-subtitle" style="font-size:clamp(9px,0.95vw,13px);color:#667788;line-height:1.6;"></div>
-      <div class="dds-info-div"></div>
-      <div class="dds-info-stat">
-        <span class="dds-info-label">Hand Focus</span>
-        <span class="dds-info-val" id="dds-focus"></span>
-      </div>
       <div class="dds-info-stat">
         <span class="dds-info-label">Bonus</span>
         <span class="dds-info-val green" id="dds-bonus"></span>
@@ -8282,10 +8703,11 @@ function startNextBattle() {
 const RBAL = {
   cardValue: 20,
   handStart: 8,
-  playsNormal: 5, playsElite: 6, playsBoss: 7,
+  playsNormal: 2, playsElite: 3, playsBoss: 3,
   discards: 3,
   speciesMult: 2, speciesPerExtra: 1,
   typeMult: 2,    typePerExtra: 0.5,
+  maxSetSize: 5,   // Species/Type sets cap here — bigger selections must split into multiple melds
   runMult: 3.5,
   evoPairMult: 2,
   extendFactor: 0.9,
@@ -8299,7 +8721,7 @@ const RBAL = {
 
 function RUMMY_HAND_START(){ return RBAL.handStart + (hasItem('great_ball')?1:0); }
 getHandSize = function(){ return RUMMY_HAND_START() + 2; };
-getMaxPlay  = function(){ return 8; };
+getMaxPlay  = function(){ return (G.hand ? G.hand.length : 8) || 8; };
 
 getTrainerTarget = function(idx){
   const seq = (typeof BATTLE_SEQUENCE!=='undefined') ? BATTLE_SEQUENCE : [];
@@ -8326,17 +8748,17 @@ function rHasType(card, t){ const ts = rTypes(card); return ts.includes(t) || ts
 
 // ══ MELD DETECTION ════════════════════════════════════════════
 function detectSpeciesSet(cards){
-  if(cards.length < 3) return null;
+  if(cards.length < 2 || cards.length > RBAL.maxSetSize) return null;
   const counts = {};
   cards.forEach(c => rSpecies(c).forEach(d => counts[d] = (counts[d]||0)+1));
   const dex = Object.keys(counts).find(d => counts[d] === cards.length);
   if(!dex) return null;
   const nm = (KANTO_BY_DEX[+dex]||{}).name || ('#'+dex);
   return { kind:'species', key:+dex, label: nm.toUpperCase()+' SET',
-           mult: RBAL.speciesMult + (cards.length-3)*RBAL.speciesPerExtra };
+           mult: RBAL.speciesMult + (cards.length-2)*RBAL.speciesPerExtra };
 }
 function detectTypeSet(cards){
-  if(cards.length < 3) return null;
+  if(cards.length < 3 || cards.length > RBAL.maxSetSize) return null;
   const first = rTypes(cards[0]);
   const pool = first.includes('ANY')
     ? [...new Set(cards.flatMap(c=>rTypes(c)).filter(t=>t!=='ANY'))]
@@ -8502,30 +8924,9 @@ function rGymNumber(){
   for(let i=0;i<G.trainerIdx && i<BATTLE_SEQUENCE.length;i++) if(BATTLE_SEQUENCE[i].tier==='boss') n++;
   return n;
 }
-const R_CONTRACTS = [
-  [{t:'count', need:2}],
-  [{t:'count', need:3}],
-  [{t:'big', size:4, need:1}],
-  [{t:'count', need:3},{t:'big', size:4, need:1}],
-  [{t:'big', size:4, need:2}],
-  [{t:'count', need:4}],
-  [{t:'big', size:5, need:1},{t:'count', need:3}],
-  [{t:'count', need:4},{t:'big', size:5, need:2}],
-];
 const R_BOSS_TYPES = { Brock:'Rock', Misty:'Water', 'Lt. Surge':'Electric', Surge:'Electric',
   Erika:'Grass', Koga:'Poison', Sabrina:'Psychic', Blaine:'Fire', Giovanni:'Ground' };
 const R_KIND_NAMES = { species:'SPECIES SETS', type:'TYPE SETS', run:'EVOLUTION RUNS & PAIRS' };
-
-function rContractStatus(){
-  if(!G._contract) return {complete:true, items:[]};
-  const board = G._board||[];
-  const items = G._contract.map(c => {
-    const have = c.t==='count' ? board.length : board.filter(m=>m.cards.length>=c.size).length;
-    return {...c, have: Math.min(have, c.need),
-      text: c.t==='count' ? `LAY ${c.need} MELDS` : `${c.need}× MELD OF ${c.size}+ CARDS`};
-  });
-  return { complete: items.every(i=>i.have>=i.need), items };
-}
 
 applyBattleStartEffects = function(){
   const trainer = (typeof getCurrentTrainer==='function') ? getCurrentTrainer() : {};
@@ -8534,22 +8935,22 @@ applyBattleStartEffects = function(){
               + (hasItem('poke_ball')?1:0);
   G.discardsLeft = RBAL.discards;
   G._board = [];
-  G._pendingDmg = 0;
+  G._discardPile = [];
   G._amuletGold = 0;
+  G._heroUsedThisTurn = false;
+  { const hb = document.getElementById('hero-btn'); if(hb) hb.style.display = G._heroAbilityId ? '' : 'none'; }
   G._meldsLaid = 0;
   G._playsUsed = 0;
   G._rummyPhase = 'setup';
+  { const hp = document.getElementById('hands-panel'); if(hp) hp.classList.remove('hp-hidden'); }
   G._runStats = G._runStats || { battles:0, totalDmg:0, biggest:{label:'—', dmg:0}, gins:0 };
   if(tier === 'boss'){
-    const gn = Math.min(rGymNumber(), R_CONTRACTS.length-1);
-    G._contract = R_CONTRACTS[gn].map(c => ({...c}));
+    const gn = rGymNumber();
     G._softKind = null;
     const btype = R_BOSS_TYPES[trainer.name] ||
       ['Rock','Water','Electric','Grass','Poison','Psychic','Fire','Ground'][gn%8];
     G._boss = { type: btype, gym: gn, stolen: 0, stolenName: null, melds: [] };
-    setTimeout(()=>announceText('⚠ BOSS — FILL THE CONTRACT TO DEAL DAMAGE!', 2200), 2600);
   } else {
-    G._contract = null;
     G._boss = null;
     G._softKind = (tier==='elite' || Math.random()<0.5)
       ? ['species','type','run'][Math.floor(Math.random()*3)] : null;
@@ -8565,7 +8966,7 @@ applyBattleStartEffects = function(){
 
 // ══ UI ════════════════════════════════════════════════════════
 document.head.insertAdjacentHTML('beforeend', `<style>
-#rummy-board{position:fixed;left:50%;transform:translateX(-50%);bottom:56vh;z-index:55;
+#rummy-board{position:fixed;left:50%;transform:translateX(-50%);bottom:70vh;z-index:55;
   display:none;gap:18px;max-width:94vw;overflow-x:auto;padding:6px 10px;align-items:flex-end;}
 .rm-meld{font-family:'PokemonClassic',monospace;flex:0 0 auto;text-align:center;}
 .rm-meld-label{font-size:11px;color:#ffdd66;letter-spacing:0.5px;white-space:nowrap;margin-bottom:4px;
@@ -8577,7 +8978,6 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 .rm-card img{position:absolute;top:8%;left:50%;transform:translateX(-50%);height:80%;width:auto;
   object-fit:contain;image-rendering:pixelated;}
 .rm-meld.rm-flash .rm-card{border-color:#ffdd44;box-shadow:0 0 14px rgba(255,220,60,0.7);}
-.rm-meld.rm-target .rm-card{border-color:#66ff88;box-shadow:0 0 12px rgba(90,255,130,0.55);}
 .rm-meld-dmg{font-size:11px;color:#8899cc;margin-top:4px;text-shadow:1px 1px 0 #000;}
 #rummy-contract{background:rgba(6,10,28,0.9);border:2px solid #883355;border-radius:8px;
   padding:7px 9px;margin:6px 0;font-family:'PokemonClassic',monospace;display:none;}
@@ -8595,6 +8995,8 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 #rummy-boss .rb-meld span{font-size:8px;color:#ff9999;margin-left:3px;}
 #rummy-boss .rb-warn{font-size:8px;color:#aa6666;margin-top:3px;}
 #rp-hand-name{font-size:clamp(10px,1vw,13px) !important;}
+#hands-panel{transition:opacity 0.4s ease, transform 0.4s ease;}
+#hands-panel.hp-hidden{opacity:0; transform:translateY(-40px); pointer-events:none;}
 #champion-screen{position:fixed;inset:0;background:rgba(4,8,20,0.94);z-index:2000;display:flex;
   align-items:center;justify-content:center;flex-direction:column;font-family:'PokemonClassic',monospace;}
 #champion-screen h1{color:#ffdd44;font-size:clamp(20px,3.5vw,40px);letter-spacing:2px;text-shadow:3px 3px 0 #000;margin-bottom:18px;}
@@ -8636,14 +9038,7 @@ function rRenderBoard(){
 }
 function rRenderContract(){
   const el = document.getElementById('rummy-contract'); if(!el) return;
-  if(G._contract){
-    const st = rContractStatus();
-    el.style.display = 'block';
-    el.innerHTML = `<div class="rc-title">📜 CONTRACT</div>` +
-      st.items.map(c => `<div class="rc-item ${c.have>=c.need?'done':''}">${c.have>=c.need?'✅':'⬜'} ${c.text} (${c.have}/${c.need})</div>`).join('') +
-      ((G._pendingDmg>0) ? `<div class="rc-charge">⚡ CHARGED: ${fmtNum(G._pendingDmg)} DMG</div>` : '') +
-      (st.complete ? '' : `<div class="rc-note">No damage until complete — every meld charges up!</div>`);
-  } else if(G._softKind){
+  if(G._softKind){
     el.style.display = 'block';
     el.innerHTML = `<div class="rc-title" style="color:#ffdd66;">🎯 WEAKNESS</div>
       <div class="rc-item">${R_KIND_NAMES[G._softKind]} deal ×${RBAL.softBonus}</div>`;
@@ -8694,6 +9089,13 @@ playSelectedHand = async function(){
   const cards = rSelCards();
   const action = rClassifySelection(cards);
   if(!action){ if(typeof SFX!=='undefined') SFX.error(); announceText('NOT A VALID MELD', 1200); return; }
+  if(G._playsUsed === 0){
+    const hp = document.getElementById('hands-panel');
+    if(hp) {
+      hp.classList.add('hp-hidden');            // animate out immediately — the instant the play is confirmed
+      setTimeout(()=>{ hp.style.display = 'none'; }, 420);
+    }
+  }
   G.animating = true;
   if(typeof SFX!=='undefined') SFX.playHand();
 
@@ -8760,7 +9162,7 @@ playSelectedHand = async function(){
   // Phase 3: BALATRO COUNT-UP — each card bounces as it's counted,
   // a live "chips ✕ mult" counter ticks above the fan
   const counter = document.createElement('div');
-  counter.style.cssText = `position:fixed;left:${cx}px;top:${cy-150}px;transform:translate(-50%,-50%) scale(1);z-index:960;font-family:'PokemonClassic',monospace;font-size:clamp(18px,2.4vw,34px);font-weight:bold;color:#fff;text-shadow:2.5px 2.5px 0 #000,0 0 20px rgba(80,140,255,0.55);pointer-events:none;white-space:nowrap;transition:transform 0.09s ease;`;
+  counter.style.cssText = `position:fixed;left:${cx}px;top:${cy-165}px;transform:translate(-50%,-50%) scale(1);z-index:960;font-family:'PokemonClassic',monospace;font-size:clamp(18px,2.4vw,34px);font-weight:bold;color:#fff;text-shadow:2.5px 2.5px 0 #000,0 0 20px rgba(80,140,255,0.55);pointer-events:none;white-space:nowrap;transition:transform 0.09s ease;`;
   document.body.appendChild(counter);
   const bounce = gh => {
     if(!gh) return;
@@ -8785,7 +9187,7 @@ playSelectedHand = async function(){
           chipsShown += p.amount;
           bounce(gh);
           if(typeof SFX!=='undefined' && SFX.scoreChips) SFX.scoreChips();
-          if(p.text && gh) rPopAt(gh.destX, gh.destY - 96, p.text, p.color, 0);
+          if(p.text && gh) rPopAt(gh.destX, gh.destY - 110, p.text, p.color, 0);
         }
         upd();
       }, popDelay);
@@ -8796,7 +9198,7 @@ playSelectedHand = async function(){
         if(p.kind === 'chips') chipsShown += p.amount;
         else if(p.kind === 'mult') multShown += p.amount;
         else if(p.kind === 'xmult'){ xmShown *= p.factor; if(typeof SFX!=='undefined' && SFX.scoreMult) SFX.scoreMult(); }
-        rPopAt(cx, cy - 108, p.text, p.color, 0);
+        rPopAt(cx, cy - 125, p.text, p.color, 0);
         upd();
       }, popDelay);
       popDelay += 250;
@@ -8823,7 +9225,7 @@ playSelectedHand = async function(){
       m = grp.target;
       newStart = m.cards.length;
       m.cards.push(...grp.cards);
-      if(m.kind==='species') m.mult = RBAL.speciesMult + (m.cards.length-3)*RBAL.speciesPerExtra;
+      if(m.kind==='species') m.mult = RBAL.speciesMult + (m.cards.length-2)*RBAL.speciesPerExtra;
       if(m.kind==='type')    m.mult = RBAL.typeMult + Math.max(0,(m.cards.length-3))*RBAL.typePerExtra;
       if(m.kind==='run' && m.fam){
         // recompute stages; a PAIR that grows to 3 becomes a full RUN
@@ -8870,23 +9272,10 @@ playSelectedHand = async function(){
   ghosts.forEach(({g})=>g.remove());
   flashEls.forEach(el => { el.classList.add('rm-flash'); setTimeout(()=>el.classList.remove('rm-flash'), 700); });
 
-  // ── damage + contract gating (total across all groups) ──
+  // ── damage: every meld lands immediately, boss battles included ──
   let dmg = groups.reduce((s,g)=>s+g.detail.total, 0);
   groups.forEach(g => { g.boardMeld.dmgDealt += g.detail.total; });
-  let burst = false;
-  if(G._contract){
-    const st = rContractStatus();
-    if(!st.complete){
-      G._pendingDmg += dmg;
-      announceText('⚡ CHARGED +'+fmtNum(dmg)+' ('+fmtNum(G._pendingDmg)+' STORED)', 1500);
-      dmg = 0;
-    } else if(G._pendingDmg > 0){
-      dmg += G._pendingDmg;
-      announceText('📜 CONTRACT COMPLETE! '+fmtNum(G._pendingDmg)+' DMG UNLEASHED!', 2200);
-      G._pendingDmg = 0;
-      burst = true;
-    }
-  }
+  const burst = false;
 
   // run stats
   groups.forEach(g => {
@@ -8935,6 +9324,9 @@ playSelectedHand = async function(){
 function rAfterPlay(){
   G.handsLeft = Math.max(0, G.handsLeft - 1);
   G._playsUsed = (G._playsUsed||0) + 1;
+  G._heroUsedThisTurn = false;   // a new play resets the ability for next time
+  // (fade-out now triggers at the moment the play is confirmed, at the top
+  // of playSelectedHand — see there)
   rRenderAll();
   const finish = () => {
     if(G.trainerHp <= 0){ setTimeout(advanceTrainer, 400); return; }
@@ -8977,6 +9369,7 @@ function rAfterPlay(){
         rRenderBoss();
       }
     }
+    G._heroUsedThisTurn = false;   // a new discard resets the ability for next time
     updateActionBar();
   };
 })();
@@ -9017,27 +9410,23 @@ updateActionBar = function(){
   const discardBtn = document.getElementById('discard-btn');
   const nameEl = document.getElementById('rp-hand-name');
   const inPlay = G._rummyPhase === 'play' && !G.animating;
-  document.querySelectorAll('#rummy-board .rm-meld').forEach(e=>e.classList.remove('rm-target'));
   if(inPlay && sel){
     const cards = rSelCards();
     const action = rClassifySelection(cards);
-    if(action){
-      action.part.groups.filter(g=>g.type==='extend').forEach(g => {
-        const tEl = document.getElementById('rm-meld-'+g.target.id);
-        if(tEl) tEl.classList.add('rm-target');
-      });
-    }
     if(playBtn){
       if(action){
         const groups = action.part.groups;
         const newCount = groups.filter(g=>g.type==='new').length;
         const extCount = groups.filter(g=>g.type==='extend').length;
+        const _mobileBoss = G._boss && (Math.min(window.screen.width, window.screen.height) < 600);
         let label;
-        if(extCount && !newCount) label = groups.length>1 ? `EXTEND ×${groups.length}` : 'EXTEND';
+        if(_mobileBoss){
+          label = 'LAY MELD';   // keep the boss screen decluttered on small phones
+        } else if(extCount && !newCount) label = groups.length>1 ? `EXTEND ×${groups.length}` : 'EXTEND';
         else if(newCount && !extCount) label = newCount>1 ? `LAY ${newCount} MELDS` : 'LAY MELD';
         else label = `LAY ${newCount} + EXTEND ${extCount}`;
         playBtn.disabled = false;
-        playBtn.textContent = label + ' ⚔' + fmtNum(action.pv);
+        playBtn.textContent = label + ' (' + fmtNum(action.pv) + ')';
       } else {
         playBtn.disabled = true;
         playBtn.textContent = sel>=2 ? 'NO MELD' : 'PICK CARDS';
@@ -9060,14 +9449,288 @@ updateActionBar = function(){
     if(discardBtn){ discardBtn.disabled=true; discardBtn.textContent='DISCARD'; }
     if(nameEl){ nameEl.textContent='—'; nameEl.className='no-hand'; }
   }
+
+  // ── Hero ability button — prerequisites differ per ability ──
+  const heroBtn = document.getElementById('hero-btn');
+  if(heroBtn && G._heroAbilityId){
+    const abil = G._heroAbilityId;
+    const names = { splice:'SPLICE', evolve:'EVOLVE', scout:'SCOUT' };
+    const starterReady = heroStarterInHand();
+    const usedThisTurn = !!G._heroUsedThisTurn;
+    let ready = false;
+    if(inPlay && starterReady && !usedThisTurn){
+      if(abil === 'splice') ready = sel === 2;
+      else if(abil === 'evolve'){
+        if(sel === 1){
+          const c = rSelCards()[0];
+          const dex = parseInt(c && c.dexA)||0;
+          const fam = dex ? EVO_FAMILIES.find(f=>f.includes(dex)) : null;
+          ready = !!(fam && fam.indexOf(dex) < fam.length-1);
+        }
+      }
+      else if(abil === 'scout') ready = true;   // no card selection needed, just the starter-in-hand gate
+    }
+    heroBtn.disabled = !ready;
+    heroBtn.textContent = names[abil]||'ABILITY';
+    heroBtn.title = !starterReady ? 'Requires your starter\u2019s evolution line in hand'
+                  : usedThisTurn ? 'Already used this turn \u2014 play or discard to reset it'
+                  : '';
+  }
 };
+
+// ── HERO ABILITIES ──────────────────────────────────────────────
+function heroStarterInHand(){
+  if(!G._heroStarterDex) return true;
+  const fam = EVO_FAMILIES.find(f => f.includes(G._heroStarterDex));
+  if(!fam) return false;
+  return G.hand.some(c => fam.includes(parseInt(c.dexA)||0));
+}
+async function useHeroAbility(){
+  if(!G._heroAbilityId || !heroStarterInHand() || G._heroUsedThisTurn || G.animating || G._rummyPhase !== 'play') return;
+  G._heroUsedThisTurn = true;
+  if(G._heroAbilityId === 'splice') return useSplice();
+  else if(G._heroAbilityId === 'evolve') return useEvolve();
+  else if(G._heroAbilityId === 'scout') return useScout();
+}
+
+function _drawOneCard(){
+  if(!G.deck.length && G._discardPile && G._discardPile.length){
+    G.deck = G._discardPile.sort(()=>Math.random()-0.5);
+    G._discardPile = [];
+  }
+  if(!G.deck.length) return null;
+  const c = {...G.deck.shift()};
+  G.hand.push(c);
+  return c;
+}
+
+async function useSplice(){
+  const idxs = Array.from(G_selected).sort((a,b)=>a-b);
+  if(idxs.length !== 2) return;
+  const [ia, ib] = idxs;
+  const a = G.hand[ia], b = G.hand[ib];
+  if(!a || !b) return;
+  G.animating = true;
+  updateActionBar();
+  // Only real, existing fusions can be spliced — verify before committing
+  // to anything (nothing happens if there's no real sprite for this pair).
+  const found = await checkFusionCached(a.name, b.name);
+  if(!found){
+    announceText('NO FUSION EXISTS FOR THESE TWO', 1600);
+    G.animating = false;
+    updateActionBar();
+    return;
+  }
+  const bWithSprite = { ...b, _fusionSpriteUrl: found.url };
+  const fused = (found.a === a.name)
+    ? buildFusedCard(a, bWithSprite)
+    : buildFusedCard({ ...a, _fusionSpriteUrl: found.url }, b);
+
+  // ── ANIMATION: lift both cards → converge together → flash-fuse →
+  // reveal the real fused sprite → fly it into its sorted hand slot ──
+  const hcEls = [...document.querySelectorAll('#hand-container .hc')];
+  const srcEls = [hcEls[ia], hcEls[ib]];
+  const ghosts = [];
+  srcEls.forEach(el => {
+    if(!el){ ghosts.push(null); return; }
+    const r = el.getBoundingClientRect();
+    const g = document.createElement('div');
+    g.style.cssText = `position:fixed;z-index:900;width:${r.width}px;height:${r.height}px;left:${r.left}px;top:${r.top}px;border-radius:8px;background:#fff;border:2px solid rgba(50,70,140,0.8);box-shadow:0 4px 14px rgba(0,0,0,0.8);pointer-events:none;overflow:hidden;transition:transform 0.4s cubic-bezier(0.3,0.9,0.35,1),filter 0.3s ease,opacity 0.3s ease;`;
+    const img = el.querySelector('.hc-art');
+    if(img){ const gi=document.createElement('img'); gi.src=img.src; gi.style.cssText='position:absolute;top:6%;left:50%;transform:translateX(-50%);height:84%;object-fit:contain;image-rendering:pixelated;'; g.appendChild(gi); }
+    document.body.appendChild(g);
+    ghosts.push({g, r});
+    el.style.opacity = '0'; el.style.pointerEvents = 'none';
+  });
+  await delay(20);
+  // Phase 1: lift both cards
+  ghosts.forEach(gh => { if(gh) gh.g.style.transform = 'translateY(-30px) scale(1.08)'; });
+  await delay(300);
+  // Phase 2: converge toward the midpoint between them
+  const validGhosts = ghosts.filter(Boolean);
+  const midX = validGhosts.reduce((s,gh)=>s+gh.r.left+gh.r.width/2, 0) / (validGhosts.length||1);
+  const midY = Math.min(...validGhosts.map(gh=>gh.r.top)) - 70;
+  validGhosts.forEach(gh => {
+    const dx = midX - (gh.r.left+gh.r.width/2), dy = midY - (gh.r.top+gh.r.height/2);
+    gh.g.style.transform = `translate(${dx}px,${dy}px) scale(1.18)`;
+  });
+  await delay(450);
+  // Phase 3: flash white, then fade the two originals out
+  validGhosts.forEach(gh => { gh.g.style.filter = 'brightness(3) saturate(0)'; });
+  await delay(150);
+  validGhosts.forEach(gh => { gh.g.style.opacity = '0'; });
+  // Reveal the real fused sprite at the same point, fading in
+  const gw = validGhosts[0] ? validGhosts[0].r.width : 110;
+  const gh2 = validGhosts[0] ? validGhosts[0].r.height : 154;
+  const fusedGhost = document.createElement('div');
+  fusedGhost.style.cssText = `position:fixed;z-index:901;width:${gw}px;height:${gh2}px;left:${midX-gw/2}px;top:${midY-gh2/2}px;border-radius:8px;background:#fff;border:2px solid rgba(170,100,255,0.9);box-shadow:0 0 26px rgba(170,100,255,0.65);pointer-events:none;overflow:hidden;opacity:0;transition:opacity 0.3s ease, transform 0.4s cubic-bezier(0.3,0.9,0.35,1);transform:scale(1.22);`;
+  const fImg = document.createElement('img');
+  fImg.src = found.url;
+  fImg.style.cssText = 'position:absolute;top:6%;left:50%;transform:translateX(-50%);height:84%;object-fit:contain;image-rendering:pixelated;';
+  fusedGhost.appendChild(fImg);
+  document.body.appendChild(fusedGhost);
+  await delay(180);
+  fusedGhost.style.opacity = '1';
+  if(typeof SFX!=='undefined') SFX.fusionReveal && SFX.fusionReveal();
+  announceText('\u{1F9EC} SPLICED INTO ' + fused.name.toUpperCase() + '!', 1800);
+  await delay(750);
+
+  // Commit the actual state change now that the reveal has played
+  [ib, ia].forEach(i => G.hand.splice(i, 1));   // remove higher index first
+  G.hand.push(fused);
+  _drawOneCard();
+  G.hand.sort((x,y)=>sortKey(x).localeCompare(sortKey(y)));
+  G_selected.clear();
+  if(typeof SFX!=='undefined') SFX.cardSelect();
+  renderHand();
+
+  // Phase 4: fly the fused ghost down into its real, now-rendered hand slot
+  await delay(30);
+  const newHcEls = [...document.querySelectorAll('#hand-container .hc')];
+  const fusedIdx = G.hand.indexOf(fused);
+  const targetEl = newHcEls[fusedIdx];
+  if(targetEl){
+    targetEl.style.opacity = '0';
+    const tr = targetEl.getBoundingClientRect();
+    const dx = (tr.left+tr.width/2) - (midX);
+    const dy = (tr.top+tr.height/2) - (midY);
+    const scale = tr.width / gw;
+    fusedGhost.style.transform = `translate(${dx}px,${dy}px) scale(${scale})`;
+  }
+  await delay(430);
+  if(targetEl) targetEl.style.opacity = '';
+  fusedGhost.remove();
+  ghosts.forEach(gh => { if(gh) gh.g.remove(); });
+
+  G.animating = false;
+  updateActionBar();
+}
+
+async function useEvolve(){
+  const idxs = Array.from(G_selected).sort((a,b)=>a-b);
+  if(idxs.length !== 1) return;
+  const i = idxs[0];
+  const card = G.hand[i];
+  if(!card) return;
+  const dex = parseInt(card.dexA)||0;
+  const fam = dex ? EVO_FAMILIES.find(f=>f.includes(dex)) : null;
+  if(!fam) return;
+  const pos = fam.indexOf(dex);
+  if(pos < 0 || pos >= fam.length-1) return;   // already final stage
+  const evolved = mkBasicCard(fam[pos+1]);
+  if(!evolved) return;
+  G.animating = true;
+  updateActionBar();
+
+  // ── ANIMATION: lift the card → flash green → evolved form emerges and
+  // flies into its sorted hand slot, original card stays put ──
+  const hcEls = [...document.querySelectorAll('#hand-container .hc')];
+  const srcEl = hcEls[i];
+  let ghost = null, r = null;
+  if(srcEl){
+    r = srcEl.getBoundingClientRect();
+    ghost = document.createElement('div');
+    ghost.style.cssText = `position:fixed;z-index:900;width:${r.width}px;height:${r.height}px;left:${r.left}px;top:${r.top}px;border-radius:8px;background:#fff;border:2px solid rgba(68,221,102,0.9);box-shadow:0 4px 14px rgba(0,0,0,0.8);pointer-events:none;overflow:hidden;transition:transform 0.35s cubic-bezier(0.3,0.9,0.35,1),filter 0.3s ease;`;
+    const img = srcEl.querySelector('.hc-art');
+    if(img){ const gi=document.createElement('img'); gi.src=img.src; gi.style.cssText='position:absolute;top:6%;left:50%;transform:translateX(-50%);height:84%;object-fit:contain;image-rendering:pixelated;'; ghost.appendChild(gi); }
+    document.body.appendChild(ghost);
+    srcEl.style.opacity = '0'; srcEl.style.pointerEvents = 'none';
+  }
+  await delay(20);
+  if(ghost) ghost.style.transform = 'translateY(-24px) scale(1.1)';
+  await delay(280);
+  if(ghost) ghost.style.filter = 'brightness(2.2) saturate(0.4)';
+  await delay(150);
+
+  const evoGhost = document.createElement('div');
+  const gr = r || {left:innerWidth/2-55, top:innerHeight*0.7, width:110, height:154};
+  evoGhost.style.cssText = `position:fixed;z-index:901;width:${gr.width}px;height:${gr.height}px;left:${gr.left}px;top:${gr.top-24}px;border-radius:8px;background:#fff;border:2px solid rgba(68,221,102,0.9);box-shadow:0 0 22px rgba(80,220,110,0.6);pointer-events:none;overflow:hidden;opacity:0;transform:scale(1.15);transition:opacity 0.25s ease, transform 0.4s cubic-bezier(0.3,0.9,0.35,1);`;
+  const eImg = document.createElement('img');
+  eImg.src = evolved.fusionImg || evolved.img;
+  eImg.style.cssText = 'position:absolute;top:6%;left:50%;transform:translateX(-50%);height:84%;object-fit:contain;image-rendering:pixelated;';
+  evoGhost.appendChild(eImg);
+  document.body.appendChild(evoGhost);
+  if(ghost) ghost.style.filter = 'brightness(1)';
+  await delay(60);
+  evoGhost.style.opacity = '1';
+  if(typeof SFX!=='undefined') SFX.fusionReveal && SFX.fusionReveal();
+  announceText('\u{1F33F} EVOLVED INTO ' + evolved.name.toUpperCase() + '!', 1800);
+  await delay(600);
+
+  G.hand.push(evolved);   // ADD the evolved form — keep the original too
+  G.hand.sort((x,y)=>sortKey(x).localeCompare(sortKey(y)));
+  G_selected.clear();
+  if(typeof SFX!=='undefined') SFX.cardSelect();
+  renderHand();
+
+  await delay(30);
+  if(ghost){ ghost.style.transition = 'opacity 0.25s ease'; ghost.style.opacity = '0'; }
+  const newHcEls = [...document.querySelectorAll('#hand-container .hc')];
+  const evoIdx = G.hand.indexOf(evolved);
+  const targetEl = newHcEls[evoIdx];
+  if(targetEl){
+    targetEl.style.opacity = '0';
+    const tr = targetEl.getBoundingClientRect();
+    const dx = (tr.left+tr.width/2) - (gr.left+gr.width/2);
+    const dy = (tr.top+tr.height/2) - (gr.top-24+gr.height/2);
+    const scale = tr.width / gr.width;
+    evoGhost.style.transform = `translate(${dx}px,${dy}px) scale(${scale})`;
+  }
+  await delay(420);
+  if(targetEl) targetEl.style.opacity = '';
+  evoGhost.remove();
+  if(ghost) ghost.remove();
+
+  G.animating = false;
+  updateActionBar();
+}
+
+function useScout(){
+  if(!G.deck.length && G._discardPile && G._discardPile.length){
+    G.deck = G._discardPile.sort(()=>Math.random()-0.5);
+    G._discardPile = [];
+  }
+  if(!G.deck.length){ announceText('DECK IS EMPTY', 1200); return; }
+  G.animating = true;
+  updateActionBar();
+  const peekCount = Math.min(3, G.deck.length);
+  const peeked = G.deck.slice(0, peekCount);
+  const overlay = document.createElement('div');
+  overlay.id = 'scout-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:1400;background:rgba(4,6,18,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;font-family:PokemonClassic,monospace;';
+  const title = document.createElement('div');
+  title.textContent = '\u{1F52D} SCOUT — CHOOSE ONE TO DRAW';
+  title.style.cssText = 'font-size:clamp(12px,1.6vw,20px);color:#88bbff;letter-spacing:2px;text-shadow:2px 2px 0 #000;';
+  overlay.appendChild(title);
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:16px;';
+  peeked.forEach(card => {
+    const wrap = makeCardVisual(card, 'width:clamp(100px,10vw,150px);aspect-ratio:2/3;cursor:pointer;', {hideTypes:true});
+    wrap.addEventListener('click', () => {
+      if(typeof SFX!=='undefined') SFX.cardSelect();
+      const idx = G.deck.indexOf(card);
+      if(idx > -1) G.deck.splice(idx, 1);
+      G.hand.push({...card});
+      G.hand.sort((x,y)=>sortKey(x).localeCompare(sortKey(y)));   // same ordering as a normal draw
+      overlay.remove();
+      G_selected.clear();
+      renderHand();
+      G.animating = false;
+      updateActionBar();
+    });
+    row.appendChild(wrap);
+  });
+  overlay.appendChild(row);
+  document.body.appendChild(overlay);
+}
 
 // ── MELD GUIDE ────────────────────────────────────────────────
 renderHandsPanel = function(){
   const panel = document.getElementById('hands-panel'); if(!panel) return;
+  panel.style.display = 'flex';   // the panel's CSS default is display:none
   panel.innerHTML = '';
   const MELDS = [
-    {emoji:'👥', name:'Species Set', mult:'×'+RBAL.speciesMult, tip:'3+ copies of the same Pokémon. +1 Mult per extra card. Extendable.'},
+    {emoji:'👥', name:'Species Set', mult:'×'+RBAL.speciesMult, tip:'2+ copies of the same Pokémon. +1 Mult per extra card. Extendable.'},
     {emoji:'🌈', name:'Type Set', mult:'×'+RBAL.typeMult, tip:'3+ Pokémon sharing one type (dupes fine). +0.5 Mult per extra card. Extendable.'},
     {emoji:'🧗', name:'Evo Pair', mult:'×'+RBAL.evoPairMult, tip:'2 consecutive stages (e.g. Rattata + Raticate). Extend with the 3rd stage to upgrade into a full Run!'},
     {emoji:'🧬', name:'Evolution Run', mult:'×'+RBAL.runMult, tip:'A full line: base → middle → final. The biggest multiplier.'},
@@ -9102,14 +9765,21 @@ showDefeatScreen = function(){
   document.body.appendChild(div);
 };
 
-// ── CHAMPION + victory cleanup ────────────────────────────────
+// ── CHAMPION + victory cleanup — the board/contract/boss UI now stays
+// visible through the whole "VICTORY!" sequence and only clears the instant
+// the NEXT screen (shop/route/cinnabar/map) actually takes over.
 (function(){
+  const _openInterlude = openInterlude;
+  openInterlude = function(){ rCleanupUI(); return _openInterlude.apply(this, arguments); };
+  const _returnToMap = returnToMap;
+  returnToMap = function(){ rCleanupUI(); return _returnToMap.apply(this, arguments); };
+
   const _adv = advanceTrainer;
   advanceTrainer = async function(){
-    rCleanupUI();
     G._rummyPhase = 'setup';
     G._runStats && G._runStats.battles++;
     if(G.trainerIdx + 1 >= BATTLE_SEQUENCE.length && !document.getElementById('champion-screen')){
+      rCleanupUI();   // champion screen is the final destination — safe to clear now
       const s = G._runStats || {battles:0,totalDmg:0,biggest:{label:'—',dmg:0},gins:0};
       const div = document.createElement('div');
       div.id = 'champion-screen';
