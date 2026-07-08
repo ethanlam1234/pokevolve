@@ -7,7 +7,7 @@
 <style>
 @font-face {
   font-family: 'PokemonClassic';
-  src: url('https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/fonts/viewport.ttf') format('truetype');
+  src: url('https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/fonts/viewport.ttf') format('truetype');
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -302,11 +302,31 @@ html { overflow: hidden; }
   border:2px solid rgba(50,70,140,0.6);
   box-shadow:0 4px 14px rgba(0,0,0,0.7);
   align-self:stretch;
+  position:relative;
 }
-#rp-portrait-img-wrap img {
-  width:100%; height:100%; object-fit:cover; object-position:center 55%;
+#rp-bg-img {
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; object-position:center;
+  image-rendering:pixelated; z-index:1; opacity:0.45;
+}
+#rp-base-img {
+  /* The trainer image is square and gets scaled by object-fit:contain to
+     exactly fill the container's height (no vertical slack), so its feet
+     land right at the container's bottom edge. The base is much shorter
+     (native 2:1 aspect) - anchoring it with a small positive `bottom` left
+     it centered around the trainer's torso instead of their feet. Pulling
+     it down past the container's own edge (and letting overflow:hidden
+     clip the excess) lines its visible portion up with the feet instead. */
+  position:absolute; left:50%; bottom:-24%; width:86%; height:auto;
+  transform:translateX(-50%); image-rendering:pixelated; z-index:2;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+}
+#rp-portrait-img-wrap img#tc-opp-img {
+  position:absolute; left:50%; bottom:0; width:88%; height:88%;
+  transform:translateX(-50%);
+  object-fit:contain; object-position:center bottom;
   image-rendering:pixelated; display:block; filter:brightness(0.95);
-  transform:scale(2.2); transform-origin:center 55%;
+  z-index:3;
 }
 #rp-portrait-overlay {
   background:rgba(8,10,26,0.94);
@@ -423,14 +443,12 @@ html { overflow: hidden; }
 }
 #owned-items-list::-webkit-scrollbar { display:none; }
 .owned-item-chip {
-  background:rgba(16,20,48,0.92); border:1px solid rgba(60,90,180,0.5);
-  border-radius:6px; padding:5px 10px;
-  font-size:clamp(8px,0.82vw,11px); color:#aabbdd;
-  display:flex; align-items:center; gap:5px;
+  display:flex; align-items:center; justify-content:center;
   animation:chipIn 0.3s cubic-bezier(0.2,1.2,0.3,1) both;
-  box-shadow:0 2px 8px rgba(0,0,0,0.5);
   cursor:default; pointer-events:all;
 }
+.owned-item-img { width:52px; height:52px; object-fit:contain; image-rendering:pixelated; flex-shrink:0;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6)); }
 @keyframes chipIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:none} }
 
 /* ══ BETWEEN-BATTLE SCREENS ══ */
@@ -705,6 +723,13 @@ html { overflow: hidden; }
 .cv-floating {
   animation: cvFloat var(--float-dur,3.2s) var(--float-delay,0s) ease-in-out infinite;
   transform-origin: 50% 110%;
+}
+.cv-floating:hover {
+  /* Without this, the infinite float animation keeps re-asserting its own
+     transform every frame, fighting .card-visual:hover's lift/scale so it
+     never visibly takes effect - same fix already used for hand cards
+     (.hc.hc-floating:hover), just missing here. */
+  animation-play-state: paused;
 }
 @keyframes dpcFloat {
   0%   { transform: translateY(0px)   rotateX(0deg)   scale(1.00); }
@@ -1471,25 +1496,46 @@ html { overflow: hidden; }
 /* Item grid */
 #shop-items-grid { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; max-width:min(90vw,900px); touch-action:pan-y; }
 .shop-item {
-  width:clamp(130px,13vw,180px); background:rgba(8,10,26,0.95);
-  border:2px solid rgba(50,70,140,0.6); border-radius:10px;
-  padding:12px 10px 40px 10px; cursor:pointer; text-align:center;
-  transition:transform 0.15s, border-color 0.15s, box-shadow 0.15s;
-  position:relative; font-family:'PokemonClassic',monospace;
-  box-shadow:0 4px 16px rgba(0,0,0,0.7);
+  display:flex; flex-direction:column; align-items:center;
+  width:clamp(110px,11vw,150px); cursor:pointer;
   animation:shopItemIn 0.4s var(--sd,0s) cubic-bezier(0.15,1.1,0.35,1) both;
+  transition:transform 0.15s ease;
 }
+.shop-item:hover:not(.purchased):not(.cant-afford) { transform:translateY(-6px); }
 @keyframes shopItemIn { from{opacity:0;transform:translateY(24px) scale(0.88)} to{opacity:1;transform:none} }
-.shop-item:hover:not(.purchased):not(.cant-afford) { transform:translateY(-6px); border-color:rgba(255,210,80,0.8); box-shadow:0 8px 24px rgba(0,0,0,0.9),0 0 16px rgba(255,200,60,0.3); }
 .shop-item.purchased { opacity:0.35; pointer-events:none; filter:saturate(0.3); }
 .shop-item.cant-afford { opacity:0.5; cursor:not-allowed; }
-.shop-item-emoji { font-size:clamp(24px,2.8vw,40px); display:block; margin-bottom:6px; }
-.shop-item-name { font-size:clamp(8px,0.85vw,12px); color:#ccd6f0; letter-spacing:1px; display:block; margin-bottom:5px; }
-.shop-item-desc { font-size:clamp(7px,0.72vw,10px); color:#667788; line-height:1.6; display:block; margin-bottom:8px; }
-.shop-item-cost { font-size:clamp(12px,1.3vw,18px); color:#ffcc22; font-weight:bold; display:block; position:absolute; bottom:8px; left:0; right:0; text-align:center; }
-.shop-item-cost.affordable { color:#ffcc22; }
+.shop-item-frame {
+  position:relative; width:clamp(64px,7vw,92px); aspect-ratio:1/1;
+  margin-bottom:8px; flex-shrink:0;
+}
+.shop-item-frame-bg {
+  position:absolute; inset:0; width:100%; height:100%;
+  image-rendering:pixelated; z-index:1; pointer-events:none;
+}
+.shop-item-icon {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:60%; height:60%; object-fit:contain; image-rendering:pixelated; z-index:2;
+  pointer-events:none;
+}
+.shop-item-name {
+  font-family:'PokemonClassic',monospace; font-size:clamp(8px,0.85vw,11px);
+  color:#ffdd66; letter-spacing:0.3px; text-align:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;
+  margin-bottom:2px;
+}
+.shop-item-desc {
+  font-family:'PokemonClassic',monospace; font-size:clamp(7px,0.72vw,9.5px);
+  color:#8899aa; line-height:1.4; text-align:center;
+  max-height:3.9em; overflow:hidden; width:100%;
+  margin-bottom:4px;
+}
+.shop-item-cost {
+  font-family:'PokemonClassic',monospace; font-size:clamp(11px,1.15vw,15px);
+  font-weight:bold;
+}
+.shop-item-cost.affordable { color:#ffdd44; }
 .shop-item-cost.expensive  { color:#886644; }
-.shop-item-tag { position:absolute; top:6px; right:6px; font-size:clamp(6px,0.62vw,8px); color:#445566; letter-spacing:1px; }
 /* Card rewards section */
 #shop-cards-section { margin-top:20px; width:100%; display:flex; flex-direction:column; align-items:center; gap:8px; }
 #shop-cards-label { font-size:clamp(9px,1vw,14px); color:#7799bb; letter-spacing:2px; }
@@ -1527,7 +1573,7 @@ html { overflow: hidden; }
   #rp-hand-preview { display:none !important; }
   #rp-portrait { flex-direction:row !important; align-items:stretch !important; gap:0 !important; }
   #rp-portrait-img-wrap { width:56px !important; min-width:56px !important; height:auto !important; aspect-ratio:1/1 !important; flex-shrink:0 !important; border-radius:8px 0 0 8px !important; border:none !important; overflow:hidden !important; }
-  #rp-portrait-img-wrap img { width:100% !important; height:100% !important; object-fit:cover !important; transform:scale(3.0) !important; transform-origin:center 45% !important; }
+  #rp-portrait-img-wrap img#tc-opp-img { width:88% !important; height:88% !important; object-fit:contain !important; }
   #rp-portrait-overlay { flex:1 !important; padding:4px 6px !important; border-radius:0 !important; border-left:none !important; margin-left:0 !important; border-top:none !important; border-bottom:none !important; border-right:none !important; }
   #rp-hp-bar-wrap { height:3px !important; }
   /* Route buttons: horizontal on mobile */
@@ -1589,7 +1635,7 @@ html { overflow: hidden; }
   /* ── Owned items ── */
   #owned-items-panel { gap:3px !important; max-width:clamp(130px,20vw,180px) !important; right:6px !important; top:6px !important; }
   #owned-items-list::-webkit-scrollbar { display:none; }
-.owned-item-chip { font-size:7px !important; padding:2px 6px !important; }
+.owned-item-img { width:38px !important; height:38px !important; }
 
   /* ── Score overlay mobile ── */
   #hand-score-overlay { top:clamp(40px,6vh,80px) !important; transform:translateX(-50%) scale(0.72) !important; transform-origin:top center !important; }
@@ -1622,11 +1668,9 @@ html { overflow: hidden; }
   #shop-subtitle { font-size:8px !important; margin-bottom:8px !important; }
   #shop-gold     { font-size:12px !important; margin-bottom:8px !important; }
   .shop-item     { width:clamp(95px,17vw,130px) !important; min-height:150px !important; padding:7px 6px 38px 6px !important; border-radius:8px !important; }
-  .shop-item-emoji { font-size:20px !important; margin-bottom:4px !important; }
   .shop-item-name  { font-size:7px !important; margin-bottom:3px !important; }
   .shop-item-desc  { font-size:6px !important; margin-bottom:5px !important; }
   .shop-item-cost  { font-size:10px !important; }
-  .shop-item-tag   { font-size:6px !important; }
   #shop-skip-btn   { font-size:8px !important; padding:5px 14px !important; margin-top:10px !important; }
 
   /* ── Between screens (route / daycare) ── */
@@ -1809,7 +1853,19 @@ window.POKEMON_MOVE_ASSIGNMENT = {"meta": {"count": 151}, "pokemon": [{"dex": 1,
   const CEL_SIZE = 192;
   const CELS_PER_ROW = 5;
   const DEFAULT_FPS = 20;
-  const EDGE_MARGIN = 60; // px kept clear of the viewport edge for anchor-relative cels; see resolveCelPosition
+  // Kept deliberately small: this only exists to stop a cel's CENTER from
+  // going fully negative (invisible off-screen), not to keep a "safe
+  // distance" from the edge. A previous, much larger value (60px) was
+  // bigger than the trainer portrait's actual ~35px distance from the
+  // true corner, which meant the clamp was active EVERY time a cel tried
+  // to render at or near the real target position - forcing a consistent
+  // rightward/downward offset away from it (measured: every single move
+  // animation landed with a positive x-offset from the true target, never
+  // negative - not natural variance, a systematic bug). At this smaller
+  // value only ~7-9% of cels ever hit the clamp at all (measured across a
+  // 30-animation sample), and only the ones that would have gone properly
+  // off-screen.
+  const EDGE_MARGIN = 12;
 
   const FOCUS_TARGET_ENUM = 1, FOCUS_USER_ENUM = 2, FOCUS_BOTH_ENUM = 3, FOCUS_SCREEN_ENUM = 4;
 
@@ -2070,8 +2126,17 @@ window.POKEMON_MOVE_ASSIGNMENT = {"meta": {"count": 151}, "pokemon": [{"dex": 1,
       // getBoundingClientRect() reflect a rendered size very different
       // from "how big this battler should look," which is what container
       // element's box actually represents.
-      const attackerArtSize = attackerArt ? attackerEl.getBoundingClientRect() : null;
-      const targetArtSize = targetArt ? targetEl.getBoundingClientRect() : null;
+      // Sized off the art image itself. (Earlier this read the CONTAINING
+      // element instead, specifically to dodge a scale() transform that
+      // used to sit on the portrait <img> - that transform is gone now,
+      // so reading the element's own rect is safe again, and more
+      // accurate: the container is a border-box (global `* {
+      // box-sizing:border-box }` reset) with its own 2px border, so its
+      // rect is a few pixels larger in each dimension than the image's
+      // actual content box - a small but real source of the portrait
+      // rendering slightly oversized during its own move animations.
+      const attackerArtSize = attackerArt ? attackerArt.getBoundingClientRect() : null;
+      const targetArtSize = targetArt ? targetArt.getBoundingClientRect() : null;
 
       const { canvas, ctx, rect: containerRect } = makeOverlayCanvas(container);
 
@@ -2241,23 +2306,21 @@ window.POKEMON_MOVE_ASSIGNMENT = {"meta": {"count": 151}, "pokemon": [{"dex": 1,
                                       // except for pattern -1/-2 own-sprite art (see below)
 
     if (pattern === -1 || pattern === -2) {
-      image = pattern === -1 ? userArt : targetArt;
-      if (!image || !image.naturalWidth) return;
-      const artSize = pattern === -1 ? userArtSize : targetArtSize;
-      // Source crop is always the WHOLE art image. Destination is a
-      // "contain" fit inside the element's box - scaled uniformly so the
-      // image's own aspect ratio is always preserved, never stretched or
-      // squished to match the box's proportions (which won't generally
-      // match a non-square source image's natural proportions, e.g. a
-      // portrait cropped square via object-fit:cover on the page).
-      sw = image.naturalWidth; sh = image.naturalHeight;
-      if (artSize && artSize.width && artSize.height && sw && sh) {
-        const fitScale = Math.min(artSize.width / sw, artSize.height / sh);
-        dw = sw * fitScale;
-        dh = sh * fitScale;
-      } else {
-        dw = sw; dh = sh;
-      }
+      // Both own-sprite patterns are skipped entirely rather than redrawn:
+      // unlike the original Essentials battler sprite (which only ever
+      // exists as part of the animation itself), the card/portrait here
+      // are real, persistent DOM elements already fully visible on the
+      // page the whole time - pattern -1 is the played card's ghost,
+      // pattern -2 is the trainer portrait. Redrawing a copy of either -
+      // even once perfectly position/size/zoom-locked to match - still
+      // reads as a second, faintly-offset instance drifting nearby
+      // (subtle timing/opacity/scaling differences between the live DOM
+      // element and the canvas copy are enough to look like ghosting).
+      // Skipping the redraw removes that whole category of artifact for
+      // both sides; the real elements underneath already provide the
+      // visual weight, and the sheet-based effect cels (flames/particles/
+      // slashes/etc) still play normally around them.
+      return;
     } else {
       if (!image) return;
       sx = (pattern % CELS_PER_ROW) * CEL_SIZE;
@@ -2267,24 +2330,17 @@ window.POKEMON_MOVE_ASSIGNMENT = {"meta": {"count": 151}, "pokemon": [{"dex": 1,
 
     const pos = resolveCelPosition(cel, userCenter, targetCenter, scale, containerRect, screenScaleX, screenScaleY, flipX);
 
-    const isOwnSprite = (pattern === -1 || pattern === -2);
-    // The per-frame zoom/angle/mirror in the animation data was authored
-    // assuming pattern -1/-2 shows a small, already game-sprite-sized
-    // battler image - Essentials animations routinely grow/shrink/rotate/
-    // flip that as a "flinch"/impact effect. Applied to card art or a
-    // portrait image instead, those same authored values read as the
-    // whole card growing, spinning, or flipping backwards, which just
-    // looks broken/distorted rather than like an effect. Own-sprite cels
-    // keep their position, opacity, and blend mode (still fully
-    // animated), but hold steady otherwise: 100% zoom, 0 rotation, never
-    // mirrored (not even via the scene-wide flipX option - a portrait
-    // should never render backwards).
-    const zoomX = isOwnSprite ? 1 : (cel[F.ZOOMX] == null ? 100 : cel[F.ZOOMX]) / 100;
-    const zoomY = isOwnSprite ? 1 : (cel[F.ZOOMY] == null ? 100 : cel[F.ZOOMY]) / 100;
-    const angleDeg = isOwnSprite ? 0 : (cel[F.ANGLE] || 0) * (flipX ? -1 : 1);
-    const mirror = isOwnSprite ? false : (((cel[F.MIRROR] || 0) > 0) !== pos.extraMirror !== !!flipX);
+    // (own-sprite patterns -1/-2 returned above, before reaching here - so
+    // every cel that reaches this point is a sheet-based effect cel, and
+    // the zoom/angle/mirror/scale values below always apply in full,
+    // exactly as authored)
+    const zoomX = (cel[F.ZOOMX] == null ? 100 : cel[F.ZOOMX]) / 100;
+    const zoomY = (cel[F.ZOOMY] == null ? 100 : cel[F.ZOOMY]) / 100;
+    const angleDeg = (cel[F.ANGLE] || 0) * (flipX ? -1 : 1);
+    const mirror = (((cel[F.MIRROR] || 0) > 0) !== pos.extraMirror !== !!flipX);
     const opacity = clamp01((cel[F.OPACITY] == null ? 255 : cel[F.OPACITY]) / 255);
     const blend = cel[F.BLENDTYPE] || 0;
+    const cellScale = pos.cellScale;
 
     ctx.save();
     ctx.translate(pos.x, pos.y);
@@ -2293,7 +2349,7 @@ window.POKEMON_MOVE_ASSIGNMENT = {"meta": {"count": 151}, "pokemon": [{"dex": 1,
     // negation. Only ~2% of cels in the sample pack use nonzero angle;
     // flip this sign if rotated effects look mirrored-in-time in practice.
     if (angleDeg) ctx.rotate(-angleDeg * Math.PI / 180);
-    ctx.scale((mirror ? -1 : 1) * zoomX * pos.cellScale, zoomY * pos.cellScale);
+    ctx.scale((mirror ? -1 : 1) * zoomX * cellScale, zoomY * cellScale);
     ctx.globalAlpha = opacity;
     ctx.globalCompositeOperation = blend === 1 ? 'lighter' : blend === 2 ? 'difference' : 'source-over';
 
@@ -2436,15 +2492,11 @@ window.POKEMON_MOVE_ASSIGNMENT = {"meta": {"count": 151}, "pokemon": [{"dex": 1,
 
 // ─────────────────────────────────────────────────────────────────
 // Pokemon Essentials battle-animation engine integration.
-// Data/engine are inlined above; sprite sheets are NOT (too big to
-// inline sanely) - upload the spritesheets/ folder from the animation
-// engine package to your GitHub repo and point this at it. Suggested
-// path, matching how you already host the font/card-art in this same
-// repo (ethanlam1234/pokemonbalatro):
+// Data/engine are inlined above; sprite sheets live in the pokevolve
+// repo's assets/spritesheets/ folder.
 // ─────────────────────────────────────────────────────────────────
 const PKMN_SPRITE_BASE_URL =
-  "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/spritesheets/";
-  // ^ CHANGE THIS if you put the spritesheets/ folder somewhere else.
+  "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/spritesheets/";
 
 // Playback tuning - adjust these directly if the defaults aren't right:
 const PKMN_ANIM_FPS = 10;    // native Essentials speed is 20; lower = slower
@@ -2461,14 +2513,23 @@ const PKMN_ANIM_FPS = 10;    // native Essentials speed is 20; lower = slower
 // NOTE on the actual number: cels are 192x192 native, but most sprite art
 // only fills a fraction of that (padding for positioning) - measured
 // across 15 sheets/117 cels, the VISIBLE content within a cel is ~99px
-// (median) to ~129px (75th percentile), not 192px. 0.8 calibrates against
-// that real content size, not the padded cel box.
-const PKMN_ANIM_SCALE = 0.8;
+// (median) to ~129px (75th percentile), not 192px. 1.1 calibrates against
+// that real content size (not the padded cel box) with room to read as
+// appropriately bold/impactful rather than just "matching the card".
+const PKMN_ANIM_SCALE = 1.1;
 
 const pkmnAnim = new PkmnAnimEngine({
   data: PKMN_ANIMATIONS,
   spriteBaseUrl: PKMN_SPRITE_BASE_URL,
   onSoundEffect: () => { if (typeof SFX !== "undefined" && SFX.hit) SFX.hit(); },
+  // #rp-portrait-img-wrap now holds THREE <img> elements (battleback bg,
+  // battleback base, then the actual trainer portrait) - the default
+  // '.pc-art, img' selector would grab whichever <img> comes first in the
+  // DOM, which is the background layer, not the portrait. Excluding
+  // anything tagged battleback-layer keeps this pointed at the actual
+  // trainer art (and still matches the plain, unclassed ghost-card <img>
+  // used for the attacker side).
+  artSelector: '.pc-art, img:not(.battleback-layer)',
 });
 
 // dex (1-151) -> "Move:XXX", from pokemon_move_assignment.json
@@ -2505,6 +2566,133 @@ function moveForCard(card) {
   return null;
 }
 
+// ── Gym battle transition (HGSS-style "VS" screen) ─────────────────
+const GYM_TRANSITION_BASE = 'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/transitions/';
+const GYM_TRANSITION_FILE_NAME = {
+  'Brock':'Brock', 'Misty':'Misty', 'Lt. Surge':'Surge', 'Erika':'Erika',
+  'Koga':'Koga', 'Sabrina':'Sabrina', 'Blaine':'Blaine', 'Giovanni':'Giovanni',
+};
+// Each gym leader now has their own themed banner bar (vsBar_NAME.png,
+// name uppercase - a different naming convention than the portrait files),
+// matching the same fileName suffix as their portrait. Native 256x128
+// (2:1) - see #gym-transition's --gt-banner-h for how these get fit to
+// the screen.
+document.head.insertAdjacentHTML('beforeend', `<style>
+#gym-transition {
+  position: fixed; inset: 0; z-index: 2147483000; /* just under the animation engine's own layer */
+  background: rgba(6,8,20,0.62); /* see-through on purpose - the battle scene stays visible behind it */
+  opacity: 0; pointer-events: none; overflow: hidden;
+  font-family: 'PokemonClassic', monospace;
+  /* The bar's native art is 2:1 (256x128), so stretched to fill 100vw
+     width its natural, uncropped height would be 50vw. Cropping "slightly"
+     means staying close to that, not far below it - 42vw keeps ~84% of
+     the natural height (only ~16% trimmed, split evenly top+bottom),
+     while the vh part of the clamp is just a sanity ceiling for ultra-wide
+     screens where 42vw alone would otherwise get silly tall. */
+  --gt-banner-h: clamp(160px, 42vw, 58vh);
+}
+#gym-transition.gt-show { opacity: 1; transition: opacity 0.2s ease-out; }
+#gym-transition.gt-hide { opacity: 0; transition: opacity 0.35s ease-in; }
+.gt-flash {
+  position: absolute; inset: 0; background: #fff; opacity: 0;
+}
+.gt-flash.gt-flash-on { animation: gtFlash 0.3s ease-out; }
+@keyframes gtFlash { 0%{opacity:0;} 20%{opacity:0.85;} 100%{opacity:0;} }
+.gt-bar-wrap {
+  position: absolute; left: 0; top: 50%; width: 100vw; height: var(--gt-banner-h);
+  overflow: hidden;
+  transform: translateY(-50%) scaleY(0.04); transform-origin: center; opacity: 0;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+.gt-bar-wrap.gt-bar-in { animation: gtBarIn 0.55s cubic-bezier(0.22,1,0.36,1) forwards; }
+@keyframes gtBarIn { to { transform: translateY(-50%) scaleY(1); opacity: 1; } }
+.gt-bar {
+  /* ONE copy, stretched to fill the full width; object-fit:cover scales
+     it up until the width matches (since this box's aspect ratio is far
+     wider than the source's own 2:1), and whatever's left over past
+     --gt-banner-h just gets clipped by .gt-bar-wrap's overflow:hidden,
+     evenly off the top and bottom (object-position:center). No tiling/
+     repetition - a single stretched copy, same as a "cover" background
+     would look, just cropped much less aggressively than before now
+     that the height tracks the width instead of a flat vh value.
+  */
+  width: 100%; height: 100%; object-fit: cover; object-position: center;
+  image-rendering: pixelated; display: block;
+}
+.gt-portrait {
+  /* centered on the banner, both axes - slides+fades into place at its
+     FINAL size the whole time (no scale transform). These portrait
+     images are cropped tight top-and-bottom in their own source art, so
+     scaling them up from small during the entrance made that cropping
+     obviously jarring as it grew - sliding in at a constant size avoids
+     drawing attention to it. */
+  position: absolute; left: 50%; top: 50%; height: var(--gt-banner-h); width: auto;
+  transform: translate(calc(-50% + 46px), -50%); opacity: 0; image-rendering: pixelated;
+  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.7));
+}
+.gt-portrait.gt-portrait-in { animation: gtPortraitIn 0.4s cubic-bezier(0.22,1,0.36,1) 0.2s forwards; }
+@keyframes gtPortraitIn { to { transform: translate(-50%, -50%); opacity: 1; } }
+</style>`);
+
+/**
+ * Plays an HGSS-style transition for a gym leader battle: the battle
+ * scene dims but stays visible, that leader's own themed banner bar
+ * sweeps across the middle of the screen, and their portrait pops in
+ * centered on it at the same height.
+ *
+ * Resolves at the MIDPOINT - once the bar+portrait have finished
+ * animating in and held for a beat, while the overlay is still fully
+ * opaque - not once everything's over. That's deliberate: it gives the
+ * caller a moment to do the actual battle setup (deal cards, swap in the
+ * new UI, etc) WHILE still hidden behind the transition, so the fade-out
+ * that follows reveals an already-ready battle screen instead of a gap
+ * of nothing followed by a sudden pop-in. The transition finishes fading
+ * itself out on its own timer after that - nothing further to await.
+ *
+ * Falls back to resolving immediately (no transition) if the trainer
+ * isn't a recognized gym leader or its assets fail to load, so a
+ * missing/renamed file can never block a battle from starting.
+ */
+function playGymTransition(trainer) {
+  const fileName = trainer && GYM_TRANSITION_FILE_NAME[trainer.name];
+  if (!fileName) return Promise.resolve();
+  return new Promise((resolve) => {
+    let resolved = false, done = false;
+    const reveal = () => { if (resolved) return; resolved = true; resolve(); };
+    const finish = () => {
+      if (done) return;
+      done = true;
+      reveal(); // safety - never leave the caller hanging if something skipped a step
+      overlay.classList.remove('gt-show');
+      overlay.classList.add('gt-hide');
+      setTimeout(() => overlay.remove(), 380);
+    };
+    const barFile = `vsBar_${fileName.toUpperCase()}.png`;
+    const overlay = document.createElement('div');
+    overlay.id = 'gym-transition';
+    overlay.innerHTML = `
+      <div class="gt-flash"></div>
+      <div class="gt-bar-wrap"><img class="gt-bar" src="${GYM_TRANSITION_BASE}${barFile}"></div>
+      <img class="gt-portrait" src="${GYM_TRANSITION_BASE}hgss_vs_LEADER_${fileName}.png">
+    `;
+    document.body.appendChild(overlay);
+    if (typeof SFX !== 'undefined' && SFX.uiClick) SFX.uiClick();
+
+    requestAnimationFrame(() => {
+      overlay.classList.add('gt-show');
+      overlay.querySelector('.gt-flash').classList.add('gt-flash-on');
+      overlay.querySelector('.gt-bar-wrap').classList.add('gt-bar-in');
+      overlay.querySelector('.gt-portrait').classList.add('gt-portrait-in');
+    });
+
+    // bar+portrait are fully in and held by ~1.1s - reveal to the caller here
+    setTimeout(reveal, 1100);
+    // then hold a little longer before wiping out on its own
+    setTimeout(finish, 1900);
+    // safety net: if an image 404s this still won't hang the game forever
+    setTimeout(finish, 4000);
+  });
+}
 </script>
 <script>
 (function(){
@@ -2937,7 +3125,9 @@ document.addEventListener('keydown',e=>{
   <!-- Trainer portrait -->
   <div id="rp-portrait" onmouseenter="if(typeof SFX!=='undefined') SFX.hover();" onclick="const t=getCurrentTrainer(); if(t) { if(typeof SFX!=='undefined') SFX.uiClick(); showTrainerDialogue(t.name); }" style="cursor:pointer;">
     <div id="rp-portrait-img-wrap">
-      <img id="tc-opp-img" src="https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Brock.png" alt="">
+      <img id="rp-bg-img" class="battleback-layer" alt="">
+      <img id="rp-base-img" class="battleback-layer" alt="">
+      <img id="tc-opp-img" src="https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LEADER_Brock.png" alt="">
     </div>
     <div id="rp-portrait-overlay">
       <div id="rp-trainer-name">BROCK</div>
@@ -3075,16 +3265,16 @@ document.addEventListener('keydown',e=>{
 const SHOW_ASSETS = false;
 
 const CARD_IMGS = {
-  "final_87-dewgong_150-mewtwo_Dewgtwo": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/bc-hint.webp",
-  "final_129-magikarp_233-porygon2_Magigon2": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/webp.webp",
-  "final_159-croconaw_116-horsea_Crocsea": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/webp_2.webp",
-  "final_3-venusaur_80-slowbro_Venuwbro": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/webp_3.webp",
-  "final_10-caterpie_11-metapod_Cateapod": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/webp_4.webp",
-  "final_14-kakuna_65-alakazam_Kakazam": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/webp_5.webp",
-  "final_27-sandshrew_365-walrein_Sandsrein": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/webp_6.webp",
-  "final_44-gloom_267-beautifly_Glotifly": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/webp_7.webp",
-  "final_55-golduck_353-shuppet_Goldppet": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/webp_8.webp",
-  "final_61-poliwhirl_344-claydol_Poliwydol": "https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/webp_9.webp"
+  "final_87-dewgong_150-mewtwo_Dewgtwo": "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/dewgong/dewgong_x_mewtwo.png",
+  "final_129-magikarp_233-porygon2_Magigon2": "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/magikarp/magikarp_x_aerodactyl.png",
+  "final_159-croconaw_116-horsea_Crocsea": "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/horsea/horsea_x_aerodactyl.png",
+  "final_3-venusaur_80-slowbro_Venuwbro": "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/slowbro/slowbro_x_venusaur.png",
+  "final_10-caterpie_11-metapod_Cateapod": "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/caterpie/caterpie_x_metapod.png",
+  "final_14-kakuna_65-alakazam_Kakazam": "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/alakazam/alakazam_x_kakuna.png",
+  "final_27-sandshrew_365-walrein_Sandsrein": "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/sandshrew/sandshrew_x_sandshrew.png",
+  "final_44-gloom_267-beautifly_Glotifly": "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/gloom/gloom_x_abra.png",
+  "final_55-golduck_353-shuppet_Goldppet": "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/golduck/golduck_x_blastoise.png",
+  "final_61-poliwhirl_344-claydol_Poliwydol": "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/poliwhirl/poliwhirl_x_abra.png"
 };
 const CARD_IMG_KEYS = Object.keys(CARD_IMGS);
 let _cardImgIdx = 0;
@@ -3101,92 +3291,92 @@ const FUSIONS = [{"name": "Hitmoking", "img":"", "baseAtk": 7, "baseHp": 2, "cos
 // modifier: applied at battle start, affects scoring
 const TRAINERS = [
   // ── NORMAL TRAINERS (tier 1) ──────────────────────────────────
-  { name:'Youngster',  img:'', hp:18, tier:'normal', hpEmoji:'🧒', hpName:'Taunt',    hpDesc:'Nothing special — just eager.',
+  { name:'Youngster',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/YOUNGSTER.png', hp:18, tier:'normal', hpEmoji:'🧒', hpName:'Taunt',    hpDesc:'Nothing special — just eager.',
     modifier:'first_hand_minus20', modDesc:'First hand each battle scores -20%.' },
-  { name:'Lass',       img:'', hp:18, tier:'normal', hpEmoji:'👧', hpName:'Charm',    hpDesc:'Draw a card.',
+  { name:'Lass',       img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LASS.png', hp:18, tier:'normal', hpEmoji:'👧', hpName:'Charm',    hpDesc:'Draw a card.',
     modifier:'draw_minus1', modDesc:'Draw 1 fewer card on your first turn.' },
-  { name:'Bug Catcher',img:'', hp:20, tier:'normal', hpEmoji:'🐛', hpName:'Net',      hpDesc:'Disable a random opponent card.',
+  { name:'Bug Catcher',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/BUGCATCHER.png', hp:20, tier:'normal', hpEmoji:'🐛', hpName:'Net',      hpDesc:'Disable a random opponent card.',
     modifier:'swarm_minus20', modDesc:'Swarm/species hands score -20%.' },
-  { name:'Camper',     img:'', hp:20, tier:'normal', hpEmoji:'⛺', hpName:'Rest',     hpDesc:'Heal 3 HP.',
+  { name:'Camper',     img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/CAMPER.png', hp:20, tier:'normal', hpEmoji:'⛺', hpName:'Rest',     hpDesc:'Heal 3 HP.',
     modifier:'gold_minus25', modDesc:'Earn 25% less gold after this battle.' },
-  { name:'Picnicker',  img:'', hp:20, tier:'normal', hpEmoji:'🧺', hpName:'Share',    hpDesc:'Gain $1.',
+  { name:'Picnicker',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/PICNICKER.png', hp:20, tier:'normal', hpEmoji:'🧺', hpName:'Share',    hpDesc:'Gain $1.',
     modifier:'daycare_cost_up', modDesc:'Day Care actions cost +1 this run.' },
-  { name:'Fisherman',  img:'', hp:22, tier:'normal', hpEmoji:'🎣', hpName:'Reel',     hpDesc:'Draw 2 cards.',
+  { name:'Fisherman',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/FISHERMAN.png', hp:22, tier:'normal', hpEmoji:'🎣', hpName:'Reel',     hpDesc:'Draw 2 cards.',
     modifier:'water_no_bonus', modDesc:'Water Pokémon deal no bonus damage.' },
-  { name:'Sailor',     img:'', hp:22, tier:'normal', hpEmoji:'⚓', hpName:'Anchor',   hpDesc:'Give a card +1 ATK.',
+  { name:'Sailor',     img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/SAILOR.png', hp:22, tier:'normal', hpEmoji:'⚓', hpName:'Anchor',   hpDesc:'Give a card +1 ATK.',
     modifier:'taunt_disabled', modDesc:'Taunt & defensive traits disabled.' },
-  { name:'Hiker',      img:'', hp:22, tier:'normal', hpEmoji:'🥾', hpName:'Climb',    hpDesc:'Gain 2 extra score.',
+  { name:'Hiker',      img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/HIKER.png', hp:22, tier:'normal', hpEmoji:'🥾', hpName:'Climb',    hpDesc:'Gain 2 extra score.',
     modifier:'rock_no_bonus', modDesc:'Rock/Ground Pokémon deal no bonus damage.' },
-  { name:'Bird Keeper',img:'', hp:24, tier:'normal', hpEmoji:'🦅', hpName:'Swoop',    hpDesc:'Deal 2 damage to a card.',
+  { name:'Bird Keeper',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/BIRDKEEPER.png', hp:24, tier:'normal', hpEmoji:'🦅', hpName:'Swoop',    hpDesc:'Deal 2 damage to a card.',
     modifier:'flying_half', modDesc:'Flying Pokémon lose 50% effectiveness.' },
-  { name:'Engineer',   img:'', hp:24, tier:'normal', hpEmoji:'🔧', hpName:'Tune',     hpDesc:'Give a card +2 HP.',
+  { name:'Engineer',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/ENGINEER.png', hp:24, tier:'normal', hpEmoji:'🔧', hpName:'Tune',     hpDesc:'Give a card +2 HP.',
     modifier:'adaptive_disabled', modDesc:'Adaptive/Steel traits disabled.' },
-  { name:'Gambler',    img:'', hp:24, tier:'normal', hpEmoji:'🎲', hpName:'Bet',      hpDesc:'Random outcome: +/- score.',
+  { name:'Gambler',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/GAMBLER.png', hp:24, tier:'normal', hpEmoji:'🎲', hpName:'Bet',      hpDesc:'Random outcome: +/- score.',
     modifier:'random_card_no_effect', modDesc:'One random hand card loses its bonus.' },
-  { name:'Super Nerd', img:'', hp:24, tier:'normal', hpEmoji:'🤓', hpName:'Analyze',  hpDesc:'Preview top card of deck.',
+  { name:'Super Nerd', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/SUPERNERD.png', hp:24, tier:'normal', hpEmoji:'🤓', hpName:'Analyze',  hpDesc:'Preview top card of deck.',
     modifier:'fusion_quality_off', modDesc:'Fusion quality bonuses disabled.' },
-  { name:'Scientist',  img:'', hp:26, tier:'normal', hpEmoji:'🧪', hpName:'Mutate',   hpDesc:'Transform a card randomly.',
+  { name:'Scientist',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/SCIENTIST.png', hp:26, tier:'normal', hpEmoji:'🧪', hpName:'Mutate',   hpDesc:'Transform a card randomly.',
     modifier:'unstable_no_bonus', modDesc:'Unstable fusions lose bonus effects.' },
-  { name:'Burglar',    img:'', hp:26, tier:'normal', hpEmoji:'🔦', hpName:'Steal',    hpDesc:'Steal $1 from you.',
+  { name:'Burglar',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/BURGLAR.png', hp:26, tier:'normal', hpEmoji:'🔦', hpName:'Steal',    hpDesc:'Steal $1 from you.',
     modifier:'lose_gold_2', modDesc:'Lose $2 after this battle.' },
-  { name:'Juggler',    img:'', hp:26, tier:'normal', hpEmoji:'🤹', hpName:'Juggle',   hpDesc:'Shuffle 2 cards in hand.',
+  { name:'Juggler',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/JUGGLER.png', hp:26, tier:'normal', hpEmoji:'🤹', hpName:'Juggle',   hpDesc:'Shuffle 2 cards in hand.',
     modifier:'retrigger_half', modDesc:'Retrigger chance halved this battle.' },
-  { name:'Channeler',  img:'', hp:26, tier:'normal', hpEmoji:'🔮', hpName:'Séance',   hpDesc:'Ghost effect activates.',
+  { name:'Channeler',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/CHANNELER.png', hp:26, tier:'normal', hpEmoji:'🔮', hpName:'Séance',   hpDesc:'Ghost effect activates.',
     modifier:'mystic_half', modDesc:'Mystic/Ghost effects weakened by 50%.' },
-  { name:'Pokémaniac', img:'', hp:28, tier:'normal', hpEmoji:'🧠', hpName:'Obsess',   hpDesc:'Buff a random Pokémon.',
+  { name:'Pokémaniac', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/POKEMANIAC.png', hp:28, tier:'normal', hpEmoji:'🧠', hpName:'Obsess',   hpDesc:'Buff a random Pokémon.',
     modifier:'evolution_minus30', modDesc:'Evolution hands score -30%.' },
-  { name:'Black Belt', img:'', hp:28, tier:'normal', hpEmoji:'🥊', hpName:'Focus',    hpDesc:'Give a card Double Strike.',
+  { name:'Black Belt', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/BLACKBELT.png', hp:28, tier:'normal', hpEmoji:'🥊', hpName:'Focus',    hpDesc:'Give a card Double Strike.',
     modifier:'powerhouse_weak', modDesc:'Powerhouse/Fighting effects weakened.' },
-  { name:'Tamer',      img:'', hp:28, tier:'normal', hpEmoji:'🦁', hpName:'Tame',     hpDesc:'Buff an opposing card.',
+  { name:'Tamer',      img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/TAMER.png', hp:28, tier:'normal', hpEmoji:'🦁', hpName:'Tame',     hpDesc:'Buff an opposing card.',
     modifier:'final_evo_weak', modDesc:'Final evolutions lose 25% effectiveness.' },
-  { name:'Swimmer',    img:'', hp:28, tier:'normal', hpEmoji:'🏊', hpName:'Dive',     hpDesc:'Shuffle your hand.',
+  { name:'Swimmer',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/SWIMMER_M.png', hp:28, tier:'normal', hpEmoji:'🏊', hpName:'Dive',     hpDesc:'Shuffle your hand.',
     modifier:'each_hand_minus10', modDesc:'Each hand after the first scores -10%.' },
-  { name:'Cue Ball',   img:'', hp:30, tier:'normal', hpEmoji:'🎱', hpName:'Strike',   hpDesc:'Deal 3 damage.',
+  { name:'Cue Ball',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/CUEBALL.png', hp:30, tier:'normal', hpEmoji:'🎱', hpName:'Strike',   hpDesc:'Deal 3 damage.',
     modifier:'aggressive_weak', modDesc:'Aggressive traits weakened this battle.' },
-  { name:'Rocket Grunt',img:'',hp:30, tier:'normal', hpEmoji:'🚀', hpName:'Enforce', hpDesc:'Disable one of your cards for 1 turn.',
+  { name:'Rocket Grunt',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/TEAMROCKET_M.png',hp:30, tier:'normal', hpEmoji:'🚀', hpName:'Enforce', hpDesc:'Disable one of your cards for 1 turn.',
     modifier:'random_card_disabled', modDesc:'One random card is disabled this battle.' },
 
   // ── ELITE TRAINERS (tier 2) ────────────────────────────────────
-  { name:'Ace Trainer', img:'', hp:35, tier:'elite', hpEmoji:'🏆', hpName:'Master',   hpDesc:'Boost the best hand type.',
+  { name:'Ace Trainer', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/COOLTRAINER_M.png', hp:35, tier:'elite', hpEmoji:'🏆', hpName:'Master',   hpDesc:'Boost the best hand type.',
     modifier:'best_hand_disabled', modDesc:'Your highest-scoring hand type is disabled.' },
-  { name:'Cooltrainer', img:'', hp:35, tier:'elite', hpEmoji:'😎', hpName:'Chill',    hpDesc:'Freeze scaling for 1 turn.',
+  { name:'Cooltrainer', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/COOLTRAINER_F.png', hp:35, tier:'elite', hpEmoji:'😎', hpName:'Chill',    hpDesc:'Freeze scaling for 1 turn.',
     modifier:'scaling_frozen', modDesc:'All scaling effects frozen — growth stops.' },
-  { name:'Veteran',     img:'', hp:38, tier:'elite', hpEmoji:'🎖️', hpName:'Experience',hpDesc:'Gain a bonus item.',
+  { name:'Veteran',     img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/GENTLEMAN.png', hp:38, tier:'elite', hpEmoji:'🎖️', hpName:'Experience',hpDesc:'Gain a bonus item.',
     modifier:'fusion_quality_off', modDesc:'Fusion quality bonuses disabled.' },
-  { name:'Elite Scientist',img:'',hp:40,tier:'elite',hpEmoji:'⚗️','hpName':'Formula', hpDesc:'Combine two effects.',
+  { name:'Elite Scientist',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/SCIENTIST.png',hp:40,tier:'elite',hpEmoji:'⚗️','hpName':'Formula', hpDesc:'Combine two effects.',
     modifier:'one_trait_only', modDesc:'Only one inherited trait works per fusion.' },
-  { name:'Elite Psychic',img:'',hp:40,tier:'elite', hpEmoji:'🧿', hpName:'Amplify',   hpDesc:'XMult boosted briefly.',
+  { name:'Elite Psychic',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/PSYCHIC_M.png',hp:40,tier:'elite', hpEmoji:'🧿', hpName:'Amplify',   hpDesc:'XMult boosted briefly.',
     modifier:'xmult_minus75', modDesc:'XMult effects reduced by 75%.' },
-  { name:'Elite Black Belt',img:'',hp:42,tier:'elite',hpEmoji:'🥋','hpName':'Iron Fist',hpDesc:'Powerhouse boost.',
+  { name:'Elite Black Belt',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/BLACKBELT.png',hp:42,tier:'elite',hpEmoji:'🥋','hpName':'Iron Fist',hpDesc:'Powerhouse boost.',
     modifier:'powerhouse_disabled', modDesc:'Powerhouse traits fully disabled.' },
-  { name:'Elite Breeder',img:'',hp:42,tier:'elite',hpEmoji:'🥚','hpName':'Hatch',    hpDesc:'Add an evolution card.',
+  { name:'Elite Breeder',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/POKEMONBREEDER.png',hp:42,tier:'elite',hpEmoji:'🥚','hpName':'Hatch',    hpDesc:'Add an evolution card.',
     modifier:'evolution_disabled', modDesc:'Evolution bonuses fully disabled.' },
-  { name:'Elite Executive',img:'',hp:45,tier:'elite',hpEmoji:'👔','hpName':'Order',  hpDesc:'Disrupt your items.',
+  { name:'Elite Executive',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/ROCKETBOSS.png',hp:45,tier:'elite',hpEmoji:'👔','hpName':'Order',  hpDesc:'Disrupt your items.',
     modifier:'random_item_disabled', modDesc:'One random item disabled this battle.' },
 
   // ── GYM LEADERS (boss tier) ────────────────────────────────────
-  { name:'Brock',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Brock.png',
+  { name:'Brock',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LEADER_Brock.png',
     hp:38, tier:'boss', hpEmoji:'🪨', hpName:'Fortify', hpDesc:'Give a friendly card +2 max HP.',
     modifier:'fusion_quality_off', modDesc:'No Fusion Quality bonuses. Natural/Stable/Unstable all disabled.' },
-  { name:'Misty',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Misty.png',
+  { name:'Misty',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LEADER_Misty.png',
     hp:44, tier:'boss', hpEmoji:'🌊', hpName:'Surf',    hpDesc:'Deal 1 damage to ALL cards.',
     modifier:'most_common_type_off', modDesc:'Your most common type is disabled. Punishes Type Specialist.' },
-  { name:'Lt. Surge',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Surge.png',
+  { name:'Lt. Surge',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LEADER_Surge.png',
     hp:48, tier:'boss', hpEmoji:'⚡', hpName:'Zap',     hpDesc:'Give a card +1 ATK.',
     modifier:'first_card_disabled', modDesc:'First card played each hand is disabled. Forces different ordering.' },
-  { name:'Erika',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Erika.png',
+  { name:'Erika',   img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LEADER_Erika.png',
     hp:50, tier:'boss', hpEmoji:'🌸', hpName:'Bloom',   hpDesc:'Heal 4 HP.',
     modifier:'scaling_frozen', modDesc:'No scaling allowed. Growth traits frozen, permanent gains paused.' },
-  { name:'Koga',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Koga.png',
+  { name:'Koga',    img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LEADER_Koga.png',
     hp:54, tier:'boss', hpEmoji:'☠️', hpName:'Toxic',   hpDesc:'Deal 1 damage to all cards.',
     modifier:'decay_per_hand', modDesc:'Every hand scores 15% less than the previous. Rewards burst scoring.' },
-  { name:'Sabrina', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Sabrina.png',
+  { name:'Sabrina', img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LEADER_Sabrina.png',
     hp:58, tier:'boss', hpEmoji:'🔮', hpName:'Foresight',hpDesc:'Draw an extra card.',
     modifier:'best_trait_off', modDesc:'Highest scoring trait disabled. Whatever contributes most gets shut off.' },
-  { name:'Blaine',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Blaine.png',
+  { name:'Blaine',  img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LEADER_Blaine.png',
     hp:62, tier:'boss', hpEmoji:'🔥', hpName:'Ignite',  hpDesc:'Deal 2 damage to a random card.',
     modifier:'max_4_cards', modDesc:'Only 4 cards may be played per hand. Huge hand restriction.' },
-  { name:'Giovanni',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/gyms/Giovanni.png',
+  { name:'Giovanni',img:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LEADER_Giovanni.png',
     hp:70, tier:'boss', hpEmoji:'💀', hpName:'Dominate',hpDesc:'Give all friendly cards +1 ATK permanently.',
     modifier:'item_and_card_off', modDesc:'One random item disabled. One random fusion card disabled.' },
 ];
@@ -3302,19 +3492,19 @@ let G = {
 function removeWhiteBg(src, cb) { cb(src); }
 
 const KW_ICONS = {
-  "charge":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_2.png",
-  "taunt":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_3.png",
-  "battlecry":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_4.png",
-  "freeze":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_5.png",
-  "windfury":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_6.png",
-  "divine_shield":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_7.png",
-  "poisonous":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_8.png",
-  "lifesteal":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_9.png",
-  "deathrattle":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_10.png",
-  "rush":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_11.png",
-  "reborn":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_12.png",
-  "silence":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_13.png",
-  "stealth":"https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/extracted/png_14.png",
+  "charge":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/125.png",
+  "taunt":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/39.png",
+  "battlecry":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/68.png",
+  "freeze":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/144.png",
+  "windfury":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/145.png",
+  "divine_shield":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/113.png",
+  "poisonous":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/109.png",
+  "lifesteal":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/94.png",
+  "deathrattle":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/92.png",
+  "rush":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/78.png",
+  "reborn":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/103.png",
+  "silence":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/122.png",
+  "stealth":"https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/132.png"
 };
 const KW_POOL = [
   {key:'charge',        label:'Charge',       emoji:'⚡', desc:'Can attack the turn it is played.'},
@@ -4701,35 +4891,35 @@ function getEvoFamily(dex) {
 
 // ── ROTOM RADIO ──────────────────────────────────────────────
 const ROTOM_TRACKS = [
-  { title:'Littleroot Town — OR/AS',        url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/01%20-%20Littleroot%20Town%20-%20Pokemon%20Omega%20Ruby%20%26%20Alpha%20Sapphire.mp3' },
-  { title:'Aspertia City — BW2',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/02%20-%20Aspertia%20City%20-%20Pokemon%20Black%20White%202.mp3' },
-  { title:'File Select — MD DX',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/03%20-%20File%20Select%20-%20Pokemon%20Mystery%20Dungeon%20Rescue%20Team%20DX.mp3' },
-  { title:'Route 1 — BW',                   url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/04%20-%20Route%201%20-%20Pokemon%20Black%20and%20White.mp3' },
-  { title:'Juniper Lab — BW',               url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/05%20-%20Juniper%20Pokemon%20Lab%20-%20Pokemon%20Black%20%26%20White.mp3' },
-  { title:'Floaroma Town — BDSP',           url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/06%20-%20Floaroma%20Town%20%28Day%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
-  { title:'Jubilife City — BDSP',           url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/07%20-%20Jubilife%20City%20%28Day%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
-  { title:'Route 209 — DPP',               url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/08%20-%20Route%20209%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
-  { title:'Research Lab — DPP',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/09%20-%20Research%20Lab%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
-  { title:'Calm Conversation — Duel',       url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/10%20-%20Calm%20Conversation%20-%20Pokemon%20Duel.mp3' },
-  { title:'Meeting Luca — Duel',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/11%20-%20Meeting%20Luca%20-%20Pokemon%20Duel.mp3' },
-  { title:'Eterna City — DPP',             url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/12%20-%20Eterna%20City%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
-  { title:'Canalave City Night — BDSP',     url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/13%20-%20Canalave%20City%20%28Night%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
-  { title:'Personality Quiz — MD DX',       url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/14%20-%20Personality%20Quiz%20-%20Pokemon%20Mystery%20Dungeon%20Rescue%20Team%20DX.mp3' },
-  { title:'Escape Through Snow — MD DX',    url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/15%20-%20Escape%20Through%20the%20Snow%20-%20Pokemon%20Mystery%20Dungeon%20Rescue%20Team%20DX.mp3' },
-  { title:'Fallarbor Town — RSE',           url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/16%20-%20Fallarbor%20Town%20-%20Pokemon%20Ruby%20Sapphire%20Emerald.mp3' },
-  { title:'Rustboro City — RSE',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/17%20-%20Rustboro%20City%20-%20Pokemon%20Ruby%20Sapphire%20Emerald.mp3' },
-  { title:'Route 101 — RSE',               url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/18%20-%20Route%20101%20-%20Pokemon%20Ruby%20Sapphire%20Emerald.mp3' },
-  { title:'Route 201 Day — BDSP',          url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/19%20-%20Route%20201%20%28Day%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
-  { title:'The Sea — FRLG',               url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/20%20-%20The%20Sea%20-%20Pokemon%20FireRed%20%26%20LeafGreen.mp3' },
-  { title:'Pewter City — FRLG',           url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/21%20-%20Pewter%20City%20Theme%20-%20Pokemon%20FireRed%20%26%20LeafGreen.mp3' },
-  { title:'Humilau City Gym — BW2',        url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/22%20-%20Humilau%20City%20Gym%20-%20Pokemon%20Black%202%20%26%20White%202.mp3' },
-  { title:'Surrounded Sea — MD Sky',       url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/23%20-%20Surrounded%20Sea%20-%20Pokemon%20Mystery%20Dungeon%20Explorers%20of%20Sky.mp3' },
-  { title:'Defend Globe — MD Sky',         url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/24%20-%20Defend%20Globe%20-%20Pokemon%20Mystery%20Dungeon%20Explorers%20of%20Sky.mp3' },
-  { title:'Mt. Coronet — BDSP',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/25%20-%20Mt.%20Coronet%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
-  { title:'Lake — DPP',                   url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/26%20-%20Lake%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
-  { title:'Cherrygrove City — HGSS',       url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/27%20-%20Cherrygrove%20City%20-%20Pokemon%20HeartGold%20%26%20SoulSilver.mp3' },
-  { title:'Pewter City — HGSS',            url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/28%20-%20Pewter%20City%20-%20Pokemon%20HeartGold%20SoulSilver.mp3' },
-  { title:'Rustboro City — OR/AS',         url:'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/assets/music/29%20-%20Rustboro%20City%20-%20Pokemon%20Omega%20Ruby%20%26%20Alpha%20Sapphire.mp3' },
+  { title:'Littleroot Town — OR/AS',        url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/01%20-%20Littleroot%20Town%20-%20Pokemon%20Omega%20Ruby%20%26%20Alpha%20Sapphire.mp3' },
+  { title:'Aspertia City — BW2',            url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/02%20-%20Aspertia%20City%20-%20Pokemon%20Black%20White%202.mp3' },
+  { title:'File Select — MD DX',            url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/03%20-%20File%20Select%20-%20Pokemon%20Mystery%20Dungeon%20Rescue%20Team%20DX.mp3' },
+  { title:'Route 1 — BW',                   url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/04%20-%20Route%201%20-%20Pokemon%20Black%20and%20White.mp3' },
+  { title:'Juniper Lab — BW',               url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/05%20-%20Juniper%20Pokemon%20Lab%20-%20Pokemon%20Black%20%26%20White.mp3' },
+  { title:'Floaroma Town — BDSP',           url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/06%20-%20Floaroma%20Town%20%28Day%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
+  { title:'Jubilife City — BDSP',           url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/07%20-%20Jubilife%20City%20%28Day%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
+  { title:'Route 209 — DPP',               url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/08%20-%20Route%20209%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
+  { title:'Research Lab — DPP',            url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/09%20-%20Research%20Lab%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
+  { title:'Calm Conversation — Duel',       url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/10%20-%20Calm%20Conversation%20-%20Pokemon%20Duel.mp3' },
+  { title:'Meeting Luca — Duel',            url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/11%20-%20Meeting%20Luca%20-%20Pokemon%20Duel.mp3' },
+  { title:'Eterna City — DPP',             url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/12%20-%20Eterna%20City%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
+  { title:'Canalave City Night — BDSP',     url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/13%20-%20Canalave%20City%20%28Night%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
+  { title:'Personality Quiz — MD DX',       url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/14%20-%20Personality%20Quiz%20-%20Pokemon%20Mystery%20Dungeon%20Rescue%20Team%20DX.mp3' },
+  { title:'Escape Through Snow — MD DX',    url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/15%20-%20Escape%20Through%20the%20Snow%20-%20Pokemon%20Mystery%20Dungeon%20Rescue%20Team%20DX.mp3' },
+  { title:'Fallarbor Town — RSE',           url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/16%20-%20Fallarbor%20Town%20-%20Pokemon%20Ruby%20Sapphire%20Emerald.mp3' },
+  { title:'Rustboro City — RSE',            url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/17%20-%20Rustboro%20City%20-%20Pokemon%20Ruby%20Sapphire%20Emerald.mp3' },
+  { title:'Route 101 — RSE',               url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/18%20-%20Route%20101%20-%20Pokemon%20Ruby%20Sapphire%20Emerald.mp3' },
+  { title:'Route 201 Day — BDSP',          url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/19%20-%20Route%20201%20%28Day%29%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
+  { title:'The Sea — FRLG',               url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/20%20-%20The%20Sea%20-%20Pokemon%20FireRed%20%26%20LeafGreen.mp3' },
+  { title:'Pewter City — FRLG',           url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/21%20-%20Pewter%20City%20Theme%20-%20Pokemon%20FireRed%20%26%20LeafGreen.mp3' },
+  { title:'Humilau City Gym — BW2',        url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/22%20-%20Humilau%20City%20Gym%20-%20Pokemon%20Black%202%20%26%20White%202.mp3' },
+  { title:'Surrounded Sea — MD Sky',       url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/23%20-%20Surrounded%20Sea%20-%20Pokemon%20Mystery%20Dungeon%20Explorers%20of%20Sky.mp3' },
+  { title:'Defend Globe — MD Sky',         url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/24%20-%20Defend%20Globe%20-%20Pokemon%20Mystery%20Dungeon%20Explorers%20of%20Sky.mp3' },
+  { title:'Mt. Coronet — BDSP',            url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/25%20-%20Mt.%20Coronet%20-%20Pokemon%20Brilliant%20Diamond%20and%20Shining%20Pearl.mp3' },
+  { title:'Lake — DPP',                   url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/26%20-%20Lake%20-%20Pokemon%20Diamond%20Pearl%20Platinum.mp3' },
+  { title:'Cherrygrove City — HGSS',       url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/27%20-%20Cherrygrove%20City%20-%20Pokemon%20HeartGold%20%26%20SoulSilver.mp3' },
+  { title:'Pewter City — HGSS',            url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/28%20-%20Pewter%20City%20-%20Pokemon%20HeartGold%20SoulSilver.mp3' },
+  { title:'Rustboro City — OR/AS',         url:'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/music/29%20-%20Rustboro%20City%20-%20Pokemon%20Omega%20Ruby%20%26%20Alpha%20Sapphire.mp3' },
 ];
 
 let _rotomAudio  = null;
@@ -5882,7 +6072,22 @@ function hasItem(id){
   if(G._disabledItemId === id) return false;
   return G_items.some(it=>it.id===id);
 }
-function getHandSize(){ return 8 + (hasItem('great_ball')?1:0); }
+// ── Generic effect-based item helpers ──────────────────────────
+// SHOP_ITEMS is now 169 real Pokémon items, each carrying an `effect`
+// type (one of ~20 parameterized archetypes - see items generation notes)
+// instead of a bespoke one-off mechanic per item. These helpers let
+// scoring code ask "does the player own anything with effect X" without
+// caring which specific item(s) provide it, so owning e.g. two different
+// +hand-size items correctly stacks instead of needing two hardcoded checks.
+function ownedItemsWithEffect(t){
+  if(typeof G_items === 'undefined') return [];
+  return G_items.filter(it => it.effect === t && G._disabledItemId !== it.id);
+}
+function hasEffect(t){ return ownedItemsWithEffect(t).length > 0; }
+function sumEffectAmount(t){ return ownedItemsWithEffect(t).reduce((s,it)=>s+((it.effectArgs&&it.effectArgs.amount)||0), 0); }
+function multiplyEffectFactor(t){ return ownedItemsWithEffect(t).reduce((m,it)=>m*((it.effectArgs&&it.effectArgs.factor)||1), 1); }
+
+function getHandSize(){ return 8 + sumEffectAmount('hand_size'); }
 function getMaxPlay(){ return (typeof G_modifier!=='undefined' && G_modifier==='max_4_cards') ? 4 : 5; }
 
 // ── Trainer targets: Balatro blind curve ──────────────────────
@@ -6521,7 +6726,7 @@ function renderOwnedItemsPanel() {
     const chip = document.createElement('div');
     chip.className = 'owned-item-chip';
     chip.style.animationDelay = (i * 0.05) + 's';
-    chip.textContent = item.emoji + ' ' + item.name;
+    chip.innerHTML = `<img class="owned-item-img" src="${item.img}" alt="">`;
     attachPopover(chip, item.desc);
     list.appendChild(chip);
   });
@@ -6647,9 +6852,19 @@ const ACT_PAD_TOP = 80, ACT_PAD_BOTTOM = 220;
 function pickWeightedNodeType(){
   const roll = Math.random();
   if(roll < 0.42) return 'battle';
-  if(roll < 0.66) return 'cinnabar';   // fusion — clearly the most common non-battle stop
-  if(roll < 0.80) return 'route';
-  if(roll < 0.91) return 'shop';
+  if(roll < 0.64) return 'cinnabar';   // fusion — clearly the most common non-battle stop
+  if(roll < 0.76) return 'route';
+  if(roll < 0.92) return 'shop';
+  return 'daycare';
+}
+// Same distribution as pickWeightedNodeType, minus battle - used by
+// diversifyRow to replace a node that would otherwise leave a whole row
+// as battle-only.
+function pickWeightedNonBattleNodeType(){
+  const roll = Math.random();
+  if(roll < 0.38) return 'cinnabar';
+  if(roll < 0.58) return 'route';
+  if(roll < 0.86) return 'shop';
   return 'daycare';
 }
 
@@ -6670,6 +6885,20 @@ function generateFullRunMap(){
   };
   const rows = [];   // rows[i] = array of nodes sharing that row index
 
+  // pickWeightedNodeType rolls each node's type independently, so a whole
+  // row - even a single-node one (which does happen, e.g. right after a
+  // gym boss) - could end up 100% battle by chance, forcing the player
+  // into back-to-back battles with no shop/fuse/daycare/route in between.
+  // Called right after each row is fully populated: if every node in it
+  // is a battle, swaps one for a random non-battle type instead.
+  function diversifyRow(row, stage, filterFn){
+    const candidates = filterFn ? row.filter(filterFn) : row;
+    if(!candidates.length || !candidates.every(n => n.type === 'battle')) return;
+    const target = candidates[Math.floor(Math.random()*candidates.length)];
+    const idx = row.indexOf(target);
+    row[idx] = mkNode(pickWeightedNonBattleNodeType(), target.row, target.x, { stage });
+  }
+
   // ── Section 1: pre-Brock, full width ──
   const PRE_ROWS = 5;
   for(let r=0; r<PRE_ROWS; r++){
@@ -6681,6 +6910,7 @@ function generateFullRunMap(){
       const x = Math.max(6, Math.min(94, baseX + (Math.random()-0.5)*8));
       row.push(mkNode(type, r, x, { stage: 'pre-brock' }));
     }
+    if(r>0) diversifyRow(row, 'pre-brock');
     rows.push(row);
   }
   let rIdx = PRE_ROWS;
@@ -6719,6 +6949,7 @@ function generateFullRunMap(){
           const x = Math.max(branch.xMin, Math.min(branch.xMax, baseX+jitter));
           row.push(mkNode(type, bRow+r, x, { stage: stageTag }));
         }
+        diversifyRow(row, stageTag, n => n.x >= branch.xMin && n.x <= branch.xMax);
       }
       const gymRow = bRow + STAGE_ROWS;
       const gymNode = mkNode('boss', gymRow, (branch.xMin+branch.xMax)/2, { trainer: getTrainerByName(gymName) });
@@ -6729,6 +6960,17 @@ function generateFullRunMap(){
     rIdx = Math.max(rIdx, bRow);
   }
   // ── Section 3: converge — both branches' final gym feeds Giovanni ──
+  // A buffer row sits between the branches' last gyms and Giovanni -
+  // without it, "gym leader -> gym leader" was an unavoidable structural
+  // edge that the later alternation repair pass couldn't fix (Giovanni
+  // and the branch gyms are all fixed story beats, neither side of that
+  // edge can be retyped away). One non-battle stop per branch side keeps
+  // the existing left/right lane geometry intact.
+  const preGiovanniRow = branchDefs.map((branch, i) =>
+    mkNode(pickWeightedNonBattleNodeType(), rIdx, (branch.xMin+branch.xMax)/2, { stage: 'giovanni-approach' })
+  );
+  rows.push(preGiovanniRow);
+  rIdx++;
   const giovanniNode = mkNode('boss', rIdx, 50, { trainer: getTrainerByName('Giovanni') });
   rows.push([giovanniNode]);
 
@@ -6800,8 +7042,9 @@ function generateFullRunMap(){
   // within each branch, keep connections scoped to the SAME half so paths
   // never accidentally cross into the other branch's lane
   for(let r=PRE_ROWS+1; r<rIdx-1; r++) wireRowToRow(rows[r], rows[r+1], true);
-  // both branches' last gym -> Giovanni
-  branchLastGymIds.forEach(id => addEdge(id, giovanniNode.id));
+  // both branches' last gym -> buffer row (handled by the sameHalfOnly
+  // loop above, which now runs one row further to reach it) -> Giovanni
+  preGiovanniRow.forEach(n => addEdge(n.id, giovanniNode.id));
 
   // Reachability safety net — never leave a node with no incoming edge.
   // Respects the same out-degree cap and same-half scoping as everything else.
@@ -6822,6 +7065,113 @@ function generateFullRunMap(){
       const pick = withRoom || sorted[0];
       if(pick) addEdge(pick.id, node.id);
     });
+  }
+
+  // Final guarantee: strict alternation. No edge may ever connect two
+  // same-category nodes - "battle-like" (regular battle or boss) must
+  // always be followed by a non-battle screen (shop/cinnabar/route/
+  // daycare) and vice versa, so a run always reads battle > screen >
+  // battle > screen, never two of the same category back to back in
+  // either direction - INCLUDING a regular battle leading straight into
+  // a gym boss, which is just as much "two battles in a row" as two
+  // regular battles. The row-level diversifyRow above helps but isn't
+  // sufficient alone, since even a row with a mix of categories can
+  // still have a specific edge linking same-category nodes while their
+  // opposite-category siblings get wired to different sources entirely.
+  // Boss nodes are fixed story beats that must never be retyped - so
+  // when a boss is the TARGET of a violating edge, the fix instead
+  // retypes the SOURCE feeding into it. Repeatedly scanning converges
+  // quickly (every fix can only reduce same-category adjacencies, never
+  // add one) and fixes every edge into/out of an affected node at once,
+  // however many there are.
+  {
+    const battleLike = n => n.type === 'battle' || n.type === 'boss';
+    const byId = {};
+    rows.forEach(row => row.forEach(n => { byId[n.id] = n; }));
+    // Every node with an edge directly into a boss. Node identities and
+    // edges are both already final by this point (only .type gets
+    // mutated below, never the graph shape), so this set is stable for
+    // the rest of the function - it's the permanent list of nodes the
+    // general loop must never assign 'battle' to, since a battle source
+    // feeding a boss is exactly the violation this whole pass exists to
+    // prevent, however that battle type came about.
+    const feedsABoss = new Set();
+    edges.forEach(([aId, bId]) => {
+      const b = byId[bId];
+      if(b && b.type === 'boss') feedsABoss.add(aId);
+    });
+    const retype = (node, newType, stage) => {
+      node.type = newType;
+      delete node.trainer;
+      if(newType === 'battle'){
+        const name = ACT_FILLER_POOL[Math.floor(Math.random()*ACT_FILLER_POOL.length)];
+        node.trainer = getTrainerByName(name) || TRAINERS.find(t=>t.tier==='normal');
+      }
+      if(newType === 'route'){
+        const stagePool = KANTO_ROUTES.filter(r => r.stage === stage);
+        const pool = stagePool.length ? stagePool : KANTO_ROUTES;
+        node.routeData = pool[Math.floor(Math.random()*pool.length)];
+      }
+    };
+    // Deterministic pre-pass: fix every battle node that feeds directly
+    // into a boss, in one guaranteed sweep, BEFORE the general iterative
+    // pass below. Doing this reactively inside the same loop as the
+    // general battle/non-battle alternation rule left some cases
+    // unresolved depending on which edges happened to get processed in
+    // which order/pass - a node can have several outgoing edges, and
+    // fixing it for one boss-bound edge needs to happen deterministically
+    // rather than hoping iteration order sorts it out. Every node fixed
+    // here is guarded so the general pass below can never revert it.
+    edges.forEach(([aId, bId]) => {
+      const a = byId[aId], b = byId[bId];
+      if(!a || !b || b.type !== 'boss' || a.type !== 'battle') return;
+      retype(a, pickWeightedNonBattleNodeType(), a.stage);
+      a._bossGuard = true;
+    });
+    for(let pass = 0; pass < 12; pass++){
+      let changed = false;
+      edges.forEach(([aId, bId]) => {
+        const a = byId[aId], b = byId[bId];
+        if(!a || !b || !battleLike(a) || !battleLike(b)) {
+          // Never assigns 'battle' to a node that itself feeds a boss -
+          // that would just reintroduce the exact violation the pre-pass
+          // above fixed. In the rare case the target can't safely take
+          // the fix, this leaves that one edge as a residual screen-chain
+          // rather than risk creating a battle-chain by touching the
+          // source instead (tried that - converting the source without
+          // checking ITS other edges just moved the problem elsewhere).
+          if(a && b && !battleLike(a) && !battleLike(b) && !b._bossGuard && !feedsABoss.has(bId)){
+            retype(b, 'battle', b.stage);
+            changed = true;
+          }
+          return;
+        }
+        // both battle-like: fix whichever side CAN be retyped. Prefer
+        // fixing the target (b) since that's the common case (regular
+        // battle -> regular battle); the source-side boss case was
+        // already fully handled by the deterministic pre-pass above, so
+        // by this point b should never actually be a boss here - this
+        // branch is just the final safety net.
+        if(b.type !== 'boss'){
+          retype(b, pickWeightedNonBattleNodeType(), b.stage);
+          changed = true;
+        } else if(a.type !== 'boss'){
+          // Marking this node _bossGuard permanently protects it from
+          // the non-battle/non-battle rule above ever flipping it back
+          // to battle. Without this, a node sitting between "needs to be
+          // non-battle so it doesn't feed battle into this boss" and
+          // "needs to be battle so it doesn't sit non-battle next to
+          // ITS OWN non-battle predecessor" would just oscillate forever
+          // between the two fixes, satisfying neither on any given pass.
+          // Protecting the boss side always wins, since a boss can never
+          // be retyped at all while a battle can.
+          retype(a, pickWeightedNonBattleNodeType(), a.stage);
+          a._bossGuard = true;
+          changed = true;
+        }
+      });
+      if(!changed) break;
+    }
   }
 
   // Real pixel Y for every node — row 0 at the bottom, Giovanni at the top.
@@ -6944,13 +7294,14 @@ function renderActMap() {
   if(info) info.textContent = anyAvailable ? 'Choose your next stop' : '';
 }
 
-function selectActNode(node) {
+async function selectActNode(node) {
   if(!isNodeAvailable(node)) return;
   if(typeof SFX!=='undefined') SFX.uiClick();
   G._actMap.cursorId = node.id;
   if(!G._actMap.visitedPath) G._actMap.visitedPath = [];
   G._actMap.visitedPath.push(node.id);
   document.getElementById('act-map-screen').style.display = 'none';
+  if(node.type === 'boss') await playGymTransition(node.trainer);
   if(node.type === 'battle' || node.type === 'boss'){
     BATTLE_SEQUENCE.push(node.trainer);
     G.trainerIdx = BATTLE_SEQUENCE.length - 1;
@@ -7122,7 +7473,7 @@ function renderOverworldScene() {
   const pimg = document.createElement('img');
   pimg.id = 'ow-player-img';
   const starterDex = G._heroStarterDex || 1;
-  pimg.src = `https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/sprites/${starterDex}.png`;
+  pimg.src = `https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/${starterDex}.png`;
   pimg.draggable = false;
   player.appendChild(pimg);
   scene.appendChild(player);
@@ -7823,7 +8174,7 @@ function renderDeckViewer() {
     const slot = document.createElement('div');
     slot.className = 'dv-card-slot';
     slot.style.setProperty('--sd', (i*0.02)+'s');
-    const cv = makeCardVisual(card, 'width:100%;height:100%;', {hideTypes:true});
+    const cv = makeCardVisual(card, 'width:100%;height:100%;');
     cv.style.cursor = 'default';
     // hover already wired inside makeCardVisual
     slot.appendChild(cv);
@@ -8402,9 +8753,38 @@ async function advanceTrainer() {
   setTimeout(openInterlude, 800);
 }
 
+// ── Battle backgrounds: each trainer class gets a thematically-fitting
+// background + base (the platform they stand on) from assets/battlebacks.
+// Only using COMPLETE bg+base1 pairs here (many entries in that folder
+// are base-only, with no matching _bg, or vice versa) so every trainer
+// reliably gets both layers.
+const BATTLEBACK_BASE = 'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/battlebacks/';
+const TRAINER_BATTLEBACK = {
+  // normal trainers
+  'Youngster':'field', 'Lass':'field', 'Bug Catcher':'forest', 'Camper':'forest',
+  'Picnicker':'field', 'Fisherman':'water', 'Sailor':'water', 'Hiker':'rocky',
+  'Bird Keeper':'field', 'Engineer':'indoor1', 'Gambler':'indoor2', 'Super Nerd':'indoor1',
+  'Scientist':'indoor1', 'Burglar':'city', 'Juggler':'indoor3', 'Channeler':'cave2',
+  'Pokémaniac':'cave3', 'Black Belt':'indoor2', 'Tamer':'forest', 'Swimmer':'water',
+  'Cue Ball':'city', 'Rocket Grunt':'city',
+  // elite trainers
+  'Ace Trainer':'field', 'Cooltrainer':'field', 'Veteran':'champion1',
+  'Elite Scientist':'indoor2', 'Elite Psychic':'distortion', 'Elite Black Belt':'indoor3',
+  'Elite Breeder':'forest', 'Elite Executive':'city',
+  // gym leaders
+  'Brock':'cave1', 'Misty':'water', 'Lt. Surge':'indoor1', 'Erika':'forest',
+  'Koga':'indoor3', 'Sabrina':'indoor2', 'Blaine':'rocky', 'Giovanni':'city',
+};
+
 function setTrainerPortrait(trainer) {
   const imgWrap = document.getElementById('rp-portrait-img-wrap');
   const tcImg   = document.getElementById('tc-opp-img');
+  const bgImg   = document.getElementById('rp-bg-img');
+  const baseImg = document.getElementById('rp-base-img');
+
+  const theme = TRAINER_BATTLEBACK[trainer.name] || 'field';
+  if(bgImg)   bgImg.src   = BATTLEBACK_BASE + theme + '_bg.png';
+  if(baseImg) baseImg.src = BATTLEBACK_BASE + theme + '_base1.png';
 
   // Hide the image box entirely if no image — never show an empty square
   if(imgWrap) imgWrap.style.display = trainer.img ? '' : 'none';
@@ -9287,7 +9667,7 @@ function normPokeName(name) {
 function fusionSpriteUrls(nameA, nameB) {
   const a = normPokeName(nameA);
   const b = normPokeName(nameB);
-  const BASE = 'https://raw.githubusercontent.com/ethanlam1234/pokemonbalatro/main/sprites/';
+  const BASE = 'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/';
   return [
     BASE + a + '/' + a + '_x_' + b + '.png',
     BASE + b + '/' + b + '_x_' + a + '.png',
@@ -9335,7 +9715,7 @@ function mkBasicCard(dexNum) {
   const pk = KANTO_BY_DEX[dexNum];
   if(!pk) return null;
   markPokedexSeen(dexNum);
-  const sprite = `https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/sprites/${dexNum}.png`;
+  const sprite = `https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/${dexNum}.png`;
   const cost = Math.floor(Math.random()*4)+1;
   return {
     name: pk.name,
@@ -9395,14 +9775,26 @@ const STARTER_DEXES = [1, 4, 7];   // Bulbasaur, Charmander, Squirtle
 function buildStarterEvolutionDeck(starterDex) {
   // Guarantees the chosen starter's full 3-stage line is in the deck —
   // the hero ability is gated on having that line in hand, so it must
-  // always be reachable. Fills out to 15 with 4 OTHER random evolution
-  // lines — explicitly excluding every starter line (including the other
-  // two), so each deck has exactly ONE starter chain: its own.
+  // always be reachable. Beyond that, the deck draws from THREE evolution
+  // tiers so every kind of Pokémon actually shows up, not just 3-stage
+  // ones: 3 families x 3 stages (9 cards, including the starter's own
+  // line) + 2 families x 2 stages (4 cards) + 2 single-stage/no-evolution
+  // Pokémon (2 cards) = 15 cards total.
   const sh = arr => { for(let i=arr.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
-  const fams = EVO_FAMILIES.filter(f => f.length >= 3 && f.slice(0,3).every(d => KANTO_BY_DEX[d]));
-  const starterFam = fams.find(f => f.includes(starterDex)) || fams[0];
-  const others = sh(fams.filter(f => f !== starterFam && !STARTER_DEXES.some(sd => f.includes(sd)))).slice(0, 4);
-  const dexes = [starterFam, ...others].flatMap(f => f.slice(0,3)).sort((a,b)=>a-b);
+  const kantoFam = f => f.every(d => KANTO_BY_DEX[d]);
+  const fams3 = EVO_FAMILIES.filter(f => f.length === 3 && kantoFam(f));
+  const fams2 = EVO_FAMILIES.filter(f => f.length === 2 && kantoFam(f));
+  const fams1 = EVO_FAMILIES.filter(f => f.length === 1 && kantoFam(f));
+
+  const starterFam = fams3.find(f => f.includes(starterDex)) || fams3[0];
+  // explicitly excludes every starter line (including the other two), so
+  // each deck has exactly ONE starter chain: its own.
+  const others3 = sh(fams3.filter(f => f !== starterFam && !STARTER_DEXES.some(sd => f.includes(sd)))).slice(0, 2);
+  const chosen3 = [starterFam, ...others3];               // 3 families x 3 stages = 9 cards
+  const chosen2 = sh([...fams2]).slice(0, 2);              // 2 families x 2 stages = 4 cards
+  const chosen1 = sh([...fams1]).slice(0, 2);               // 2 families x 1 stage  = 2 cards
+
+  const dexes = [...chosen3, ...chosen2, ...chosen1].flatMap(f => f).sort((a,b)=>a-b);
   const deck = [];
   dexes.forEach(d => { const c = mkBasicCard(d); if(c) deck.push(c); });
   return deck;
@@ -9477,7 +9869,7 @@ function preloadAllBaseSprites() {
   const urls = [];
   for(let d=1; d<=151; d++){
     const p = KANTO_BY_DEX[d];
-    if(p) urls.push(`https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/sprites/${d}.png`);
+    if(p) urls.push(`https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/${d}.png`);
   }
   preloadSprites(urls);
 }
@@ -9574,7 +9966,7 @@ function openDeckDetail(deckId, pileEl) {
     const slot = document.createElement('div');
     slot.className='dds-card-slot';
     slot.style.setProperty('--sd', (i*0.03)+'s');
-    const cv = makeCardVisual(card, 'width:100%;height:100%;', {hideTypes:true});
+    const cv = makeCardVisual(card, 'width:100%;height:100%;');
     cv.style.cursor='default';
     slot.appendChild(cv);
     cardsWrap.appendChild(slot);
@@ -9618,7 +10010,46 @@ function beginBattleWithDeck(deckId){
   BATTLE_SEQUENCE = [];
   G._gameStarted = false;
   G._actMap = generateFullRunMap();
+  preloadGymTransitionAssets();
+  preloadTrainerPortraitAssets();
+  preloadSprites([SHOP_CHOICE_FRAME_URL]);
   autoAdvanceRun();
+}
+
+// The gym transition banner was visibly slow to appear the first time it
+// played - it was fetching the bar+portrait images from the network at
+// the exact moment the transition needed to show them. Warming the
+// browser cache for all 8 leaders here, right at the start of a run,
+// gives it the whole rest of the run (several regular battles at
+// minimum) to finish fetching in the background before any of them are
+// actually needed.
+function preloadGymTransitionAssets(){
+  const urls = [];
+  Object.values(GYM_TRANSITION_FILE_NAME).forEach(fileName => {
+    urls.push(`${GYM_TRANSITION_BASE}vsBar_${fileName.toUpperCase()}.png`);
+    urls.push(`${GYM_TRANSITION_BASE}hgss_vs_LEADER_${fileName}.png`);
+  });
+  preloadSprites(urls);
+}
+
+// Same problem, different assets: the trainer portrait / battleback
+// background / battleback base (set by setTrainerPortrait every time a
+// new battle starts) were being fetched from the network at the exact
+// moment each battle needed them, so they visibly popped in instead of
+// just being there. Every trainer's portrait and every distinct
+// battleback theme's bg+base pair is small enough in total to warm the
+// whole set right at the start of a run, the same as the gym transition
+// assets above - by the time any of these are actually needed, they've
+// had the entire run so far to finish loading in the background.
+function preloadTrainerPortraitAssets(){
+  const urls = [];
+  TRAINERS.forEach(t => { if(t.img) urls.push(t.img); });
+  const themes = new Set(Object.values(TRAINER_BATTLEBACK));
+  themes.forEach(theme => {
+    urls.push(`${BATTLEBACK_BASE}${theme}_bg.png`);
+    urls.push(`${BATTLEBACK_BASE}${theme}_base1.png`);
+  });
+  preloadSprites(urls);
 }
 
 // beginBattleWithDeck and other functions defined above
@@ -9646,7 +10077,7 @@ function loadAllAssetsThenStart() {
   const urls = [];
   for(let d=1; d<=151; d++){
     const p = KANTO_BY_DEX[d];
-    if(p) urls.push(`https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/sprites/${d}.png`);
+    if(p) urls.push(`https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/${d}.png`);
   }
   const total = urls.length || 1;
   let done = 0;
@@ -9838,7 +10269,7 @@ let shopCards = [];
 let _shopActiveTab = 'All';
 
 function openShop() {
-  if(hasItem('mystery_egg')){
+  if(hasEffect('random_egg')){
     const _pool=[...FINAL_EVO_DEX].filter(d=>d<=151);
     const _d=_pool[Math.floor(Math.random()*_pool.length)];
     const _c=mkBasicCard(_d);
@@ -9882,18 +10313,19 @@ function renderShop() {
     if(owned) el.classList.add('purchased');
     else if(!canAfford) el.classList.add('cant-afford');
     el.innerHTML = `
-      <span class="shop-item-tag">${item.category}</span>
-      <span class="shop-item-emoji">${item.emoji}</span>
-      <span class="shop-item-name">${item.name}</span>
-      <span class="shop-item-desc">${item.desc}</span>
-      <span class="shop-item-cost ${canAfford?'affordable':'expensive'}">$${item.cost}</span>
+      <div class="shop-item-frame">
+        <img class="shop-item-frame-bg" src="${SHOP_CHOICE_FRAME_URL}" alt="">
+        <img class="shop-item-icon" src="${item.img}" alt="">
+      </div>
+      <div class="shop-item-name">${item.name}</div>
+      <div class="shop-item-desc">${item.desc}</div>
+      <div class="shop-item-cost ${canAfford?'affordable':'expensive'}">$${item.cost}</div>
     `;
     if(!owned && canAfford) {
       el.addEventListener('click', () => buyItem(item, el));
       el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
       el.addEventListener('touchend', (e) => { e.preventDefault(); buyItem(item, el); }, {passive:false});
     }
-    attachPopover(el, item.desc);
     grid.appendChild(el);
   });
   // Owned items (in-shop display)
@@ -9973,43 +10405,186 @@ function shopSkip() {
 
 
 // ═══ ITEM SHOP SYSTEM ════════════════════════════════════════════
+const ITEM_IMG_BASE = 'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/items/';
+// The literal space in the filename needs URL-encoding to fetch correctly.
+const SHOP_CHOICE_FRAME_URL = ITEM_IMG_BASE + encodeURIComponent('choice 1.png');
 const SHOP_ITEMS = [
   // ── Melding ──
-  { id:'lucky_egg',    name:"Lucky Egg",    emoji:'🥚', cost:7, category:'Melding',   desc:'Melds of 4+ cards: +2 Mult.' },
-  { id:'exp_share',    name:"Exp. Share",   emoji:'📡', cost:6, category:'Melding',   desc:'Extending a meld deals full damage (no penalty).' },
-  { id:'amulet_coin',  name:"Amulet Coin",  emoji:'🪙', cost:6, category:'Melding',   desc:'+$1 every time you lay a meld (max $3 per battle).' },
-  { id:'choice_band',  name:"Choice Band",  emoji:'🎀', cost:8, category:'Melding',   desc:'Your first meld each battle deals ×2.' },
-  { id:'ditto',        name:"Ditto",         emoji:'🟣', cost:8, category:'Melding',   desc:'Species Sets: +2 Mult.' },
+  { id:'BERRYJUICE', name:"Berry Juice", img:ITEM_IMG_BASE+'BERRYJUICE.png', cost:4, category:'Melding', effect:'flat_chips', effectArgs:{amount:12}, desc:"+12 value on every meld." },
+  { id:'ENERGYPOWDER', name:"Energy Powder", img:ITEM_IMG_BASE+'ENERGYPOWDER.png', cost:4, category:'Melding', effect:'flat_chips', effectArgs:{amount:12}, desc:"+12 value on every meld." },
+  { id:'ENERGYROOT', name:"Energy Root", img:ITEM_IMG_BASE+'ENERGYROOT.png', cost:5, category:'Melding', effect:'flat_chips', effectArgs:{amount:16}, desc:"+16 value on every meld." },
+  { id:'FRESHWATER', name:"Fresh Water", img:ITEM_IMG_BASE+'FRESHWATER.png', cost:3, category:'Melding', effect:'flat_chips', effectArgs:{amount:10}, desc:"+10 value on every meld." },
+  { id:'LEMONADE', name:"Lemonade", img:ITEM_IMG_BASE+'LEMONADE.png', cost:4, category:'Melding', effect:'flat_chips', effectArgs:{amount:12}, desc:"+12 value on every meld." },
+  { id:'MOOMOOMILK', name:"MooMoo Milk", img:ITEM_IMG_BASE+'MOOMOOMILK.png', cost:5, category:'Melding', effect:'flat_chips', effectArgs:{amount:15}, desc:"+15 value on every meld." },
+  { id:'SODAPOP', name:"Soda Pop", img:ITEM_IMG_BASE+'SODAPOP.png', cost:4, category:'Melding', effect:'flat_chips', effectArgs:{amount:12}, desc:"+12 value on every meld." },
+  { id:'BURNHEAL', name:"Burn Heal", img:ITEM_IMG_BASE+'BURNHEAL.png', cost:3, category:'Melding', effect:'flat_chips', effectArgs:{amount:10}, desc:"+10 value on every meld." },
+  { id:'OLDGATEAU', name:"Old Gateau", img:ITEM_IMG_BASE+'OLDGATEAU.png', cost:6, category:'Melding', effect:'flat_mult', effectArgs:{amount:1}, desc:"+1 Mult on every meld." },
+  { id:'LAVACOOKIE', name:"Lava Cookie", img:ITEM_IMG_BASE+'LAVACOOKIE.png', cost:6, category:'Melding', effect:'flat_mult', effectArgs:{amount:1}, desc:"+1 Mult on every meld." },
+  { id:'CASTELIACONE', name:"Casteliacone", img:ITEM_IMG_BASE+'CASTELIACONE.png', cost:6, category:'Melding', effect:'flat_mult', effectArgs:{amount:1}, desc:"+1 Mult on every meld." },
+  { id:'RAGECANDYBAR', name:"Rage Candy Bar", img:ITEM_IMG_BASE+'RAGECANDYBAR.png', cost:7, category:'Melding', effect:'flat_mult', effectArgs:{amount:1}, desc:"+1 Mult on every meld, and Fighting cards +15 value." },
+  { id:'EVERSTONE', name:"Everstone", img:ITEM_IMG_BASE+'EVERSTONE.png', cost:8, category:'Melding', effect:'first_meld_xmult', effectArgs:{factor:2}, desc:"Your first meld each battle deals \u00d72." },
+  { id:'LIGHTCLAY', name:"Light Clay", img:ITEM_IMG_BASE+'LIGHTCLAY.png', cost:6, category:'Melding', effect:'size_mult', effectArgs:{minSize:4, amount:2}, desc:"Melds of 4+ cards: +2 Mult." },
+  { id:'EJECTBUTTON', name:"Eject Button", img:ITEM_IMG_BASE+'EJECTBUTTON.png', cost:6, category:'Melding', effect:'extend_full_damage', effectArgs:{}, desc:"Extending a meld deals full damage (no penalty)." },
+  { id:'SHEDSHELL', name:"Shed Shell", img:ITEM_IMG_BASE+'SHEDSHELL.png', cost:6, category:'Melding', effect:'extend_full_damage', effectArgs:{}, desc:"Extending a meld deals full damage (no penalty)." },
+  { id:'MACHOBRACE', name:"Macho Brace", img:ITEM_IMG_BASE+'MACHOBRACE.png', cost:6, category:'Melding', effect:'size_mult', effectArgs:{minSize:4, amount:2}, desc:"Melds of 4+ cards: +2 Mult." },
+  { id:'LAGGINGTAIL', name:"Lagging Tail", img:ITEM_IMG_BASE+'LAGGINGTAIL.png', cost:6, category:'Melding', effect:'extend_full_damage', effectArgs:{}, desc:"Extending a meld deals full damage (no penalty)." },
+  { id:'DEEPSEATOOTH', name:"Deep Sea Tooth", img:ITEM_IMG_BASE+'DEEPSEATOOTH.png', cost:7, category:'Melding', effect:'flat_mult', effectArgs:{amount:1}, desc:"+1 Mult on every meld." },
+  { id:'AMULETCOIN', name:"Amulet Coin", img:ITEM_IMG_BASE+'AMULETCOIN.png', cost:6, category:'Melding', effect:'gold_per_meld', effectArgs:{amount:1, cap:3}, desc:"+$1 every time you lay a meld (max $3 per battle)." },
+  { id:'BIGNUGGET', name:"Big Nugget", img:ITEM_IMG_BASE+'BIGNUGGET.png', cost:7, category:'Melding', effect:'gold_per_meld', effectArgs:{amount:1, cap:4}, desc:"+$1 every time you lay a meld (max $4 per battle)." },
+  { id:'BIGPEARL', name:"Big Pearl", img:ITEM_IMG_BASE+'BIGPEARL.png', cost:6, category:'Melding', effect:'gold_per_meld', effectArgs:{amount:1, cap:3}, desc:"+$1 every time you lay a meld (max $3 per battle)." },
+  { id:'COINCASE', name:"Coin Case", img:ITEM_IMG_BASE+'COINCASE.png', cost:6, category:'Melding', effect:'gold_per_meld', effectArgs:{amount:1, cap:3}, desc:"+$1 every time you lay a meld (max $3 per battle)." },
+  { id:'PEARLSTRING', name:"Pearl String", img:ITEM_IMG_BASE+'PEARLSTRING.png', cost:7, category:'Melding', effect:'gold_per_meld', effectArgs:{amount:1, cap:4}, desc:"+$1 every time you lay a meld (max $4 per battle)." },
+  { id:'STARPIECE', name:"Star Piece", img:ITEM_IMG_BASE+'STARPIECE.png', cost:7, category:'Melding', effect:'gold_per_meld', effectArgs:{amount:1, cap:4}, desc:"+$1 every time you lay a meld (max $4 per battle)." },
+  { id:'LUCKYEGG', name:"Lucky Egg", img:ITEM_IMG_BASE+'LUCKYEGG.png', cost:7, category:'Melding', effect:'size_mult', effectArgs:{minSize:4, amount:2}, desc:"Melds of 4+ cards: +2 Mult." },
+  { id:'ESCAPEROPE', name:"Escape Rope", img:ITEM_IMG_BASE+'ESCAPEROPE.png', cost:6, category:'Melding', effect:'extend_full_damage', effectArgs:{}, desc:"Extending a meld deals full damage (no penalty)." },
+  { id:'WISEGLASSES', name:"Wise Glasses", img:ITEM_IMG_BASE+'WISEGLASSES.png', cost:6, category:'Melding', effect:'flat_mult', effectArgs:{amount:1}, desc:"+1 Mult on every meld." },
+  { id:'POWERBRACER', name:"Power Bracer", img:ITEM_IMG_BASE+'POWERBRACER.png', cost:6, category:'Melding', effect:'size_mult', effectArgs:{minSize:3, amount:1}, desc:"Melds of 3+ cards: +1 Mult." },
+  { id:'POWERLENS', name:"Power Lens", img:ITEM_IMG_BASE+'POWERLENS.png', cost:6, category:'Melding', effect:'size_mult', effectArgs:{minSize:3, amount:1}, desc:"Melds of 3+ cards: +1 Mult." },
+  { id:'BALMMUSHROOM', name:"Balm Mushroom", img:ITEM_IMG_BASE+'BALMMUSHROOM.png', cost:8, category:'Melding', effect:'flat_chips', effectArgs:{amount:30}, desc:"+30 value on every meld." },
+  { id:'BIGMUSHROOM', name:"Big Mushroom", img:ITEM_IMG_BASE+'BIGMUSHROOM.png', cost:6, category:'Melding', effect:'flat_chips', effectArgs:{amount:18}, desc:"+18 value on every meld." },
+  { id:'TINYMUSHROOM', name:"Tiny Mushroom", img:ITEM_IMG_BASE+'TINYMUSHROOM.png', cost:3, category:'Melding', effect:'flat_chips', effectArgs:{amount:8}, desc:"+8 value on every meld." },
+  { id:'LUCKINCENSE', name:"Luck Incense", img:ITEM_IMG_BASE+'LUCKINCENSE.png', cost:7, category:'Melding', effect:'gold_per_meld', effectArgs:{amount:1, cap:3}, desc:"+$1 every time you lay a meld (max $3 per battle)." },
+  { id:'SMOKEBALL', name:"Smoke Ball", img:ITEM_IMG_BASE+'SMOKEBALL.png', cost:6, category:'Melding', effect:'extend_full_damage', effectArgs:{}, desc:"Extending a meld deals full damage (no penalty)." },
+  { id:'SLOWPOKETAIL', name:"Slowpoke Tail", img:ITEM_IMG_BASE+'SLOWPOKETAIL.png', cost:5, category:'Melding', effect:'flat_chips', effectArgs:{amount:16}, desc:"+16 value on every meld." },
+  { id:'SWEETHEART', name:"Sweet Heart", img:ITEM_IMG_BASE+'SWEETHEART.png', cost:5, category:'Melding', effect:'flat_chips', effectArgs:{amount:16}, desc:"+16 value on every meld." },
+  { id:'PROTEIN', name:"Protein", img:ITEM_IMG_BASE+'PROTEIN.png', cost:5, category:'Melding', effect:'flat_chips', effectArgs:{amount:16}, desc:"+16 value on every meld." },
   // ── Type ──
-  { id:'charcoal',     name:"Charcoal",     emoji:'🔥', cost:5, category:'Type',      desc:'Fire cards: +20 value in melds.' },
-  { id:'mystic_water', name:"Mystic Water", emoji:'💧', cost:5, category:'Type',      desc:'Water cards: +20 value in melds.' },
-  { id:'miracle_seed', name:"Miracle Seed", emoji:'🌱', cost:5, category:'Type',      desc:'Grass cards: +20 value in melds.' },
-  { id:'magnet',       name:"Magnet",        emoji:'🧲', cost:5, category:'Type',      desc:'Electric cards: +20 value in melds.' },
-  { id:'type_booster', name:"Type Booster", emoji:'⚡', cost:7, category:'Type',      desc:'Type Sets: +1 Mult.' },
+  { id:'CHARCOAL', name:"Charcoal", img:ITEM_IMG_BASE+'CHARCOAL.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Fire", amount:20}, desc:"Fire cards: +20 value in melds." },
+  { id:'MIRACLESEED', name:"Miracle Seed", img:ITEM_IMG_BASE+'MIRACLESEED.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Grass", amount:20}, desc:"Grass cards: +20 value in melds." },
+  { id:'MAGNET', name:"Magnet", img:ITEM_IMG_BASE+'MAGNET.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Electric", amount:20}, desc:"Electric cards: +20 value in melds." },
+  { id:'NEVERMELTICE', name:"Never-Melt Ice", img:ITEM_IMG_BASE+'NEVERMELTICE.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Ice", amount:20}, desc:"Ice cards: +20 value in melds." },
+  { id:'POISONBARB', name:"Poison Barb", img:ITEM_IMG_BASE+'POISONBARB.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Poison", amount:20}, desc:"Poison cards: +20 value in melds." },
+  { id:'SOFTSAND', name:"Soft Sand", img:ITEM_IMG_BASE+'SOFTSAND.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Ground", amount:20}, desc:"Ground cards: +20 value in melds." },
+  { id:'SHARPBEAK', name:"Sharp Beak", img:ITEM_IMG_BASE+'SHARPBEAK.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Flying", amount:20}, desc:"Flying cards: +20 value in melds." },
+  { id:'TWISTEDSPOON', name:"Twisted Spoon", img:ITEM_IMG_BASE+'TWISTEDSPOON.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Psychic", amount:20}, desc:"Psychic cards: +20 value in melds." },
+  { id:'HARDSTONE', name:"Hard Stone", img:ITEM_IMG_BASE+'HARDSTONE.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Rock", amount:20}, desc:"Rock cards: +20 value in melds." },
+  { id:'DRAGONFANG', name:"Dragon Fang", img:ITEM_IMG_BASE+'DRAGONFANG.png', cost:6, category:'Type', effect:'type_chips', effectArgs:{type:"Dragon", amount:22}, desc:"Dragon cards: +22 value in melds." },
+  { id:'DRAGONSCALE', name:"Dragon Scale", img:ITEM_IMG_BASE+'DRAGONSCALE.png', cost:6, category:'Type', effect:'type_chips', effectArgs:{type:"Dragon", amount:22}, desc:"Dragon cards: +22 value in melds." },
+  { id:'METALCOAT', name:"Metal Coat", img:ITEM_IMG_BASE+'METALCOAT.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Steel", amount:20}, desc:"Steel cards: +20 value in melds." },
+  { id:'SPELLTAG', name:"Spell Tag", img:ITEM_IMG_BASE+'SPELLTAG.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Ghost", amount:20}, desc:"Ghost cards: +20 value in melds." },
+  { id:'BLACKSLUDGE', name:"Black Sludge", img:ITEM_IMG_BASE+'BLACKSLUDGE.png', cost:6, category:'Type', effect:'type_chips', effectArgs:{type:"Poison", amount:24}, desc:"Poison cards: +24 value in melds." },
+  { id:'WIDELENS', name:"Wide Lens", img:ITEM_IMG_BASE+'WIDELENS.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Normal", amount:20}, desc:"Normal cards: +20 value in melds." },
+  { id:'ROCKYHELMET', name:"Rocky Helmet", img:ITEM_IMG_BASE+'ROCKYHELMET.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Rock", amount:22}, desc:"Rock cards: +22 value in melds." },
+  { id:'AIRBALLOON', name:"Air Balloon", img:ITEM_IMG_BASE+'AIRBALLOON.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Flying", amount:22}, desc:"Flying cards: +22 value in melds." },
+  { id:'RINGTARGET', name:"Ring Target", img:ITEM_IMG_BASE+'RINGTARGET.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Fighting", amount:20}, desc:"Fighting cards: +20 value in melds." },
+  { id:'ELECTIRIZER', name:"Electirizer", img:ITEM_IMG_BASE+'ELECTIRIZER.png', cost:6, category:'Type', effect:'type_chips', effectArgs:{type:"Electric", amount:22}, desc:"Electric cards: +22 value in melds." },
+  { id:'MAGMARIZER', name:"Magmarizer", img:ITEM_IMG_BASE+'MAGMARIZER.png', cost:6, category:'Type', effect:'type_chips', effectArgs:{type:"Fire", amount:22}, desc:"Fire cards: +22 value in melds." },
+  { id:'REAPERCLOTH', name:"Reaper Cloth", img:ITEM_IMG_BASE+'REAPERCLOTH.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Ghost", amount:22}, desc:"Ghost cards: +22 value in melds." },
+  { id:'DEEPSEASCALE', name:"Deep Sea Scale", img:ITEM_IMG_BASE+'DEEPSEASCALE.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:22}, desc:"Water cards: +22 value in melds." },
+  { id:'GOODROD', name:"Good Rod", img:ITEM_IMG_BASE+'GOODROD.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:20}, desc:"Water cards: +20 value in melds." },
+  { id:'OLDROD', name:"Old Rod", img:ITEM_IMG_BASE+'OLDROD.png', cost:4, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:16}, desc:"Water cards: +16 value in melds." },
+  { id:'SUPERROD', name:"Super Rod", img:ITEM_IMG_BASE+'SUPERROD.png', cost:6, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:24}, desc:"Water cards: +24 value in melds." },
+  { id:'DEVONSCOPE', name:"Devon Scope", img:ITEM_IMG_BASE+'DEVONSCOPE.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Ghost", amount:20}, desc:"Ghost cards: +20 value in melds." },
+  { id:'SILPHSCOPE', name:"Silph Scope", img:ITEM_IMG_BASE+'SILPHSCOPE.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Ghost", amount:20}, desc:"Ghost cards: +20 value in melds." },
+  { id:'ABSORBBULB', name:"Absorb Bulb", img:ITEM_IMG_BASE+'ABSORBBULB.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:20}, desc:"Water cards: +20 value in melds." },
+  { id:'CELLBATTERY', name:"Cell Battery", img:ITEM_IMG_BASE+'CELLBATTERY.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Electric", amount:20}, desc:"Electric cards: +20 value in melds." },
+  { id:'MUSCLEWING', name:"Muscle Wing", img:ITEM_IMG_BASE+'MUSCLEWING.png', cost:4, category:'Type', effect:'type_chips', effectArgs:{type:"Fighting", amount:16}, desc:"Fighting cards: +16 value in melds." },
+  { id:'GENIUSWING', name:"Genius Wing", img:ITEM_IMG_BASE+'GENIUSWING.png', cost:4, category:'Type', effect:'type_chips', effectArgs:{type:"Psychic", amount:16}, desc:"Psychic cards: +16 value in melds." },
+  { id:'CLEVERWING', name:"Clever Wing", img:ITEM_IMG_BASE+'CLEVERWING.png', cost:4, category:'Type', effect:'type_chips', effectArgs:{type:"Psychic", amount:16}, desc:"Psychic cards: +16 value in melds." },
+  { id:'HONEY', name:"Honey", img:ITEM_IMG_BASE+'HONEY.png', cost:4, category:'Type', effect:'type_chips', effectArgs:{type:"Bug", amount:18}, desc:"Bug cards: +18 value in melds." },
+  { id:'OLDSEAMAP', name:"Old Sea Map", img:ITEM_IMG_BASE+'OLDSEAMAP.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:20}, desc:"Water cards: +20 value in melds." },
+  { id:'SOOTSACK', name:"Soot Sack", img:ITEM_IMG_BASE+'SOOTSACK.png', cost:4, category:'Type', effect:'type_chips', effectArgs:{type:"Ground", amount:18}, desc:"Ground cards: +18 value in melds." },
+  { id:'SQUIRTBOTTLE', name:"Squirt Bottle", img:ITEM_IMG_BASE+'SQUIRTBOTTLE.png', cost:4, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:18}, desc:"Water cards: +18 value in melds." },
+  { id:'WAILMERPAIL', name:"Wailmer Pail", img:ITEM_IMG_BASE+'WAILMERPAIL.png', cost:4, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:18}, desc:"Water cards: +18 value in melds." },
+  { id:'DAMPROCK', name:"Damp Rock", img:ITEM_IMG_BASE+'DAMPROCK.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:20}, desc:"Water cards: +20 value in melds." },
+  { id:'HEATROCK', name:"Heat Rock", img:ITEM_IMG_BASE+'HEATROCK.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Fire", amount:20}, desc:"Fire cards: +20 value in melds." },
+  { id:'MYSTICWATER', name:"Mystic Water", img:ITEM_IMG_BASE+'MYSTICWATER.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:20}, desc:"Water cards: +20 value in melds." },
+  { id:'BIGROOT', name:"Big Root", img:ITEM_IMG_BASE+'BIGROOT.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Grass", amount:20}, desc:"Grass cards: +20 value in melds." },
+  { id:'PSYCHICGEM', name:"Psychic Gem", img:ITEM_IMG_BASE+'PSYCHICGEM.png', cost:6, category:'Type', effect:'type_chips', effectArgs:{type:"Psychic", amount:24}, desc:"Psychic cards: +24 value in melds." },
+  { id:'RAREBONE', name:"Rare Bone", img:ITEM_IMG_BASE+'RAREBONE.png', cost:5, category:'Type', effect:'type_chips', effectArgs:{type:"Ground", amount:20}, desc:"Ground cards: +20 value in melds." },
+  { id:'SHOALSHELL', name:"Shoal Shell", img:ITEM_IMG_BASE+'SHOALSHELL.png', cost:4, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:18}, desc:"Water cards: +18 value in melds." },
+  { id:'SPRAYDUCK', name:"Spray Duck", img:ITEM_IMG_BASE+'SPRAYDUCK.png', cost:4, category:'Type', effect:'type_chips', effectArgs:{type:"Water", amount:18}, desc:"Water cards: +18 value in melds." },
   // ── Evolution ──
-  { id:'rare_candy',   name:"Rare Candy",   emoji:'🍬', cost:8, category:'Evolution', desc:'On buy: +5 permanent value to ALL your cards. Stacks.' },
-  { id:'exp_candy',    name:"Exp. Candy XL",emoji:'🍭', cost:7, category:'Evolution', desc:'Final evolutions: +25 value in melds.' },
-  { id:'eviolite',     name:"Eviolite",     emoji:'💎', cost:7, category:'Evolution', desc:'Basic Pokémon: +15 value in melds.' },
-  { id:'everstone',    name:"Everstone",    emoji:'🪨', cost:6, category:'Evolution', desc:'×1.2 on every meld.' },
+  { id:'FIRESTONE', name:"Fire Stone", img:ITEM_IMG_BASE+'FIRESTONE.png', cost:6, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.35}, desc:"Evolution Runs: \u00d71.35." },
+  { id:'WATERSTONE', name:"Water Stone", img:ITEM_IMG_BASE+'WATERSTONE.png', cost:6, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.35}, desc:"Evolution Runs: \u00d71.35." },
+  { id:'THUNDERSTONE', name:"Thunder Stone", img:ITEM_IMG_BASE+'THUNDERSTONE.png', cost:6, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.35}, desc:"Evolution Runs: \u00d71.35." },
+  { id:'LEAFSTONE', name:"Leaf Stone", img:ITEM_IMG_BASE+'LEAFSTONE.png', cost:6, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.35}, desc:"Evolution Runs: \u00d71.35." },
+  { id:'MOONSTONE', name:"Moon Stone", img:ITEM_IMG_BASE+'MOONSTONE.png', cost:6, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.35}, desc:"Evolution Runs: \u00d71.35." },
+  { id:'SUNSTONE', name:"Sun Stone", img:ITEM_IMG_BASE+'SUNSTONE.png', cost:7, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.4}, desc:"Evolution Runs: \u00d71.4." },
+  { id:'DUSKSTONE', name:"Dusk Stone", img:ITEM_IMG_BASE+'DUSKSTONE.png', cost:7, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.4}, desc:"Evolution Runs: \u00d71.4." },
+  { id:'DAWNSTONE', name:"Dawn Stone", img:ITEM_IMG_BASE+'DAWNSTONE.png', cost:7, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.4}, desc:"Evolution Runs: \u00d71.4." },
+  { id:'SHINYSTONE', name:"Shiny Stone", img:ITEM_IMG_BASE+'SHINYSTONE.png', cost:7, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.4}, desc:"Evolution Runs: \u00d71.4." },
+  { id:'OVALSTONE', name:"Oval Stone", img:ITEM_IMG_BASE+'OVALSTONE.png', cost:6, category:'Evolution', effect:'stage_chips', effectArgs:{stage:"basic", amount:15}, desc:"Basic (unevolved) Pok\u00e9mon: +15 value in melds." },
+  { id:'EVIOLITE', name:"Eviolite", img:ITEM_IMG_BASE+'EVIOLITE.png', cost:7, category:'Evolution', effect:'stage_chips', effectArgs:{stage:"basic", amount:15}, desc:"Basic (unevolved) Pok\u00e9mon: +15 value in melds." },
+  { id:'ARMORFOSSIL', name:"Armor Fossil", img:ITEM_IMG_BASE+'ARMORFOSSIL.png', cost:7, category:'Evolution', effect:'kind_mult', effectArgs:{kind:"species", amount:2}, desc:"Species Sets: +2 Mult." },
+  { id:'CLAWFOSSIL', name:"Claw Fossil", img:ITEM_IMG_BASE+'CLAWFOSSIL.png', cost:7, category:'Evolution', effect:'kind_mult', effectArgs:{kind:"species", amount:2}, desc:"Species Sets: +2 Mult." },
+  { id:'COVERFOSSIL', name:"Cover Fossil", img:ITEM_IMG_BASE+'COVERFOSSIL.png', cost:7, category:'Evolution', effect:'kind_mult', effectArgs:{kind:"species", amount:2}, desc:"Species Sets: +2 Mult." },
+  { id:'DOMEFOSSIL', name:"Dome Fossil", img:ITEM_IMG_BASE+'DOMEFOSSIL.png', cost:7, category:'Evolution', effect:'kind_mult', effectArgs:{kind:"species", amount:2}, desc:"Species Sets: +2 Mult." },
+  { id:'HELIXFOSSIL', name:"Helix Fossil", img:ITEM_IMG_BASE+'HELIXFOSSIL.png', cost:7, category:'Evolution', effect:'kind_mult', effectArgs:{kind:"species", amount:2}, desc:"Species Sets: +2 Mult." },
+  { id:'OLDAMBER', name:"Old Amber", img:ITEM_IMG_BASE+'OLDAMBER.png', cost:7, category:'Evolution', effect:'kind_mult', effectArgs:{kind:"species", amount:2}, desc:"Species Sets: +2 Mult." },
+  { id:'PLUMEFOSSIL', name:"Plume Fossil", img:ITEM_IMG_BASE+'PLUMEFOSSIL.png', cost:7, category:'Evolution', effect:'kind_mult', effectArgs:{kind:"species", amount:2}, desc:"Species Sets: +2 Mult." },
+  { id:'ROOTFOSSIL', name:"Root Fossil", img:ITEM_IMG_BASE+'ROOTFOSSIL.png', cost:7, category:'Evolution', effect:'kind_mult', effectArgs:{kind:"species", amount:2}, desc:"Species Sets: +2 Mult." },
+  { id:'SKULLFOSSIL', name:"Skull Fossil", img:ITEM_IMG_BASE+'SKULLFOSSIL.png', cost:7, category:'Evolution', effect:'kind_mult', effectArgs:{kind:"species", amount:2}, desc:"Species Sets: +2 Mult." },
+  { id:'PROTECTOR', name:"Protector", img:ITEM_IMG_BASE+'PROTECTOR.png', cost:7, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.35}, desc:"Evolution Runs: \u00d71.35." },
+  { id:'PRISMSCALE', name:"Prism Scale", img:ITEM_IMG_BASE+'PRISMSCALE.png', cost:6, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.3}, desc:"Evolution Runs: \u00d71.3." },
+  { id:'RARECANDY', name:"Rare Candy", img:ITEM_IMG_BASE+'RARECANDY.png', cost:8, category:'Evolution', effect:'on_buy_permanent', effectArgs:{amount:5}, desc:"On buy: +5 permanent value to ALL your cards. Stacks." },
+  { id:'GROWTHMULCH', name:"Growth Mulch", img:ITEM_IMG_BASE+'GROWTHMULCH.png', cost:6, category:'Evolution', effect:'evo_run_xmult', effectArgs:{factor:1.3}, desc:"Evolution Runs: \u00d71.3." },
   // ── Fusion ──
-  { id:'dna_splicer',  name:"DNA Splicer",  emoji:'🧬', cost:8, category:'Fusion',    desc:'Melds containing a fusion joker: +2 Mult.' },
-  { id:'link_cable',   name:"Link Cable",   emoji:'📎', cost:8, category:'Fusion',    desc:'Evolution Runs: ×1.5.' },
-  { id:'sync',         name:"Synchronizer", emoji:'🔁', cost:8, category:'Fusion',    desc:'Fusion jokers: +25 value in melds.' },
+  { id:'BINDINGBAND', name:"Binding Band", img:ITEM_IMG_BASE+'BINDINGBAND.png', cost:8, category:'Fusion', effect:'joker_mult', effectArgs:{amount:2}, desc:"Melds containing a fusion joker: +2 Mult." },
+  { id:'DESTINYKNOT', name:"Destiny Knot", img:ITEM_IMG_BASE+'DESTINYKNOT.png', cost:9, category:'Fusion', effect:'joker_chips', effectArgs:{amount:25}, desc:"Fusion jokers: +25 value in melds." },
+  { id:'DNASPLICERS', name:"DNA Splicers", img:ITEM_IMG_BASE+'DNASPLICERS.png', cost:10, category:'Fusion', effect:'joker_mult', effectArgs:{amount:3}, desc:"Melds containing a fusion joker: +3 Mult." },
+  { id:'DUBIOUSDISC', name:"Dubious Disc", img:ITEM_IMG_BASE+'DUBIOUSDISC.png', cost:9, category:'Fusion', effect:'joker_chips', effectArgs:{amount:28}, desc:"Fusion jokers: +28 value in melds." },
+  { id:'REVEALGLASS', name:"Reveal Glass", img:ITEM_IMG_BASE+'REVEALGLASS.png', cost:8, category:'Fusion', effect:'joker_chips', effectArgs:{amount:25}, desc:"Fusion jokers: +25 value in melds." },
   // ── Wildcards ──
-  { id:'ditto_blob',   name:"Ditto Blob",   emoji:'🟣', cost:8, category:'Wildcards', desc:'Type Sets of 4+ cards: ×1.5.' },
-  { id:'glitch',       name:"Glitch Cart.", emoji:'👾', cost:10, category:'Wildcards', desc:'25% chance any meld hits ×2.' },
-  { id:'mystery_egg',  name:"Mystery Egg",  emoji:'🥚', cost:6, category:'Wildcards', desc:'Every shop visit: a random Pokémon joins your deck.' },
+  { id:'QUICKCLAW', name:"Quick Claw", img:ITEM_IMG_BASE+'QUICKCLAW.png', cost:9, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.25, factor:2}, desc:"25% chance any meld hits \u00d72." },
+  { id:'KINGSROCK', name:"King's Rock", img:ITEM_IMG_BASE+'KINGSROCK.png', cost:9, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.2, factor:2}, desc:"20% chance any meld hits \u00d72." },
+  { id:'SCOPELENS', name:"Scope Lens", img:ITEM_IMG_BASE+'SCOPELENS.png', cost:9, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.25, factor:1.8}, desc:"25% chance any meld hits \u00d71.8." },
+  { id:'ZOOMLENS', name:"Zoom Lens", img:ITEM_IMG_BASE+'ZOOMLENS.png', cost:8, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.2, factor:1.8}, desc:"20% chance any meld hits \u00d71.8." },
+  { id:'POWERHERB', name:"Power Herb", img:ITEM_IMG_BASE+'POWERHERB.png', cost:10, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.25, factor:2}, desc:"25% chance any meld hits \u00d72." },
+  { id:'LUCKYPUNCH', name:"Lucky Punch", img:ITEM_IMG_BASE+'LUCKYPUNCH.png', cost:9, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.3, factor:1.7}, desc:"30% chance any meld hits \u00d71.7." },
+  { id:'STICK', name:"Stick", img:ITEM_IMG_BASE+'STICK.png', cost:8, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.3, factor:1.7}, desc:"30% chance any meld hits \u00d71.7." },
+  { id:'RAZORCLAW', name:"Razor Claw", img:ITEM_IMG_BASE+'RAZORCLAW.png', cost:9, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.25, factor:1.9}, desc:"25% chance any meld hits \u00d71.9." },
+  { id:'RAZORFANG', name:"Razor Fang", img:ITEM_IMG_BASE+'RAZORFANG.png', cost:9, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.25, factor:1.9}, desc:"25% chance any meld hits \u00d71.9." },
+  { id:'REPEL', name:"Repel", img:ITEM_IMG_BASE+'REPEL.png', cost:6, category:'Wildcards', effect:'random_card_no_effect', effectArgs:{}, desc:"One random hand card loses its bonus each battle. (Downside item \u2014 cheap.)" },
+  { id:'DOWSINGMACHINE', name:"Dowsing Machine", img:ITEM_IMG_BASE+'DOWSINGMACHINE.png', cost:6, category:'Wildcards', effect:'random_egg', effectArgs:{}, desc:"Every shop visit: a random Pok\u00e9mon joins your deck." },
+  { id:'ITEMFINDER', name:"Itemfinder", img:ITEM_IMG_BASE+'ITEMFINDER.png', cost:6, category:'Wildcards', effect:'random_egg', effectArgs:{}, desc:"Every shop visit: a random Pok\u00e9mon joins your deck." },
+  { id:'POKERADAR', name:"Pok\u00e9 Radar", img:ITEM_IMG_BASE+'POKERADAR.png', cost:7, category:'Wildcards', effect:'random_egg', effectArgs:{}, desc:"Every shop visit: a random Pok\u00e9mon joins your deck." },
+  { id:'RESETURGE', name:"Reset Urge", img:ITEM_IMG_BASE+'RESETURGE.png', cost:7, category:'Wildcards', effect:'random_card_no_effect', effectArgs:{}, desc:"One random hand card loses its bonus each battle. (Downside item \u2014 cheap.)" },
+  { id:'ODDKEYSTONE', name:"Odd Keystone", img:ITEM_IMG_BASE+'ODDKEYSTONE.png', cost:9, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.2, factor:2}, desc:"20% chance any meld hits \u00d72." },
+  { id:'FLUFFYTAIL', name:"Fluffy Tail", img:ITEM_IMG_BASE+'FLUFFYTAIL.png', cost:6, category:'Wildcards', effect:'random_card_no_effect', effectArgs:{}, desc:"One random hand card loses its bonus each battle. (Downside item \u2014 cheap.)" },
+  { id:'OVALCHARM', name:"Oval Charm", img:ITEM_IMG_BASE+'OVALCHARM.png', cost:7, category:'Wildcards', effect:'random_egg', effectArgs:{}, desc:"Every shop visit: a random Pok\u00e9mon joins your deck." },
+  { id:'METRONOME', name:"Metronome", img:ITEM_IMG_BASE+'METRONOME.png', cost:9, category:'Wildcards', effect:'chance_xmult', effectArgs:{chance:0.25, factor:2}, desc:"25% chance any meld hits \u00d72." },
   // ── Universal ──
-  { id:'poke_ball',    name:"Poké Ball",    emoji:'⚪', cost:5, category:'Universal', desc:'+1 meld every battle.' },
-  { id:'great_ball',   name:"Great Ball",   emoji:'🔵', cost:6, category:'Universal', desc:'+1 hand size.' },
-  { id:'leftovers',    name:"Leftovers",    emoji:'🍃', cost:6, category:'Universal', desc:'+25 value on every meld.' },
-  { id:'choice_scarf', name:"Choice Scarf", emoji:'🧣', cost:7, category:'Universal', desc:'GIN bonus doubled.' },
-  { id:'focus_sash',   name:"Focus Sash",   emoji:'🔰', cost:8, category:'Universal', desc:'Out of melds? Survive with +2 melds. Once per run.' },
-  { id:'life_orb',     name:"Life Orb",     emoji:'🔮', cost:9, category:'Universal', desc:'+2 Mult on every meld, but lose $1 after each battle.' },
+  { id:'FULLRESTORE', name:"Full Restore", img:ITEM_IMG_BASE+'FULLRESTORE.png', cost:7, category:'Universal', effect:'flat_chips', effectArgs:{amount:25}, desc:"+25 value on every meld." },
+  { id:'HYPERPOTION', name:"Hyper Potion", img:ITEM_IMG_BASE+'HYPERPOTION.png', cost:6, category:'Universal', effect:'flat_chips', effectArgs:{amount:20}, desc:"+20 value on every meld." },
+  { id:'MAXREVIVE', name:"Max Revive", img:ITEM_IMG_BASE+'MAXREVIVE.png', cost:9, category:'Universal', effect:'survive_once', effectArgs:{}, desc:"Out of melds? Survive with +2 melds. Once per run." },
+  { id:'REVIVE', name:"Revive", img:ITEM_IMG_BASE+'REVIVE.png', cost:7, category:'Universal', effect:'survive_once', effectArgs:{}, desc:"Out of melds? Survive with +2 melds. Once per run." },
+  { id:'REVIVALHERB', name:"Revival Herb", img:ITEM_IMG_BASE+'REVIVALHERB.png', cost:8, category:'Universal', effect:'survive_once', effectArgs:{}, desc:"Out of melds? Survive with +2 melds. Once per run." },
+  { id:'ELIXIR', name:"Elixir", img:ITEM_IMG_BASE+'ELIXIR.png', cost:6, category:'Universal', effect:'meld_count', effectArgs:{amount:1}, desc:"+1 meld every battle." },
+  { id:'MAXETHER', name:"Max Ether", img:ITEM_IMG_BASE+'MAXETHER.png', cost:6, category:'Universal', effect:'meld_count', effectArgs:{amount:1}, desc:"+1 meld every battle." },
+  { id:'CHOICESCARF', name:"Choice Scarf", img:ITEM_IMG_BASE+'CHOICESCARF.png', cost:7, category:'Universal', effect:'gin_xmult', effectArgs:{factor:2}, desc:"GIN bonus doubled." },
+  { id:'CHOICESPECS', name:"Choice Specs", img:ITEM_IMG_BASE+'CHOICESPECS.png', cost:8, category:'Universal', effect:'flat_xmult', effectArgs:{factor:1.3}, desc:"\u00d71.3 on every meld." },
+  { id:'LEFTOVERS', name:"Leftovers", img:ITEM_IMG_BASE+'LEFTOVERS.png', cost:6, category:'Universal', effect:'flat_chips', effectArgs:{amount:25}, desc:"+25 value on every meld." },
+  { id:'SHELLBELL', name:"Shell Bell", img:ITEM_IMG_BASE+'SHELLBELL.png', cost:6, category:'Universal', effect:'gold_per_meld', effectArgs:{amount:1, cap:3}, desc:"+$1 every time you lay a meld (max $3 per battle)." },
+  { id:'FOCUSBAND', name:"Focus Band", img:ITEM_IMG_BASE+'FOCUSBAND.png', cost:7, category:'Universal', effect:'survive_once', effectArgs:{}, desc:"Out of melds? Survive with +2 melds. Once per run." },
+  { id:'FOCUSSASH', name:"Focus Sash", img:ITEM_IMG_BASE+'FOCUSSASH.png', cost:8, category:'Universal', effect:'survive_once', effectArgs:{}, desc:"Out of melds? Survive with +2 melds. Once per run." },
+  { id:'EXPERTBELT', name:"Expert Belt", img:ITEM_IMG_BASE+'EXPERTBELT.png', cost:8, category:'Universal', effect:'flat_xmult', effectArgs:{factor:1.25}, desc:"\u00d71.25 on every meld." },
+  { id:'FLOATSTONE', name:"Float Stone", img:ITEM_IMG_BASE+'FLOATSTONE.png', cost:6, category:'Universal', effect:'hand_size', effectArgs:{amount:1}, desc:"+1 hand size." },
+  { id:'GRIPCLAW', name:"Grip Claw", img:ITEM_IMG_BASE+'GRIPCLAW.png', cost:6, category:'Universal', effect:'hand_size', effectArgs:{amount:1}, desc:"+1 hand size." },
+  { id:'CLEANSETAG', name:"Cleanse Tag", img:ITEM_IMG_BASE+'CLEANSETAG.png', cost:5, category:'Universal', effect:'flat_chips', effectArgs:{amount:18}, desc:"+18 value on every meld." },
+  { id:'SOOTHEBELL', name:"Soothe Bell", img:ITEM_IMG_BASE+'SOOTHEBELL.png', cost:5, category:'Universal', effect:'flat_mult', effectArgs:{amount:1}, desc:"+1 Mult on every meld." },
+  { id:'BICYCLE', name:"Bicycle", img:ITEM_IMG_BASE+'BICYCLE.png', cost:6, category:'Universal', effect:'hand_size', effectArgs:{amount:1}, desc:"+1 hand size." },
+  { id:'TOWNMAP', name:"Town Map", img:ITEM_IMG_BASE+'TOWNMAP.png', cost:5, category:'Universal', effect:'flat_chips', effectArgs:{amount:18}, desc:"+18 value on every meld." },
+  { id:'HEARTSCALE', name:"Heart Scale", img:ITEM_IMG_BASE+'HEARTSCALE.png', cost:5, category:'Universal', effect:'flat_mult', effectArgs:{amount:1}, desc:"+1 Mult on every meld." },
+  { id:'POKEDOLL', name:"Pok\u00e9 Doll", img:ITEM_IMG_BASE+'POKEDOLL.png', cost:8, category:'Universal', effect:'survive_once', effectArgs:{}, desc:"Out of melds? Survive with +2 melds. Once per run." },
+  { id:'POKEFLUTE', name:"Pok\u00e9 Flute", img:ITEM_IMG_BASE+'POKEFLUTE.png', cost:5, category:'Universal', effect:'flat_chips', effectArgs:{amount:18}, desc:"+18 value on every meld." },
+  { id:'POKETOY', name:"Pok\u00e9 Toy", img:ITEM_IMG_BASE+'POKETOY.png', cost:4, category:'Universal', effect:'flat_chips', effectArgs:{amount:14}, desc:"+14 value on every meld." },
+  { id:'WHITEFLUTE', name:"White Flute", img:ITEM_IMG_BASE+'WHITEFLUTE.png', cost:5, category:'Universal', effect:'hand_size', effectArgs:{amount:1}, desc:"+1 hand size." },
+  { id:'GUARDSPEC', name:"Guard Spec.", img:ITEM_IMG_BASE+'GUARDSPEC.png', cost:7, category:'Universal', effect:'survive_once', effectArgs:{}, desc:"Out of melds? Survive with +2 melds. Once per run." },
+  { id:'EXPSHARE', name:"Exp. Share", img:ITEM_IMG_BASE+'EXPSHARE.png', cost:6, category:'Universal', effect:'hand_size', effectArgs:{amount:1}, desc:"+1 hand size." },
   // ── Legendary ──
-  { id:'mew_dna',      name:"Mew's DNA",    emoji:'💜', cost:13, category:'Legendary', desc:'ALL your cards count as ANY type — Type Sets from anything.' },
-  { id:'mewtwo',       name:"Mewtwo Genome",emoji:'⚗️', cost:15, category:'Legendary', desc:'×1.5 on every meld.' },
-  { id:'rainbow_wing', name:"Rainbow Wing", emoji:'🌈', cost:13, category:'Legendary', desc:'+1 Mult on every meld.' },
+  { id:'FLAMEORB', name:"Flame Orb", img:ITEM_IMG_BASE+'FLAMEORB.png', cost:12, category:'Legendary', effect:'type_chips', effectArgs:{type:"Fire", amount:40}, desc:"Fire cards: +40 value in melds." },
+  { id:'ADAMANTORB', name:"Adamant Orb", img:ITEM_IMG_BASE+'ADAMANTORB.png', cost:14, category:'Legendary', effect:'kind_xmult', effectArgs:{kind:"species", factor:1.6}, desc:"Species Sets: \u00d71.6." },
+  { id:'LUSTROUSORB', name:"Lustrous Orb", img:ITEM_IMG_BASE+'LUSTROUSORB.png', cost:14, category:'Legendary', effect:'kind_xmult', effectArgs:{kind:"type", factor:1.6}, desc:"Type Sets: \u00d71.6." },
+  { id:'GRISEOUSORB', name:"Griseous Orb", img:ITEM_IMG_BASE+'GRISEOUSORB.png', cost:15, category:'Legendary', effect:'flat_xmult', effectArgs:{factor:1.5}, desc:"\u00d71.5 on every meld." },
+  { id:'STICKYBARB', name:"Sticky Barb", img:ITEM_IMG_BASE+'STICKYBARB.png', cost:10, category:'Legendary', effect:'life_orb_style', effectArgs:{mult:2, goldLoss:1}, desc:"+2 Mult on every meld, but lose $1 after each battle." },
+  { id:'COMETSHARD', name:"Comet Shard", img:ITEM_IMG_BASE+'COMETSHARD.png', cost:11, category:'Legendary', effect:'gold_per_meld', effectArgs:{amount:2, cap:4}, desc:"+$2 every time you lay a meld (max $4 per battle)." },
+  { id:'RELICBAND', name:"Relic Band", img:ITEM_IMG_BASE+'RELICBAND.png', cost:12, category:'Legendary', effect:'flat_xmult', effectArgs:{factor:1.4}, desc:"\u00d71.4 on every meld." },
+  { id:'RELICCROWN', name:"Relic Crown", img:ITEM_IMG_BASE+'RELICCROWN.png', cost:13, category:'Legendary', effect:'flat_xmult', effectArgs:{factor:1.45}, desc:"\u00d71.45 on every meld." },
+  { id:'RELICSTATUE', name:"Relic Statue", img:ITEM_IMG_BASE+'RELICSTATUE.png', cost:12, category:'Legendary', effect:'flat_xmult', effectArgs:{factor:1.4}, desc:"\u00d71.4 on every meld." },
+  { id:'RELICVASE', name:"Relic Vase", img:ITEM_IMG_BASE+'RELICVASE.png', cost:12, category:'Legendary', effect:'flat_xmult', effectArgs:{factor:1.4}, desc:"\u00d71.4 on every meld." },
+  { id:'SHINYCHARM', name:"Shiny Charm", img:ITEM_IMG_BASE+'SHINYCHARM.png', cost:13, category:'Legendary', effect:'flat_xmult', effectArgs:{factor:1.5}, desc:"\u00d71.5 on every meld." },
+  { id:'AURORATICKET', name:"Aurora Ticket", img:ITEM_IMG_BASE+'AURORATICKET.png', cost:14, category:'Legendary', effect:'any_type', effectArgs:{}, desc:"ALL your cards count as ANY type \u2014 Type Sets from anything." },
 ];
 // G_items declared earlier near G_selected
 let _shopItemPool = []; // current shop items for sale
@@ -10035,15 +10610,12 @@ function getShopItems() {
 }
 
 function applyItemEffect(item) {
-  switch(item.id) {
-    case 'poke_ball':   G.discardsLeft++; break; // also +1 every future battle
-    case 'rare_candy': {
-      G._permAll = (G._permAll||0) + 5;
-      setTimeout(()=>announceText('🍬 ALL CARDS +5 VALUE!',1600),300);
-      break;
-    }
-    default: break; // passive items applied at score time by scoreHandDetailed
+  if(item.effect === 'meld_count') G.discardsLeft++; // immediate bonus this battle too, on top of the recurring per-battle one
+  if(item.effect === 'on_buy_permanent'){
+    G._permAll = (G._permAll||0) + (item.effectArgs.amount||0);
+    setTimeout(()=>announceText('🍬 ALL CARDS +'+item.effectArgs.amount+' VALUE!',1600),300);
   }
+  // everything else is a passive effect applied at score time by rMeldDamage
 }
 
 function startNextBattle() {
@@ -10363,7 +10935,7 @@ const RBAL = {
   stealFactor: 2,
 };
 
-function RUMMY_HAND_START(){ return RBAL.handStart + (hasItem('great_ball')?1:0); }
+function RUMMY_HAND_START(){ return RBAL.handStart + sumEffectAmount('hand_size'); }
 getHandSize = function(){ return RUMMY_HAND_START() + 2; };
 getMaxPlay  = function(){ return (G.hand ? G.hand.length : 8) || 8; };
 
@@ -10383,7 +10955,7 @@ function rTypes(card){
   if(card.type2) out.push(card.type2);
   if(card.type3) out.push(card.type3);
   if(card.type4) out.push(card.type4);
-  if(hasItem('mew_dna')) out.push('ANY');
+  if(hasEffect('any_type')) out.push('ANY');
   return out;
 }
 function rVal(){ return RBAL.cardValue + (G._permAll||0); }
@@ -10410,7 +10982,7 @@ function detectTypeSet(cards){
   let t = pool.find(t => t!=='ANY' && cards.every(c => rHasType(c, t)));
   if(!t && first.includes('ANY') && cards.every(c=>rTypes(c).includes('ANY'))) t = 'ANY';
   if(!t) return null;
-  return { kind:'type', key:t, label: t.toUpperCase()+' TYPE SET',
+  return { kind:'type', key:t, label: t.toUpperCase(),
            mult: RBAL.typeMult + (cards.length-3)*RBAL.typePerExtra };
 }
 // Evolution group: 2 OR 3 consecutive stages of one line (pair or full run)
@@ -10434,7 +11006,7 @@ function detectEvoGroup(cards){
         if(!cards.every(c => rSpecies(c).some(d => win.includes(d)))) continue; // every card is relevant to this window
         const topNm = (KANTO_BY_DEX[win[win.length-1]]||{}).name || 'EVO';
         return { kind:'run', fam:[...fam], stages:[...win],
-                 label: topNm.toUpperCase() + (winLen===3 ? ' RUN' : ' EVO PAIR'),
+                 label: topNm.toUpperCase() + (winLen===3 ? ' EVO' : ' PAIR'),
                  mult: winLen===3 ? RBAL.runMult : RBAL.evoPairMult };
       }
     }
@@ -10443,7 +11015,9 @@ function detectEvoGroup(cards){
 }
 // Best single meld for one group of cards
 function detectSingleMeld(cards){
-  const cands = [detectEvoGroup(cards), detectSpeciesSet(cards), detectTypeSet(cards)].filter(Boolean);
+  let cands = [detectEvoGroup(cards), detectSpeciesSet(cards), detectTypeSet(cards)].filter(Boolean);
+  const rule = activeGymRule();
+  if(rule && rule.blocksNewMeld) cands = cands.filter(m => !rule.blocksNewMeld(m, cards));
   if(!cands.length) return null;
   cands.forEach(m => m._pv = rMeldDamage(cards, m, {preview:true}).total);
   cands.sort((a,b)=>b._pv-a._pv);
@@ -10512,12 +11086,17 @@ function detectMeldPartition(cards){
   const groups = base ? base.groups.map(g=>({...g})) : [];
   let totalDmg = base ? base.dmg : 0;
   const chosenKeys = new Set(groups.map(groupIdentity));
+  // Every card can only ever belong to ONE set - once assigned (by the
+  // base partition, or by an earlier pass of the loop below), it's off
+  // the table for every later pass.
+  const usedIdx = new Set(groups.flatMap(g=>g.idx));
 
-  // Look for a SMALL, bounded number of additional melds — different in
-  // kind+key from anything already chosen — that reuse cards already
-  // assigned elsewhere. This is what lets a card contribute to more than
-  // one meld in a single play, without duplicate-counting the same meld
-  // or blowing up the search space.
+  // Look for a SMALL, bounded number of additional melds - different in
+  // kind+key from anything already chosen, and built ONLY from cards not
+  // already claimed by an earlier group. Mainly exists to cover hands
+  // bigger than detectDisjointPartition's 8-card limit; for hands that
+  // fit within that limit, the base partition above already assigns
+  // every card, so this loop simply finds nothing left to do.
   const allIdx = cards.map((_,i)=>i);
   function* combos(size, start, cur){
     if(cur.length === size){ yield cur.slice(); return; }
@@ -10528,6 +11107,7 @@ function detectMeldPartition(cards){
     let bestExtra = null;
     for(let size=2; size<=Math.min(RBAL.maxSetSize, n); size++){
       for(const idxSet of combos(size, 0, [])){
+        if(idxSet.some(i => usedIdx.has(i))) continue; // cards already in a set are off-limits
         const gc = idxSet.map(i=>cards[i]);
         const opt = detectGroupOption(gc);
         if(!opt) continue;
@@ -10539,6 +11119,7 @@ function detectMeldPartition(cards){
     if(!bestExtra) break;
     groups.push({ type:bestExtra.type, meld:bestExtra.meld, target:bestExtra.target, idx:bestExtra.idx });
     chosenKeys.add(bestExtra.key);
+    bestExtra.idx.forEach(i => usedIdx.add(i));
     totalDmg += bestExtra.pv;
   }
 
@@ -10551,6 +11132,7 @@ function detectMeldPartition(cards){
 // Extend: 1-2 cards onto an existing board meld (pairs upgrade to runs!)
 function detectExtend(cards){
   if(!cards.length || cards.length > 2 || !G._board || !G._board.length) return null;
+  const rule = activeGymRule();
   let best = null;
   for(const m of G._board){
     let ok = false;
@@ -10572,6 +11154,7 @@ function detectExtend(cards){
         return true;
       });
     }
+    if(ok && rule && rule.blocksExtend && rule.blocksExtend(m, cards)) ok = false;
     if(ok){
       const pv = rExtendDamage(cards, m, {preview:true}).total;
       if(!best || pv > best._pv) best = { meld:m, _pv:pv };
@@ -10586,43 +11169,86 @@ function rMeldDamage(cards, meld, opts){
   const preview = !!opts.preview;
   let chips = 0, mult = meld.mult, xm = 1;
   const pops = [], hp2 = [];
+  const owned = (typeof G_items !== 'undefined') ? G_items.filter(it => G._disabledItemId !== it.id) : [];
+
   cards.forEach((c, ci) => {
     let v = rVal();
     pops.push({ci, kind:'chips', amount:v});   // base value: no text — the card itself bounces
-    if(hasItem('charcoal')     && rHasType(c,'Fire')){     v+=20; pops.push({ci, kind:'chips', amount:20, text:'🔥 +20', color:'#ff7744'}); }
-    if(hasItem('mystic_water') && rHasType(c,'Water')){    v+=20; pops.push({ci, kind:'chips', amount:20, text:'💧 +20', color:'#44aaff'}); }
-    if(hasItem('miracle_seed') && rHasType(c,'Grass')){    v+=20; pops.push({ci, kind:'chips', amount:20, text:'🌱 +20', color:'#44dd66'}); }
-    if(hasItem('magnet')       && rHasType(c,'Electric')){ v+=20; pops.push({ci, kind:'chips', amount:20, text:'🧲 +20', color:'#ffdd44'}); }
-    if(hasItem('exp_candy') && isFinalEvoCard(c)){         v+=25; pops.push({ci, kind:'chips', amount:25, text:'🍭 +25', color:'#ff88cc'}); }
-    if(hasItem('eviolite') && !isFinalEvoCard(c) && !rIsJoker(c)){ v+=15; pops.push({ci, kind:'chips', amount:15, text:'💎 +15', color:'#88ccff'}); }
-    if(hasItem('sync') && rIsJoker(c)){                    v+=25; pops.push({ci, kind:'chips', amount:25, text:'🧬 +25', color:'#cc88ff'}); }
+    owned.forEach(it => {
+      const a = it.effectArgs || {};
+      if(it.effect === 'type_chips' && rHasType(c, a.type)){
+        v += a.amount; pops.push({ci, kind:'chips', amount:a.amount, text:'+'+a.amount, color:'#ff9944'});
+      } else if(it.effect === 'stage_chips' && a.stage === 'final' && isFinalEvoCard(c)){
+        v += a.amount; pops.push({ci, kind:'chips', amount:a.amount, text:'+'+a.amount, color:'#ff88cc'});
+      } else if(it.effect === 'stage_chips' && a.stage === 'basic' && !isFinalEvoCard(c) && !rIsJoker(c)){
+        v += a.amount; pops.push({ci, kind:'chips', amount:a.amount, text:'+'+a.amount, color:'#88ccff'});
+      } else if(it.effect === 'joker_chips' && rIsJoker(c)){
+        v += a.amount; pops.push({ci, kind:'chips', amount:a.amount, text:'+'+a.amount, color:'#cc88ff'});
+      }
+    });
     chips += v;
   });
-  if(hasItem('leftovers')){ chips += 25; hp2.push({kind:'chips', amount:25, text:'🍃 +25', color:'#4499ff'}); }
-  if(hasItem('lucky_egg') && cards.length >= 4){ mult += 2; hp2.push({kind:'mult', amount:2, text:'🥚 +2 MULT', color:'#ff4444'}); }
-  if(hasItem('ditto') && meld.kind==='species'){ mult += 2; hp2.push({kind:'mult', amount:2, text:'🟣 +2 MULT', color:'#ff4444'}); }
-  if(hasItem('type_booster') && meld.kind==='type'){ mult += 1; hp2.push({kind:'mult', amount:1, text:'⚡ +1 MULT', color:'#ff4444'}); }
-  if(hasItem('dna_splicer') && cards.some(rIsJoker)){ mult += 2; hp2.push({kind:'mult', amount:2, text:'🧬 +2 MULT', color:'#ff4444'}); }
-  if(hasItem('rainbow_wing')){ mult += 1; hp2.push({kind:'mult', amount:1, text:'🌈 +1 MULT', color:'#ff4444'}); }
-  if(hasItem('life_orb')){ mult += 2; hp2.push({kind:'mult', amount:2, text:'🔮 +2 MULT', color:'#ff4444'}); }
-  if(hasItem('everstone')){ xm *= 1.2; hp2.push({kind:'xmult', factor:1.2, text:'🪨 ×1.2', color:'#ff66ff'}); }
-  if(hasItem('mewtwo')){ xm *= 1.5; hp2.push({kind:'xmult', factor:1.5, text:'⚗️ ×1.5', color:'#ff66ff'}); }
-  if(hasItem('link_cable') && meld.kind==='run'){ xm *= 1.5; hp2.push({kind:'xmult', factor:1.5, text:'📎 ×1.5', color:'#ff66ff'}); }
-  if(hasItem('ditto_blob') && meld.kind==='type' && cards.length>=4){ xm *= 1.5; hp2.push({kind:'xmult', factor:1.5, text:'🟣 ×1.5', color:'#ff66ff'}); }
-  if(hasItem('choice_band') && !opts.isExtend && (G._meldsLaid||0) === 0){ xm *= 2; hp2.push({kind:'xmult', factor:2, text:'🎀 FIRST ×2', color:'#ff66ff'}); }
-  if(hasItem('glitch') && !preview && Math.random() < 0.25){ xm *= 2; hp2.push({kind:'xmult', factor:2, text:'👾 GLITCH ×2', color:'#ff66ff'}); }
-  if(G._softKind && G._softKind === meld.kind){ xm *= RBAL.softBonus; hp2.push({kind:'xmult', factor:RBAL.softBonus, text:'WEAKNESS ×'+RBAL.softBonus, color:'#ffdd44'}); }
-  if(!preview && hasItem('amulet_coin') && (G._amuletGold||0) < 3){
-    G.gold = (G.gold||0)+1; G._amuletGold = (G._amuletGold||0)+1;
-    hp2.push({kind:'gold', text:'🪙 +$1', color:'#ffdd44'});
-  }
+
+  owned.forEach(it => {
+    const a = it.effectArgs || {};
+    switch(it.effect){
+      case 'flat_chips':
+        chips += a.amount; hp2.push({kind:'chips', amount:a.amount, text:'+'+a.amount+' '+it.name.toUpperCase(), color:'#4499ff'});
+        break;
+      case 'flat_mult':
+        mult += a.amount; hp2.push({kind:'mult', amount:a.amount, text:'+'+a.amount+' MULT', color:'#ff4444'});
+        break;
+      case 'size_mult':
+        if(cards.length >= a.minSize){ mult += a.amount; hp2.push({kind:'mult', amount:a.amount, text:'+'+a.amount+' MULT', color:'#ff4444'}); }
+        break;
+      case 'kind_mult':
+        if(a.kind === 'any' || meld.kind === a.kind){ mult += a.amount; hp2.push({kind:'mult', amount:a.amount, text:'+'+a.amount+' MULT', color:'#ff4444'}); }
+        break;
+      case 'joker_mult':
+        if(cards.some(rIsJoker)){ mult += a.amount; hp2.push({kind:'mult', amount:a.amount, text:'+'+a.amount+' MULT', color:'#ff4444'}); }
+        break;
+      case 'life_orb_style':
+        mult += a.mult; hp2.push({kind:'mult', amount:a.mult, text:'+'+a.mult+' MULT', color:'#ff4444'});
+        break;
+      case 'flat_xmult':
+        xm *= a.factor; hp2.push({kind:'xmult', factor:a.factor, text:'×'+a.factor, color:'#ff66ff'});
+        break;
+      case 'kind_xmult':
+        if(meld.kind === a.kind){ xm *= a.factor; hp2.push({kind:'xmult', factor:a.factor, text:'×'+a.factor, color:'#ff66ff'}); }
+        break;
+      case 'evo_run_xmult':
+        if(meld.kind === 'run'){ xm *= a.factor; hp2.push({kind:'xmult', factor:a.factor, text:'×'+a.factor, color:'#ff66ff'}); }
+        break;
+      case 'size_xmult':
+        if((a.kind === 'any' || meld.kind === a.kind) && cards.length >= a.minSize){ xm *= a.factor; hp2.push({kind:'xmult', factor:a.factor, text:'×'+a.factor, color:'#ff66ff'}); }
+        break;
+      case 'first_meld_xmult':
+        if(!opts.isExtend && (G._meldsLaid||0) === 0){ xm *= a.factor; hp2.push({kind:'xmult', factor:a.factor, text:'FIRST ×'+a.factor, color:'#ff66ff'}); }
+        break;
+      case 'chance_xmult':
+        if(!preview && Math.random() < a.chance){ xm *= a.factor; hp2.push({kind:'xmult', factor:a.factor, text:'PROC ×'+a.factor, color:'#ff66ff'}); }
+        break;
+      case 'gold_per_meld':
+        if(!preview){
+          G._itemGoldTracker = G._itemGoldTracker || {};
+          const used = G._itemGoldTracker[it.id] || 0;
+          if(used < a.cap){
+            G.gold = (G.gold||0) + a.amount;
+            G._itemGoldTracker[it.id] = used + a.amount;
+            hp2.push({kind:'gold', text:'+$'+a.amount, color:'#ffdd44'});
+          }
+        }
+        break;
+    }
+  });
+
   const dispMult = Math.round(mult * xm * 10)/10;
   const total = Math.max(1, Math.round(chips * mult * xm));
   return { chips: Math.round(chips), dispMult, total, pops, handPops: hp2, baseMult: meld.mult };
 }
 function rExtendDamage(cards, meld, opts){
   const d = rMeldDamage(cards, meld, Object.assign({isExtend:true}, opts||{}));
-  const f = hasItem('exp_share') ? 1 : RBAL.extendFactor;
+  const f = hasEffect('extend_full_damage') ? 1 : RBAL.extendFactor;
   d.total = Math.max(1, Math.round(d.total * f));
   return d;
 }
@@ -10637,15 +11263,47 @@ const R_BOSS_TYPES = { Brock:'Rock', Misty:'Water', 'Lt. Surge':'Electric', Surg
   Erika:'Grass', Koga:'Poison', Sabrina:'Psychic', Blaine:'Fire', Giovanni:'Ground' };
 const R_KIND_NAMES = { species:'SPECIES SETS', type:'TYPE SETS', run:'EVOLUTION RUNS & PAIRS' };
 
+// ── GYM RULES — each boss imposes one restriction on how YOU can play,
+// instead of running their own healing board. Every rule is expressed
+// through the same small set of hooks so detectSingleMeld/detectExtend/
+// the discard button/hand count can all check them uniformly:
+//   blocksNewMeld(meld, cards) - reject laying this as a brand-new meld
+//   blocksExtend(meld, cards)  - reject extending board meld `meld` with these cards
+//   blocksDiscard              - discarding is disabled entirely this battle
+//   handsPenalty               - N fewer hand-plays this battle
+const GYM_RULES = {
+  'Brock': { label: 'STURDY DEFENSE', desc: 'Species Sets need 4+ Pokémon to count',
+    blocksNewMeld: (meld, cards) => meld.kind === 'species' && cards.length < 4 },
+  'Misty': { label: 'GO WITH THE FLOW', desc: "Can't extend existing melds",
+    blocksExtend: () => true },
+  'Lt. Surge': { label: 'OVERLOAD', desc: 'Type Sets need 5+ Pokémon to count',
+    blocksNewMeld: (meld, cards) => meld.kind === 'type' && cards.length < 5 },
+  'Erika': { label: 'NATURAL ORDER', desc: 'Evolution Runs capped at 2 Pokémon',
+    blocksNewMeld: (meld, cards) => meld.kind === 'run' && cards.length > 2,
+    blocksExtend: (meld, cards) => meld.kind === 'run' && (meld.cards.length + cards.length) > 2 },
+  'Koga': { label: 'SMOKESCREEN', desc: 'Discarding is disabled',
+    blocksDiscard: true },
+  'Sabrina': { label: "MIND'S EYE", desc: "Can't play Type Sets",
+    blocksNewMeld: (meld) => meld.kind === 'type',
+    blocksExtend: (meld) => meld.kind === 'type' },
+  'Blaine': { label: 'SCORCHED EARTH', desc: '1 fewer hand play this battle',
+    handsPenalty: 1 },
+  'Giovanni': { label: 'IRON GRIP', desc: 'Species Sets capped at 2 Pokémon',
+    blocksNewMeld: (meld, cards) => meld.kind === 'species' && cards.length > 2,
+    blocksExtend: (meld, cards) => meld.kind === 'species' && (meld.cards.length + cards.length) > 2 },
+};
+function activeGymRule(){ return (G._boss && G._boss.rule) || null; }
+
 applyBattleStartEffects = function(){
   const trainer = (typeof getCurrentTrainer==='function') ? getCurrentTrainer() : {};
   const tier = trainer.tier || 'normal';
   G.handsLeft = (tier==='boss'?RBAL.playsBoss : tier==='elite'?RBAL.playsElite : RBAL.playsNormal)
-              + (hasItem('poke_ball')?1:0);
+              + sumEffectAmount('meld_count');
   G.discardsLeft = RBAL.discards;
   G._board = [];
   G._discardPile = [];
   G._amuletGold = 0;
+  G._itemGoldTracker = {};
   G._heroUsedThisTurn = false;
   { const hb = document.getElementById('hero-btn'); if(hb) hb.style.display = G._heroAbilityId ? '' : 'none'; }
   G._meldsLaid = 0;
@@ -10655,14 +11313,13 @@ applyBattleStartEffects = function(){
   G._runStats = G._runStats || { battles:0, totalDmg:0, biggest:{label:'—', dmg:0}, gins:0 };
   if(tier === 'boss'){
     const gn = rGymNumber();
-    G._softKind = null;
     const btype = R_BOSS_TYPES[trainer.name] ||
       ['Rock','Water','Electric','Grass','Poison','Psychic','Fire','Ground'][gn%8];
-    G._boss = { type: btype, gym: gn, stolen: 0, stolenName: null, melds: [] };
+    const rule = GYM_RULES[trainer.name] || null;
+    G._boss = { type: btype, gym: gn, rule };
+    if(rule && rule.handsPenalty) G.handsLeft = Math.max(1, G.handsLeft - rule.handsPenalty);
   } else {
     G._boss = null;
-    G._softKind = (tier==='elite' || Math.random()<0.5)
-      ? ['species','type','run'][Math.floor(Math.random()*3)] : null;
   }
   rSetupUI();
   setTimeout(()=>{
@@ -10688,13 +11345,11 @@ document.head.insertAdjacentHTML('beforeend', `<style>
   object-fit:contain;image-rendering:pixelated;}
 .rm-meld.rm-flash .rm-card{border-color:#ffdd44;box-shadow:0 0 14px rgba(255,220,60,0.7);}
 .rm-meld-dmg{font-size:11px;color:#8899cc;margin-top:4px;text-shadow:1px 1px 0 #000;}
-#rummy-contract{background:rgba(6,10,28,0.9);border:2px solid #883355;border-radius:8px;
-  padding:7px 9px;margin:6px 0;font-family:'PokemonClassic',monospace;display:none;}
-#rummy-contract .rc-title{font-size:10px;color:#ff88aa;letter-spacing:1px;margin-bottom:4px;}
-#rummy-contract .rc-item{font-size:9px;color:#aabbdd;margin:3px 0;line-height:1.4;}
-#rummy-contract .rc-item.done{color:#66ff88;}
-#rummy-contract .rc-charge{font-size:9px;color:#ffdd44;margin-top:4px;}
-#rummy-contract .rc-note{font-size:8px;color:#667;margin-top:3px;}
+#rummy-contract{display:none;font-family:'PokemonClassic',monospace;margin:6px 0;
+  background:rgba(8,10,26,0.94); border:2px solid rgba(50,70,140,0.5);
+  border-radius:8px; padding:12px 14px; box-shadow:0 3px 12px rgba(0,0,0,0.6);}
+#rummy-contract .rc-title{font-size:clamp(10px,1.05vw,14px);color:#ffdd66;letter-spacing:0.5px;}
+#rummy-contract .rc-item{font-size:clamp(9px,0.95vw,12px);color:#8899aa;margin-top:4px;line-height:1.45;}
 #rummy-boss{background:rgba(20,6,10,0.9);border:2px solid #aa3333;border-radius:8px;
   padding:7px 9px;margin:6px 0;font-family:'PokemonClassic',monospace;display:none;}
 #rummy-boss .rb-title{font-size:9px;color:#ff6666;letter-spacing:1px;margin-bottom:3px;}
@@ -10782,7 +11437,7 @@ function rRenderBoard(){
     const d = document.createElement('div');
     d.className = 'rm-meld'; d.id = 'rm-meld-'+m.id;
     d.title = m.label+' — extend it with matching cards for more damage';
-    d.innerHTML = `<div class="rm-meld-label">${m.label} ×${m.mult}</div>
+    d.innerHTML = `<div class="rm-meld-label">${m.label}</div>
       <div class="rm-meld-cards">${m.cards.map(c=>`<div class="rm-card"><img src="${rArt(c)}" title="${c.name}"></div>`).join('')}</div>
       <div class="rm-meld-dmg">⚔ ${fmtNum(m.dmgDealt)}</div>`;
     return d;
@@ -10848,21 +11503,20 @@ function rRenderBoard(){
 }
 function rRenderContract(){
   const el = document.getElementById('rummy-contract'); if(!el) return;
-  if(G._softKind){
+  const rule = activeGymRule();
+  if(rule){
     el.style.display = 'block';
-    el.innerHTML = `<div class="rc-title" style="color:#ffdd66;">🎯 WEAKNESS</div>
-      <div class="rc-item">${R_KIND_NAMES[G._softKind]} deal ×${RBAL.softBonus}</div>`;
+    el.innerHTML = `<div class="rc-title">${rule.label}</div>
+      <div class="rc-item">${rule.desc}</div>`;
   } else el.style.display = 'none';
 }
 function rRenderBoss(){
+  // Bosses no longer run their own healing board - their gym's restriction
+  // (shown via rRenderContract/#rummy-contract instead) is the whole
+  // mechanic now. Element kept (rSetupUI/rCleanupUI still reference the
+  // id) but always hidden.
   const el = document.getElementById('rummy-boss'); if(!el) return;
-  if(!G._boss){ el.style.display='none'; return; }
-  el.style.display = 'block';
-  el.innerHTML = `<div class="rb-title">🃏 ${(getCurrentTrainer().name||'BOSS').toUpperCase()}'S BOARD (${G._boss.type})</div>
-    <div class="rb-melds">${G._boss.melds.slice(-4).map(bm =>
-      `<div class="rb-meld">${bm.sprites.map(s=>`<img src="${s}">`).join('')}<span>+${bm.heal} HP</span></div>`
-    ).join('') || '<div style="font-size:8px;color:#663333;">waiting to meld...</div>'}</div>
-    <div class="rb-warn">Their melds HEAL them — discarding ${G._boss.type} cards feeds bigger heals!</div>`;
+  el.style.display = 'none';
 }
 function rRenderAll(){
   rRenderBoard(); rRenderContract(); rRenderBoss();
@@ -10966,6 +11620,7 @@ playSelectedHand = async function(){
     gh.destX = destX; gh.destY = destY;
     gh.g.style.transition = `transform 0.42s cubic-bezier(0.22,1,0.36,1) ${i*60}ms, box-shadow 0.3s ease ${i*60}ms`;
     gh.g.style.transform = `translate(${destX-gh.srcX}px,${destY-gh.srcY}px) scale(1.15)`;
+    gh.baseTransform = gh.g.style.transform;  // stable reference for bounce() below - see its own comment
     gh.g.style.boxShadow = '0 4px 24px rgba(0,0,0,0.95),0 20px 40px rgba(0,0,0,0.9)';
   });
   await delay(420 + n*60 + 80);
@@ -10978,7 +11633,16 @@ playSelectedHand = async function(){
   document.body.appendChild(counter);
   const bounce = gh => {
     if(!gh) return;
-    const base = gh.g.style.transform;
+    // Uses the STABLE base captured right after Phase 2, not the live
+    // style.transform - a card with 2+ matching item bonuses gets
+    // multiple chip pops in quick succession (only ~170-210ms apart),
+    // each independently calling bounce(), but the bounce-back
+    // animation itself takes 270ms to fully settle. Reading the live
+    // transform meant a second bounce could capture the ghost mid-
+    // settle as its "base" and permanently drift its resting position -
+    // this is the actual root cause of the extra/offset sprite that
+    // kept appearing during the animation right after.
+    const base = gh.baseTransform || gh.g.style.transform;
     gh.g.style.transition = 'transform 0.09s ease-out';
     gh.g.style.transform = base + ' translateY(-18px) scale(1.12)';
     setTimeout(()=>{ gh.g.style.transition='transform 0.17s cubic-bezier(0.3,1.8,0.4,1)'; gh.g.style.transform = base; }, 100);
@@ -11083,7 +11747,7 @@ playSelectedHand = async function(){
         if(m.cards.length >= 3){
           m.mult = RBAL.runMult;
           const topNm = (KANTO_BY_DEX[m.stages[m.stages.length-1]]||{}).name || 'EVO';
-          m.label = topNm.toUpperCase()+' RUN';
+          m.label = topNm.toUpperCase()+' EVO';
           announceText('⬆ PAIR UPGRADED TO FULL RUN! ×'+RBAL.runMult, 1800);
         }
       }
@@ -11150,7 +11814,7 @@ playSelectedHand = async function(){
   // GIN — emptied the whole hand in one play
   if(emptiedHand && G.trainerHp > 0){
     let gin = Math.max(60, Math.round(G.trainerMaxHp * RBAL.ginPct));
-    if(hasItem('choice_scarf')) gin *= 2;
+    gin *= multiplyEffectFactor('gin_xmult');
     G._runStats.gins++;
     G.gold = (G.gold||0) + RBAL.ginGold;
     announceText('🀄 GIN! '+fmtNum(gin)+' BONUS DMG  +$'+RBAL.ginGold+'!', 2400);
@@ -11180,12 +11844,13 @@ function rAfterPlay(){
   const finish = () => {
     if(G.trainerHp <= 0){ setTimeout(advanceTrainer, 400); return; }
     if(G.handsLeft <= 0){
-      if(hasItem('focus_sash') && !G._sashUsed){
+      if(hasEffect('survive_once') && !G._sashUsed){
         G._sashUsed = true;
-        const si = G_items.findIndex(it=>it.id==='focus_sash');
+        const savedBy = ownedItemsWithEffect('survive_once')[0];
+        const si = G_items.findIndex(it=>it.id===savedBy.id);
         if(si>-1){ G_items.splice(si,1); if(typeof renderOwnedItemsPanel==='function') renderOwnedItemsPanel(); }
         G.handsLeft = 2;
-        announceText('🔰 FOCUS SASH! +2 MELDS', 2200);
+        announceText('🔰 '+savedBy.name.toUpperCase()+'! +2 MELDS', 2200);
         rRenderAll();
         updateActionBar();
       } else {
@@ -11196,61 +11861,26 @@ function rAfterPlay(){
     if(G.handsLeft === 1) announceText('⚠ LAST MELD!', 1500);
     updateActionBar();
   };
-  if(G._boss){ rBossAct(finish); } else { finish(); }
+  finish();
 }
 
-// ── DISCARD: original 1-5 fly-off + reflow, plus boss snipe ───
+// ── DISCARD: original 1-5 fly-off + reflow ─────────────────────
 (function(){
   const _origDiscard = discardSelected;
   discardSelected = async function(){
     if(G._rummyPhase !== 'play'){ if(typeof SFX!=='undefined') SFX.error(); return; }
-    if(G_selected.size > 5){ announceText('DISCARD UP TO 5 CARDS', 1300); return; }
-    const cards = rSelCards();
-    const before = G.discardsLeft;
-    await _origDiscard.apply(this, arguments);
-    if(G.discardsLeft < before && G._boss){
-      let fed = 0, fedName = null;
-      cards.forEach(c => { if(rHasType(c, G._boss.type)){ fed += Math.round(rVal() * RBAL.stealFactor); fedName = c.name; } });
-      if(fed > 0){
-        G._boss.stolen += fed;
-        G._boss.stolenName = fedName;
-        announceText('😈 '+(getCurrentTrainer().name||'BOSS').toUpperCase()+' GRABS YOUR '+G._boss.type.toUpperCase()+' CARDS!', 2000);
-        rRenderBoss();
-      }
+    if(activeGymRule() && activeGymRule().blocksDiscard){
+      if(typeof SFX!=='undefined') SFX.error();
+      announceText('🚫 DISCARDING LOCKED THIS BATTLE', 1500);
+      return;
     }
+    if(G_selected.size > 5){ announceText('DISCARD UP TO 5 CARDS', 1300); return; }
+    await _origDiscard.apply(this, arguments);
     G._heroUsedThisTurn = false;   // a new discard resets the ability for next time
     updateActionBar();
   };
 })();
 
-// ── BOSS MIRROR BOARD — their melds HEAL them ─────────────────
-function rBossPool(){
-  const t = G._boss.type;
-  const pool = [];
-  for(let d=1; d<=151; d++){
-    const p = KANTO_BY_DEX[d];
-    if(p && (p.type1===t || p.type2===t)) pool.push(d);
-  }
-  return pool.length ? pool : [19,20,52];
-}
-function rBossAct(done){
-  const b = G._boss;
-  const lays = (G._playsUsed % 2 === 0) || b.stolen > 0;
-  if(!lays){ done(); return; }
-  const pool = rBossPool();
-  const picks = [];
-  for(let i=0;i<3;i++) picks.push(pool[Math.floor(Math.random()*pool.length)]);
-  const heal = RBAL.bossHealBase + b.gym*RBAL.bossHealPerGym + b.stolen;
-  const stolenTxt = b.stolen>0 ? ' (+'+b.stolen+' from your '+(b.stolenName||'card').toUpperCase()+'!)' : '';
-  b.stolen = 0; b.stolenName = null;
-  const sprites = picks.map(d => `https://cdn.jsdelivr.net/gh/ethanlam1234/pokemonbalatro@main/sprites/${d}.png`);
-  b.melds.push({sprites, heal});
-  G.trainerHp = Math.min(G.trainerMaxHp, G.trainerHp + heal);
-  announceText('🃏 '+(getCurrentTrainer().name||'BOSS').toUpperCase()+' MELDS & RECOVERS +'+heal+' HP'+stolenTxt, 1900);
-  rRenderBoss();
-  updatePortraits();
-  setTimeout(done, 1100);
-}
 
 // ── ACTION BAR ────────────────────────────────────────────────
 updateActionBar = function(){
@@ -11282,8 +11912,9 @@ updateActionBar = function(){
       }
     }
     if(discardBtn){
-      discardBtn.disabled = !(sel >= 1 && sel <= 5 && G.discardsLeft > 0);
-      discardBtn.textContent = G.discardsLeft > 0 ? `DISCARD (${sel})` : 'NO DISCARDS';
+      const discardBlocked = !!(activeGymRule() && activeGymRule().blocksDiscard);
+      discardBtn.disabled = discardBlocked || !(sel >= 1 && sel <= 5 && G.discardsLeft > 0);
+      discardBtn.textContent = discardBlocked ? 'DISCARD LOCKED' : (G.discardsLeft > 0 ? `DISCARD (${sel})` : 'NO DISCARDS');
     }
     if(nameEl){
       if(action){
@@ -11633,7 +12264,7 @@ showDefeatScreen = function(){
     if(typeof G_modifier!=='undefined' && G_modifier==='gold_minus25') _earn = Math.ceil(_earn*0.75);
     G.gold = (G.gold||0) + _earn;
     if(typeof G_modifier!=='undefined' && G_modifier==='lose_gold_2') G.gold = Math.max(0, G.gold-2);
-    if(hasItem('life_orb')) G.gold = Math.max(0, G.gold-1);
+    G.gold = Math.max(0, G.gold - ownedItemsWithEffect('life_orb_style').reduce((s,it)=>s+(it.effectArgs.goldLoss||0),0));
     setTimeout(()=>announceText('VICTORY!  +$'+_earn, 1600), 250);
     await delay(500);
 
