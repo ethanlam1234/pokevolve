@@ -2053,14 +2053,18 @@ const ANIM_COLS = 5;          // sheets are 5 tiles wide
 // impact DOWN from the Pokémon's centre (positive = lower on screen).
 const MOVE_ANIM_REF = 88;
 const MOVE_ANIM_DROP = 0.22;
+// Nominal effect size (native px) for a plainTarget hit on a UI element like
+// the Health box - the box itself is small, so we size to this instead.
+const PLAIN_TARGET_REF = 132;
 // Moves whose animation should play ON THE OPPONENT rather than launching from
 // the played card (self-target/status moves like Metronome and Kadabra's
 // Disable). For these the "user" anchor is the opponent too.
 const MOVE_ON_OPPONENT = new Set(['metronome','kinesis']);
 // Moves whose animation should play ON OUR OWN played card, not on the
-// opponent - self-target moves whose PokéRogue cels are authored as TARGET-
-// focused (e.g. Abra's Teleport) and would otherwise render on the enemy.
-const MOVE_ON_SELF = new Set(['teleport']);
+// opponent - self-target / field moves whose PokéRogue cels are authored as
+// TARGET- or SCREEN-focused (Abra's Teleport; Tentacruel's Toxic Spikes, which
+// are laid down BY us) and would otherwise render on the enemy.
+const MOVE_ON_SELF = new Set(['teleport','toxic-spikes']);
 // PokéRogue's own field anchors (src/data/battle-anims.ts). Cels are placed
 // in this native space: base offset is always (x+106, y+116); a USER-focused
 // cel is then shifted so native (106,116) lands on the user, and a TARGET-
@@ -2146,9 +2150,12 @@ function measureSpriteBody(spriteEl, targetEl){
 // targetEl (the opponent Pokémon). Resolves when the timeline finishes.
 function playMoveAnimation(kebab, opts){
   const { container, attackerEl, targetEl, scale = 1, speedFps = BATTLE_ANIM_FPS,
-          onSoundEffect } = opts;
+          onSoundEffect, plainTarget = false, variantIndex = 0 } = opts;
   return loadAnimJson(kebab).then(async configs => {
-    const anim = configs[0];
+    // Some anims ship multiple variants (e.g. Barrier: [0]=USER_TARGET focus,
+    // [1]=TARGET focus). variantIndex lets a caller pick the one that anchors
+    // correctly for how it's being used.
+    const anim = configs[variantIndex] || configs[0];
     if(!anim || !anim.graphic || !anim.frames || !anim.frames.length) return;
     const sheet = await loadAnimSheet(anim.graphic).catch(() => null);
     if(!sheet) return;
@@ -2181,15 +2188,26 @@ function playMoveAnimation(kebab, opts){
     // Pokémon and scale to its real size (small Weedle -> small effect). Falls
     // back to the element box if the canvas can't be read.
     let impact, S;
-    const spriteMetrics = measureSpriteBody(spriteEl, targetEl);
-    if(!spriteMetrics) return;   // nothing laid out to aim at
-    // CONSTANT size: scale to the opponent area (a fixed-size box), not the
-    // Pokémon's body, so every move is the same size regardless of species.
-    // Aim at the Pokémon's horizontal centre, pushed DOWN by MOVE_ANIM_DROP.
-    const _areaH = (targetEl && targetEl.getBoundingClientRect)
-      ? targetEl.getBoundingClientRect().height : spriteMetrics.bodyH;
-    S = (_areaH / MOVE_ANIM_REF) * scale;
-    impact = { x: spriteMetrics.cx, y: spriteMetrics.cy + _areaH * MOVE_ANIM_DROP };
+    if(plainTarget){
+      // targetEl is a plain UI element (e.g. our Health box), NOT a sprite -
+      // aim at its geometric centre with a fixed nominal size, no pixel scan
+      // and no sprite-headroom drop. Used for the opponent's attack landing on
+      // our Health UI.
+      const r = targetEl && targetEl.getBoundingClientRect ? targetEl.getBoundingClientRect() : null;
+      if(!r || r.width < 2 || r.height < 2) return;
+      S = (PLAIN_TARGET_REF / MOVE_ANIM_REF) * scale;
+      impact = { x: r.left + r.width/2, y: r.top + r.height/2 };
+    } else {
+      const spriteMetrics = measureSpriteBody(spriteEl, targetEl);
+      if(!spriteMetrics) return;   // nothing laid out to aim at
+      // CONSTANT size: scale to the opponent area (a fixed-size box), not the
+      // Pokémon's body, so every move is the same size regardless of species.
+      // Aim at the Pokémon's horizontal centre, pushed DOWN by MOVE_ANIM_DROP.
+      const _areaH = (targetEl && targetEl.getBoundingClientRect)
+        ? targetEl.getBoundingClientRect().height : spriteMetrics.bodyH;
+      S = (_areaH / MOVE_ANIM_REF) * scale;
+      impact = { x: spriteMetrics.cx, y: spriteMetrics.cy + _areaH * MOVE_ANIM_DROP };
+    }
 
     // Launch point: normally the ATTACKING CARD's center, so USER-focused cels
     // (launch flares) start from the played card. But self-target/status moves
@@ -2306,12 +2324,17 @@ function playMoveAnimation(kebab, opts){
             canvas.height = Math.round(vh * d);
             ctx.setTransform(d, 0, 0, d, 0, 0);
             // Re-measure after a reflow (keep the constant-size + drop model).
-            const m = measureSpriteBody(spriteEl, targetEl);
-            if(m){
-              const aH = (targetEl && targetEl.getBoundingClientRect)
-                ? targetEl.getBoundingClientRect().height : m.bodyH;
-              impact.x = m.cx; impact.y = m.cy + aH * MOVE_ANIM_DROP;
-              S = (aH / MOVE_ANIM_REF) * scale;
+            if(plainTarget){
+              const r = targetEl && targetEl.getBoundingClientRect ? targetEl.getBoundingClientRect() : null;
+              if(r){ impact.x = r.left + r.width/2; impact.y = r.top + r.height/2; }
+            } else {
+              const m = measureSpriteBody(spriteEl, targetEl);
+              if(m){
+                const aH = (targetEl && targetEl.getBoundingClientRect)
+                  ? targetEl.getBoundingClientRect().height : m.bodyH;
+                impact.x = m.cx; impact.y = m.cy + aH * MOVE_ANIM_DROP;
+                S = (aH / MOVE_ANIM_REF) * scale;
+              }
             }
             // The card moved too (reflow) - re-derive the launch point.
             const l2 = attackerCenter();
@@ -2395,7 +2418,15 @@ const PKMN_ANIM_SCALE = 1.0;
 // metronome) and otherwise the richest, most-visible animation of its type.
 // 87 distinct animations across the 151 (only ~11 of the available anims go
 // unused; full uniqueness is impossible with 98 anims for 151 Pokémon).
-const DEX_TO_ANIM = {"1":"synthesis","2":"growth","3":"solar-beam","4":"ember","5":"flamethrower","6":"fly","7":"withdraw","8":"razor-shell","9":"hydro-cannon","10":"string-shot","11":"harden","12":"sleep-powder","13":"poison-sting","14":"silver-wind","15":"attack-order","16":"foresight","17":"tailwind","18":"hurricane","19":"u-turn","20":"super-fang","21":"peck","22":"drill-peck","23":"coil","24":"glare","25":"thunder-wave","26":"thunderbolt","27":"sand-attack","28":"fury-swipes","29":"poison-jab","30":"protect","31":"venom-drench","32":"horn-attack","33":"megahorn","34":"venoshock","35":"metronome","36":"moonlight","37":"will-o-wisp","38":"mystical-fire","39":"sing","40":"encore","41":"supersonic","42":"leech-life","43":"grass-whistle","44":"stun-spore","45":"aromatherapy","46":"leech-seed","47":"spore","48":"signal-beam","49":"quiver-dance","50":"twister","51":"earthquake","52":"pay-day","53":"fake-out","54":"zen-headbutt","55":"psybeam","56":"rage-fist","57":"outrage","58":"fire-fang","59":"extreme-speed","60":"water-pulse","61":"counter","62":"focus-punch","63":"teleport","64":"kinesis","65":"future-sight","66":"focus-energy","67":"meteor-mash","68":"dynamic-punch","69":"vine-whip","70":"power-whip","71":"grass-knot","72":"acid","73":"toxic-spikes","74":"rock-polish","75":"rollout","76":"explosion","77":"flame-charge","78":"flare-blitz","79":"stored-power","80":"amnesia","81":"magnet-rise","82":"magnet-bomb","83":"meteor-assault","84":"double-hit","85":"triple-axel","86":"recover","87":"ice-beam","88":"sludge","89":"acid-armor","90":"clamp","91":"spike-cannon","92":"lick","93":"curse","94":"shadow-ball","95":"iron-defense","96":"hypnosis","97":"dream-eater","98":"vise-grip","99":"crabhammer","100":"charge","101":"self-destruct","102":"egg-bomb","103":"wood-hammer","104":"bone-club","105":"bonemerang","106":"high-jump-kick","107":"mach-punch","108":"stockpile","109":"smokescreen","110":"poison-gas","111":"stomp","112":"rock-wrecker","113":"soft-boiled","114":"constrict","115":"mega-punch","116":"bubble","117":"aqua-jet","118":"waterfall","119":"horn-drill","120":"rapid-spin","121":"psywave","122":"barrier","123":"x-scissor","124":"lovely-kiss","125":"thunder-punch","126":"fire-punch","127":"guillotine","128":"thrash","129":"splash","130":"dragon-rage","131":"perish-song","132":"substitute","133":"swift","134":"aqua-ring","135":"volt-switch","136":"flame-wheel","137":"tri-attack","138":"ancient-power","139":"rock-blast","140":"defense-curl","141":"night-slash","142":"rock-slide","143":"snore","144":"blizzard","145":"thunder","146":"sky-attack","147":"wrap","148":"dragon-rush","149":"draco-meteor","150":"psystrike","151":"aura-sphere"};
+const DEX_TO_ANIM = {"1":"synthesis","2":"growth","3":"solar-beam","4":"ember","5":"flamethrower","6":"fly","7":"withdraw","8":"razor-shell","9":"hydro-cannon","10":"string-shot","11":"detect","12":"sleep-powder","13":"poison-sting","14":"silver-wind","15":"attack-order","16":"foresight","17":"roar","18":"hurricane","19":"u-turn","20":"super-fang","21":"peck","22":"drill-peck","23":"coil","24":"glare","25":"thunder-wave","26":"thunderbolt","27":"sand-attack","28":"fury-swipes","29":"poison-jab","30":"protect","31":"venom-drench","32":"horn-attack","33":"megahorn","34":"venoshock","35":"metronome","36":"moonlight","37":"will-o-wisp","38":"mystical-fire","39":"sing","40":"encore","41":"supersonic","42":"leech-life","43":"grass-whistle","44":"stun-spore","45":"aromatherapy","46":"leech-seed","47":"spore","48":"signal-beam","49":"quiver-dance","50":"twister","51":"earthquake","52":"pay-day","53":"fake-out","54":"zen-headbutt","55":"psybeam","56":"rage-fist","57":"outrage","58":"fire-fang","59":"extreme-speed","60":"mean-look","61":"counter","62":"focus-punch","63":"teleport","64":"kinesis","65":"future-sight","66":"focus-energy","67":"meteor-mash","68":"dynamic-punch","69":"vine-whip","70":"power-whip","71":"grass-knot","72":"acid","73":"toxic-spikes","74":"rock-polish","75":"rollout","76":"explosion","77":"flame-charge","78":"flare-blitz","79":"stored-power","80":"amnesia","81":"magnet-rise","82":"magnet-bomb","83":"meteor-assault","84":"double-hit","85":"triple-axel","86":"recover","87":"ice-beam","88":"sludge","89":"acid-armor","90":"clamp","91":"spike-cannon","92":"lick","93":"curse","94":"shadow-ball","95":"iron-defense","96":"hypnosis","97":"dream-eater","98":"vise-grip","99":"crabhammer","100":"charge","101":"self-destruct","102":"egg-bomb","103":"wood-hammer","104":"bone-club","105":"bonemerang","106":"high-jump-kick","107":"mach-punch","108":"stockpile","109":"smokescreen","110":"poison-gas","111":"stomp","112":"rock-wrecker","113":"soft-boiled","114":"constrict","115":"mega-punch","116":"bubble","117":"aqua-jet","118":"waterfall","119":"horn-drill","120":"rapid-spin","121":"psywave","122":"barrier","123":"x-scissor","124":"lovely-kiss","125":"thunder-punch","126":"fire-punch","127":"guillotine","128":"thrash","129":"splash","130":"dragon-rage","131":"perish-song","132":"substitute","133":"swift","134":"aqua-ring","135":"volt-switch","136":"flame-wheel","137":"tri-attack","138":"ancient-power","139":"rock-blast","140":"defense-curl","141":"night-slash","142":"rock-slide","143":"snore","144":"blizzard","145":"thunder","146":"sky-attack","147":"wrap","148":"dragon-rush","149":"draco-meteor","150":"psystrike","151":"aura-sphere"};
+// When the OPPONENT Pokémon attacks US, it plays its own damaging move
+// animation launching from the enemy sprite and striking our Health UI in the
+// bottom-left. This is a SEPARATE mapping from DEX_TO_ANIM (which is what WE
+// play): every dex gets a unique-where-possible DAMAGING move (never a status
+// animation) - only ~130 usable damaging anims exist for 151 species, so ~22
+// necessarily repeat, all type-matched to the attacker. Block intent uses the
+// Barrier animation instead (see playOpponentBlockAnimation).
+const OPP_ATTACK_ANIM = {"1":"giga-drain","2":"mega-drain","3":"solar-beam","4":"ember","5":"flamethrower","6":"fly","7":"hydro-pump","8":"razor-shell","9":"hydro-cannon","10":"pin-missile","11":"twineedle","12":"silver-wind","13":"poison-sting","14":"megahorn","15":"attack-order","16":"mega-punch","17":"pay-day","18":"hurricane","19":"u-turn","20":"super-fang","21":"peck","22":"drill-peck","23":"poison-jab","24":"poison-fang","25":"thunderbolt","26":"thunder","27":"earthquake","28":"fury-swipes","29":"poison-tail","30":"sludge","31":"sludge-bomb","32":"horn-attack","33":"acid","34":"venoshock","35":"swift","36":"hyper-fang","37":"fire-blast","38":"mystical-fire","39":"double-slap","40":"dizzy-punch","41":"smog","42":"leech-life","43":"absorb","44":"petal-dance","45":"bullet-seed","46":"signal-beam","47":"x-scissor","48":"stomp","49":"thrash","50":"twister","51":"bone-club","52":"extreme-speed","53":"guillotine","54":"zen-headbutt","55":"psybeam","56":"rage-fist","57":"outrage","58":"fire-fang","59":"fire-punch","60":"waterfall","61":"crabhammer","62":"focus-punch","63":"psycho-cut","64":"psystrike","65":"psywave","66":"brick-break","67":"meteor-mash","68":"dynamic-punch","69":"vine-whip","70":"power-whip","71":"grass-knot","72":"clamp","73":"aqua-jet","74":"rock-slide","75":"rock-blast","76":"explosion","77":"flame-charge","78":"flare-blitz","79":"stored-power","80":"wring-out","81":"thunder-punch","82":"thunder-fang","83":"meteor-assault","84":"double-hit","85":"tri-attack","86":"bubble","87":"ice-beam","88":"snore","89":"egg-bomb","90":"self-destruct","91":"spike-cannon","92":"lick","93":"shadow-ball","94":"night-slash","95":"rock-wrecker","96":"dream-eater","97":"vise-grip","98":"constrict","99":"flail","100":"volt-switch","101":"thunder-shock","102":"frenzy-plant","103":"wood-hammer","104":"bonemerang","105":"pound","106":"high-jump-kick","107":"mach-punch","108":"crush-claw","109":"metal-claw","110":"fire-spin","111":"ancient-power","112":"rock-throw","113":"flame-wheel","114":"razor-leaf","115":"overheat","116":"blizzard","117":"ice-ball","118":"rock-smash","119":"bullet-punch","120":"aura-sphere","121":"karate-chop","122":"gust","123":"sky-attack","124":"crunch","125":"dragon-breath","126":"dragon-claw","127":"dragon-rage","128":"dragon-rush","129":"draco-meteor","130":"clamp","131":"aqua-jet","132":"horn-attack","133":"crush-claw","134":"bubble","135":"thunder-fang","136":"fire-spin","137":"swift","138":"ancient-power","139":"rock-throw","140":"rock-slide","141":"rock-blast","142":"rock-wrecker","143":"stomp","144":"ice-beam","145":"thunder","146":"fire-fang","147":"dragon-breath","148":"dragon-claw","149":"dragon-rage","150":"psywave","151":"zen-headbutt"};
 // Per-type animation pools, for cards whose dex we cannot resolve.
 const ANIM_BY_TYPE = {"Grass":["giga-drain","frenzy-plant","petal-dance","mega-drain","razor-leaf","bullet-seed","vine-whip","wrap","absorb"],"Fire":["fire-spin","fire-blast","gust","overheat","fire-fang","fire-punch","mach-punch","charge","ember"],"Water":["wring-out","hydro-pump","bubble","crush-claw","dragon-rage","poison-gas","ice-ball","gust","splash"],"Bug":["megahorn","leech-life","sing","poison-tail","pin-missile","string-shot","poison-gas","petal-dance","crush-claw"],"Normal":["final-gambit","whirlwind","flail","swagger","hyper-fang","dizzy-punch","glare","disable","fake-out","follow-me","growl","fake-tears","pound","mega-punch","double-slap"],"Poison":["sludge-bomb","scary-face","poison-fang","poison-gas","smog","acid","twineedle","supersonic","leech-life"],"Electric":["thunder-wave","thunder-shock","thunder-fang","thunder-punch","charge"],"Ground":["stealth-rock","scratch","sand-attack","ancient-power","rock-throw"],"Fairy":["metronome","sweet-kiss","charm","encore"],"Fighting":["brick-break","dynamic-punch","rock-smash","karate-chop","bulk-up","rolling-kick","double-kick"],"Psychic":["future-sight","kinesis","psycho-cut","foresight"],"Rock":["rock-throw","ancient-power","stealth-rock","wring-out","crush-claw"],"Ghost":["shadow-ball","curse"],"Ice":["lovely-kiss","ice-ball"],"Dragon":["dragon-breath","dragon-dance","dragon-claw"]};
 
@@ -5682,13 +5713,13 @@ const POKEMON_MOVES = {
   8:{name:'Shell Bash',type:'Water',role:'investment',desc:'Deal double Damage if held since last turn.'},
   9:{name:'Hydro Cannon',type:'Water',role:'draw',desc:'Draw 3 extra Pokémon next turn.'},
   10:{name:'Metamorphosis',type:'Bug',role:'investment',desc:'Evolves into Metapod after 2 turns in hand.'},
-  11:{name:'Harden',type:'Bug',role:'block',desc:'Gain 40 Block.'},
+  11:{name:'Detect',type:'Bug',role:'block',desc:'Brace for impact. Gain 40 Block.'},
   12:{name:'Sleep Powder',type:'Bug',role:'status',desc:'Apply 60 Sleep to the enemy.'},
   13:{name:'Poison Sting',type:'Bug',role:'discard_payoff',desc:'Apply 30 Poison. If discarded, apply 20 more.'},
   14:{name:'Shed Skin',type:'Bug',role:'survival',desc:'If discarded, return to hand next turn with 80 Damage.'},
   15:{name:'Swarm',type:'Bug',role:'payoff',desc:'Bug Pokémon played this turn gain 50 Damage.'},
   16:{name:'Keen Eye',type:'Normal',role:'information',desc:'Reveal your next 3 draws.'},
-  17:{name:'Tailwind',type:'Normal',role:'draw',desc:'Draw 2 Pokémon.'},
+  17:{name:'Roar',type:'Normal',role:'draw',desc:'Let out a rallying cry. Draw 2 Pokémon.'},
   18:{name:'Gale Wings',type:'Normal',role:'rule_breaker',desc:'Play 1 extra Pokémon after this one.'},
   19:{name:'Run Away',type:'Normal',role:'discard',desc:'Gain +1 discard this turn.'},
   20:{name:'Super Fang',type:'Normal',role:'finisher',desc:'Deal Damage equal to 20% of the enemy\'s current HP.'},
@@ -5731,7 +5762,7 @@ const POKEMON_MOVES = {
   57:{name:'Anger Point',type:'Fighting',role:'comeback',desc:'Gain x2 Mult if the enemy is above half HP.'},
   58:{name:'Guard Dog',type:'Fire',role:'reactive',desc:'Gain x2 Damage if the enemy\'s intent is Attack.'},
   59:{name:'Extreme Speed',type:'Fire',role:'rule_breaker',desc:'Play 1 extra Pokémon this turn, past your limit.'},
-  60:{name:'Water Pulse',type:'Water',role:'status',desc:'Apply 40 Confusion. Deal 150 extra Damage if the enemy is already Confused.'},
+  60:{name:'Mean Look',type:'Water',role:'status',desc:'Fix the foe with a hypnotic stare. Apply 40 Confusion; deal 150 extra Damage if already Confused.'},
   61:{name:'Counter',type:'Water',role:'reactive',desc:'Store half the enemy\'s next Attack as Damage for your next turn.'},
   62:{name:'Focus Punch',type:'Water',role:'finisher',desc:'Deal 40 Damage. Deal x3 instead if the enemy is Confused.'},
   63:{name:'Teleport',type:'Psychic',role:'reusable',desc:'Return to hand after being played. Deals 150 more Damage next time.'},
@@ -6220,6 +6251,35 @@ function rResolvePlayedMoves(cards, emptiedHand) {
   const keepHalfArmed = G._keepHalfArmed; G._keepHalfArmed = false;
   return { bonusDmg: moveScore, pierceDmg, keepHalfArmed, perCardStatus };
 }
+// The opponent's attack: its own unique DAMAGING move animation launching from
+// the enemy sprite and striking our Health UI in the bottom-left. Fire-and-
+// forget (renders on its own overlay canvas) - the HP change happens alongside.
+function playOpponentAttackAnimation(){
+  const dex = G.theirPokemon && G.theirPokemon.dex;
+  const kebab = dex && OPP_ATTACK_ANIM[dex];
+  if(!kebab || typeof playMoveAnimation !== 'function') return;
+  const oppSprite = document.getElementById('opp-pkmn-sprite');
+  const healthBox = document.querySelector('#hd-row .rp-hd-box.health') || document.getElementById('rp-health');
+  if(!oppSprite || !healthBox) return;
+  playMoveAnimation(kebab, {
+    attackerEl: oppSprite, targetEl: healthBox, plainTarget: true,
+    scale: 0.9, speedFps: PKMN_ANIM_FPS,
+    onSoundEffect: () => { if(typeof SFX !== 'undefined' && SFX.hit) SFX.hit(); },
+  }).catch(()=>{});
+}
+// The opponent's block: a Barrier dome big enough to cover the whole enemy
+// sprite. Uses Barrier's TARGET-focused variant so it centres on the sprite.
+function playOpponentBlockAnimation(){
+  if(typeof playMoveAnimation !== 'function') return;
+  const oppSprite = document.getElementById('opp-pkmn-sprite');
+  const oppArea = document.getElementById('opp-pokemon-img-wrap') || document.getElementById('opp-pokemon-area');
+  if(!oppSprite || !oppArea) return;
+  playMoveAnimation('barrier', {
+    attackerEl: oppSprite, targetEl: oppArea, variantIndex: 1,
+    scale: 1.9, speedFps: PKMN_ANIM_FPS,
+  }).catch(()=>{});
+}
+
 // Resolves the opponent's currently-shown intent, ticks poison/burn (plus
 // Leech Seed's separate growing drain) against trainerHp, then rolls the
 // next intent - unless it's locked/force-repeated (Wrap/Vine Trap/Encore).
@@ -6251,6 +6311,8 @@ function rResolveOpponentTurn() {
     // Supersonic-style "chance to fail its intent" - resolves to nothing,
     // distinct from CC (doesn't need a status roll of its own).
   } else if (p.intent === 'attack') {
+    // The enemy fires its own damaging move down at our Health UI.
+    if (typeof playOpponentAttackAnimation === 'function') playOpponentAttackAnimation();
     let amt = p.intentAmt || 0;
     if ((G._enemyConfusePct || 0) > 0 && Math.random() * 100 < G._enemyConfusePct) amt = Math.round(amt * 0.5);
     if (G._reflectPct) { const refl = Math.round(amt * G._reflectPct / 100); G.trainerHp = Math.max(0, G.trainerHp - refl); amt -= refl; G._reflectPct = 0; }
@@ -6268,6 +6330,8 @@ function rResolveOpponentTurn() {
       let amt = p.intentAmt || 0;
       if (G._oppShieldGainCut) { amt = Math.max(0, amt - G._oppShieldGainCut); G._oppShieldGainCut = 0; }
       G.oppShield += amt;
+      // A Barrier dome flares up over the whole enemy sprite as it shields.
+      if (typeof playOpponentBlockAnimation === 'function') playOpponentBlockAnimation();
     }
     G._cancelNextShieldGain = false;
   }
@@ -11730,11 +11794,30 @@ function loadAllAssetsThenStart() {
   // the battle later reads.
   const animTasks = [];
   const queueAnimWarm = (fn) => animTasks.push(fn);
-  if(typeof DEX_TO_ANIM !== 'undefined' && typeof loadAnimJson === 'function'){
-    [...new Set(Object.values(DEX_TO_ANIM))].forEach(k => queueAnimWarm(() =>
+  if(typeof loadAnimJson === 'function'){
+    // Warm every move animation we can play: OUR moves (DEX_TO_ANIM), the
+    // opponent's damaging attacks (OPP_ATTACK_ANIM), and Barrier (enemy block).
+    const animKeys = new Set();
+    if(typeof DEX_TO_ANIM !== 'undefined') Object.values(DEX_TO_ANIM).forEach(k => animKeys.add(k));
+    if(typeof OPP_ATTACK_ANIM !== 'undefined') Object.values(OPP_ATTACK_ANIM).forEach(k => animKeys.add(k));
+    animKeys.add('barrier');
+    [...animKeys].forEach(k => queueAnimWarm(() =>
       loadAnimJson(k).then(configs => {
-        const a = configs && configs[0];
-        return (a && a.graphic && typeof loadAnimSheet === 'function') ? loadAnimSheet(a.graphic) : null;
+        // Warm ALL variant sheets (barrier ships 2 variants) AND every timed
+        // sound, so a move's first use has no fetch delay (visual OR audio).
+        const sheets = new Set(), sounds = new Set();
+        (configs || []).forEach(a => {
+          if(a && a.graphic) sheets.add(a.graphic);
+          const fte = a && a.frameTimedEvents;
+          if(fte) Object.values(fte).forEach(evts => (evts || []).forEach(e => {
+            if(e && e.eventType === 'AnimTimedSoundEvent' && e.resourceName && !/BG|Bg/.test(e.resourceName)) sounds.add(e.resourceName);
+          }));
+        });
+        if(typeof SFX !== 'undefined' && SFX.preloadSample && typeof BATTLE_ANIM_BASES !== 'undefined')
+          sounds.forEach(s => { try { SFX.preloadSample(BATTLE_ANIM_BASES[0] + 'sfx/' + encodeURIComponent(s)); } catch(e){} });
+        return (typeof loadAnimSheet === 'function')
+          ? Promise.all([...sheets].map(g => loadAnimSheet(g).catch(()=>null)))
+          : null;
       })
     ));
   }
@@ -14452,7 +14535,7 @@ function applyDiscardTriggeredAbilities(discardedCards){
      G.hand.some(hc => cardAbilities(hc).some(ab=>ab.effect==='special'&&ab.args.key==='shell_partner'))){
     G._shellPartnerUsed = true;
     G._shellPartnerCard = {...discardedCards[0]};
-  }
+  }2
   discardedCards.forEach(dc => {
     cardAbilities(dc).forEach(ab => {
       if(ab.effect === 'discard_next_bonus'){
