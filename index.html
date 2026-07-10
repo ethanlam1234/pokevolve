@@ -1392,8 +1392,8 @@ html { overflow: hidden; }
 }
 #turn-announce.show { opacity:0 !important; }
 .pc-slot.hovered-slot { background:rgba(0,220,255,0.18) !important; border-color:rgba(0,220,255,0.8) !important; }
-50%{box-shadow:0 0 0 12px rgba(255,50,50,0)}
-}
+/* (orphaned keyframe fragment removed - its stray closing brace was ending the
+   stylesheet's brace balance early and could swallow later rules) */
 @keyframes drawCard {
   0%  {transform:rotate(var(--fan-rot,0deg)) translateY(calc(var(--fan-ty,0px)+90px)) scale(0.5);opacity:0;filter:brightness(2.5)}
   65% {filter:brightness(1.3)}
@@ -1895,8 +1895,8 @@ html { overflow: hidden; }
   #opp-pokemon-area { bottom:44vh !important; }
   #opp-pokemon-img-wrap { width:clamp(142px,38vw,195px) !important; }
   #opp-pkmn-hp-wrap { width:clamp(123px,34vw,182px) !important; margin-top:34px !important; }
-  #opp-pkmn-intent-badge { padding:2px 8px !important; }
-  #opp-pkmn-intent-icon { font-size:11px !important; }
+  #opp-pkmn-intent-badge { padding:0 !important; }
+  #opp-pkmn-intent-icon { height:13px !important; }
   #opp-pkmn-intent-num { font-size:10px !important; }
   #rummy-board { bottom:54vh !important; }
   .rm-card { width:66px !important; height:92px !important; }
@@ -2061,7 +2061,7 @@ const MOVE_ANIM_DROP = 0.22;
 // Moves whose animation should play ON THE OPPONENT rather than launching from
 // the played card (self-target/status moves like Metronome and Kadabra's
 // Disable). For these the "user" anchor is the opponent too.
-const MOVE_ON_OPPONENT = new Set(['metronome','disable']);
+const MOVE_ON_OPPONENT = new Set(['metronome','kinesis']);
 // PokéRogue's own field anchors (src/data/battle-anims.ts). Cels are placed
 // in this native space: base offset is always (x+106, y+116); a USER-focused
 // cel is then shifted so native (106,116) lands on the user, and a TARGET-
@@ -2391,7 +2391,7 @@ const PKMN_ANIM_SCALE = 1.0;
 // metronome) and otherwise the richest, most-visible animation of its type.
 // 87 distinct animations across the 151 (only ~11 of the available anims go
 // unused; full uniqueness is impossible with 98 anims for 151 Pokémon).
-const DEX_TO_ANIM = {"1":"giga-drain","2":"frenzy-plant","3":"petal-dance","4":"fire-spin","5":"fire-blast","6":"gust","7":"wring-out","8":"hydro-pump","9":"bubble","10":"megahorn","11":"leech-life","12":"sing","13":"poison-tail","14":"pin-missile","15":"string-shot","16":"final-gambit","17":"whirlwind","18":"flail","19":"swagger","20":"hyper-fang","21":"dizzy-punch","22":"glare","23":"sludge-bomb","24":"scary-face","25":"thunder-wave","26":"thunder-shock","27":"stealth-rock","28":"scratch","29":"poison-fang","30":"poison-gas","31":"smog","32":"acid","33":"twineedle","34":"poison-gas","35":"metronome","36":"sweet-kiss","37":"overheat","38":"fire-fang","39":"charm","40":"encore","41":"supersonic","42":"leech-life","43":"mega-drain","44":"razor-leaf","45":"bullet-seed","46":"leech-life","47":"poison-gas","48":"pin-missile","49":"petal-dance","50":"sand-attack","51":"ancient-power","52":"metal-claw","53":"fake-out","54":"crush-claw","55":"kinesis","56":"brick-break","57":"dynamic-punch","58":"fire-punch","59":"mach-punch","60":"dragon-rage","61":"hydro-pump","62":"bubble","63":"future-sight","64":"kinesis","65":"psycho-cut","66":"rock-smash","67":"karate-chop","68":"brick-break","69":"vine-whip","70":"wrap","71":"absorb","72":"poison-gas","73":"poison-gas","74":"rock-throw","75":"ancient-power","76":"stealth-rock","77":"charge","78":"ember","79":"dragon-rage","80":"hydro-pump","81":"thunder-fang","82":"thunder-punch","83":"follow-me","84":"growl","85":"fake-tears","86":"bubble","87":"ice-ball","88":"sludge-bomb","89":"poison-gas","90":"wring-out","91":"crush-claw","92":"shadow-ball","93":"curse","94":"shadow-ball","95":"rock-throw","96":"foresight","97":"future-sight","98":"dragon-rage","99":"hydro-pump","100":"charge","101":"thunder-punch","102":"giga-drain","103":"frenzy-plant","104":"stealth-rock","105":"sand-attack","106":"rolling-kick","107":"double-kick","108":"wrap","109":"smog","110":"poison-gas","111":"ancient-power","112":"rock-throw","113":"pound","114":"petal-dance","115":"mega-punch","116":"bubble","117":"wring-out","118":"gust","119":"dragon-rage","120":"hydro-pump","121":"bubble","122":"kinesis","123":"crush-claw","124":"lovely-kiss","125":"thunder-punch","126":"fire-punch","127":"megahorn","128":"double-slap","129":"splash","130":"dragon-rage","131":"crush-claw","132":"final-gambit","133":"flail","134":"dragon-rage","135":"thunder-wave","136":"fire-spin","137":"swagger","138":"wring-out","139":"ancient-power","140":"stealth-rock","141":"crush-claw","142":"ancient-power","143":"dizzy-punch","144":"ice-ball","145":"thunder-punch","146":"overheat","147":"dragon-breath","148":"dragon-dance","149":"dragon-claw","150":"psycho-cut","151":"meteor-mash"};
+const DEX_TO_ANIM = {"1":"synthesis","2":"growth","3":"solar-beam","4":"ember","5":"flamethrower","6":"fly","7":"withdraw","8":"razor-shell","9":"hydro-cannon","10":"string-shot","11":"harden","12":"sleep-powder","13":"poison-sting","14":"silver-wind","15":"attack-order","16":"foresight","17":"tailwind","18":"hurricane","19":"u-turn","20":"super-fang","21":"peck","22":"drill-peck","23":"coil","24":"glare","25":"thunder-wave","26":"thunderbolt","27":"sand-attack","28":"fury-swipes","29":"poison-jab","30":"protect","31":"venom-drench","32":"horn-attack","33":"megahorn","34":"venoshock","35":"metronome","36":"moonlight","37":"will-o-wisp","38":"mystical-fire","39":"sing","40":"encore","41":"supersonic","42":"leech-life","43":"grass-whistle","44":"stun-spore","45":"aromatherapy","46":"leech-seed","47":"spore","48":"signal-beam","49":"quiver-dance","50":"dig","51":"earthquake","52":"pay-day","53":"fake-out","54":"zen-headbutt","55":"psybeam","56":"rage-fist","57":"outrage","58":"fire-fang","59":"extreme-speed","60":"water-pulse","61":"counter","62":"focus-punch","63":"teleport","64":"kinesis","65":"future-sight","66":"focus-energy","67":"seismic-toss","68":"dynamic-punch","69":"vine-whip","70":"power-whip","71":"grass-knot","72":"acid","73":"toxic-spikes","74":"rock-polish","75":"rollout","76":"explosion","77":"flame-charge","78":"flare-blitz","79":"stored-power","80":"amnesia","81":"magnet-rise","82":"magnet-bomb","83":"meteor-assault","84":"double-hit","85":"triple-axel","86":"recover","87":"ice-beam","88":"sludge","89":"acid-armor","90":"clamp","91":"spike-cannon","92":"lick","93":"curse","94":"shadow-ball","95":"iron-defense","96":"hypnosis","97":"dream-eater","98":"vise-grip","99":"crabhammer","100":"charge","101":"self-destruct","102":"egg-bomb","103":"wood-hammer","104":"bone-club","105":"bonemerang","106":"high-jump-kick","107":"mach-punch","108":"stockpile","109":"smokescreen","110":"poison-gas","111":"stomp","112":"rock-wrecker","113":"soft-boiled","114":"constrict","115":"mega-punch","116":"bubble","117":"aqua-jet","118":"waterfall","119":"horn-drill","120":"rapid-spin","121":"psywave","122":"barrier","123":"x-scissor","124":"lovely-kiss","125":"thunder-punch","126":"fire-punch","127":"guillotine","128":"thrash","129":"splash","130":"dragon-rage","131":"perish-song","132":"substitute","133":"swift","134":"aqua-ring","135":"volt-switch","136":"flame-wheel","137":"tri-attack","138":"ancient-power","139":"rock-blast","140":"defense-curl","141":"night-slash","142":"rock-slide","143":"snore","144":"blizzard","145":"thunder","146":"sky-attack","147":"wrap","148":"dragon-rush","149":"draco-meteor","150":"psystrike","151":"aura-sphere"};
 // Per-type animation pools, for cards whose dex we cannot resolve.
 const ANIM_BY_TYPE = {"Grass":["giga-drain","frenzy-plant","petal-dance","mega-drain","razor-leaf","bullet-seed","vine-whip","wrap","absorb"],"Fire":["fire-spin","fire-blast","gust","overheat","fire-fang","fire-punch","mach-punch","charge","ember"],"Water":["wring-out","hydro-pump","bubble","crush-claw","dragon-rage","poison-gas","ice-ball","gust","splash"],"Bug":["megahorn","leech-life","sing","poison-tail","pin-missile","string-shot","poison-gas","petal-dance","crush-claw"],"Normal":["final-gambit","whirlwind","flail","swagger","hyper-fang","dizzy-punch","glare","disable","fake-out","follow-me","growl","fake-tears","pound","mega-punch","double-slap"],"Poison":["sludge-bomb","scary-face","poison-fang","poison-gas","smog","acid","twineedle","supersonic","leech-life"],"Electric":["thunder-wave","thunder-shock","thunder-fang","thunder-punch","charge"],"Ground":["stealth-rock","scratch","sand-attack","ancient-power","rock-throw"],"Fairy":["metronome","sweet-kiss","charm","encore"],"Fighting":["brick-break","dynamic-punch","rock-smash","karate-chop","bulk-up","rolling-kick","double-kick"],"Psychic":["future-sight","kinesis","psycho-cut","foresight"],"Rock":["rock-throw","ancient-power","stealth-rock","wring-out","crush-claw"],"Ghost":["shadow-ball","curse"],"Ice":["lovely-kiss","ice-ball"],"Dragon":["dragon-breath","dragon-dance","dragon-claw"]};
 
@@ -9095,13 +9095,16 @@ function attachPopover(el, text) {
   el.addEventListener('mouseenter', e => showItemPopover(text, e.clientX, e.clientY));
   el.addEventListener('mousemove',  e => showItemPopover(text, e.clientX, e.clientY));
   el.addEventListener('mouseleave', hideItemPopover);
+  // NO preventDefault here: calling it on touchstart suppresses the browser's
+  // synthesized click for that tap, which silently killed card selection (and
+  // every other tap handler) on mobile. Passive listener shows the popover AND
+  // lets the tap click through normally.
   el.addEventListener('touchstart', e => {
-    e.preventDefault();
     const t = e.touches[0];
     showItemPopover(text, t.clientX, t.clientY);
     clearTimeout(_popoverTimer);
     _popoverTimer = setTimeout(hideItemPopover, 2500);
-  }, {passive:false});
+  }, {passive:true});
 }
 
 function renderOppHand(animateLast) { return; }
@@ -9628,8 +9631,6 @@ function setTrainerPortrait(trainer) {
 // setupOpponentPokemon) growing out of the flash.
 async function playSendOutAnimation(){
   const ball = document.getElementById('pkmn-sendout-ball');
-  const ballSpin = document.getElementById('pkmn-sendout-ball-spin');
-  const ballOpen = document.getElementById('pkmn-sendout-ball-open');
   const flash = document.getElementById('pkmn-sendout-flash');
   const spriteImg = document.getElementById('opp-pkmn-sprite');
   const imgWrap = document.getElementById('opp-pokemon-img-wrap');
@@ -9673,77 +9674,189 @@ async function playSendOutAnimation(){
   if(spriteImg){
     spriteImg.style.transition = 'none';
     spriteImg.style.opacity = '0';
-    spriteImg.style.transform = 'translateX(-50%) scale(0.25)';
+    spriteImg.style.transform = 'translateX(-50%) scale(0.5)';
   }
+
+  // ── PokéRogue send-out port (SummonPhase.summon) ──────────────────────
+  // A random ball from all 6 types, drawn from PokéRogue's pb atlas. Flight:
+  // horizontal linear; vertical rises briefly (cubic-out) then falls
+  // (cubic-in) while the ball spins 4 full turns - the reference's two
+  // overlapping tweens (x 650ms; y 150ms up + 500ms fall, angle 1440).
+  // On landing the ball vanishes (the reference never shows open frames on
+  // send-out), 'pb_rel' plays, the open-burst particles fire, and the
+  // Pokémon scales in 0.5->1 through a flash tinted with the ball's color.
+  const atlas = await loadPokeballAtlas().catch(() => null);
+  if(!atlas){
+    // Assets unreachable - just reveal, don't block the battle.
+    if(spriteImg){ spriteImg.style.transition='opacity 0.3s ease'; spriteImg.style.opacity='1'; spriteImg.style.transform='translateX(-50%) scale(1)'; }
+    playOpponentCry(); revealOppUI();
+    return;
+  }
+  const ballType = POKEBALL_TYPES[Math.floor(Math.random()*POKEBALL_TYPES.length)];
+  const scalePx = Math.max(2.4, Math.min(4, endRect.width/70));   // ball pixel scale
+  let cv = document.getElementById('pkmn-sendout-ball-cv');
+  if(!cv){
+    cv = document.createElement('canvas');
+    cv.id = 'pkmn-sendout-ball-cv';
+    ball.appendChild(cv);
+  }
+  cv.width = 12; cv.height = 16;
+  cv.style.cssText = `display:block;width:${Math.round(12*scalePx)}px;height:${Math.round(16*scalePx)}px;image-rendering:pixelated;filter:drop-shadow(0 3px 4px rgba(0,0,0,0.5));`;
+  const bctx = cv.getContext('2d');
+  bctx.imageSmoothingEnabled = false;
+  drawPokeballFrame(bctx, atlas, ballType);   // closed ball frame
 
   ball.style.transition = 'none';
   ball.style.transform = 'translate(-50%,-50%)';
   ball.style.opacity = '1';
   ball.style.display = 'block';
-  ballSpin.style.display = 'block';
-  ballOpen.style.display = 'none';
   ball.style.left = startX+'px';
   ball.style.top = startY+'px';
 
-  const THROW_MS = 560;
-  const dist = Math.abs(endX-startX);
-  const peak = Math.min(170, Math.max(70, dist*0.4));
+  if(typeof SFX !== 'undefined' && SFX.playSample) SFX.playSample(PB_THROW_URL, { volume: 55 });
+
+  // Flight: 650ms total. Vertical: rise for the first 150ms (cubic-out) to an
+  // apex above both endpoints, then fall for 500ms (cubic-in) to the landing
+  // point, spinning 1440deg during the fall (exactly the reference's tweens).
+  const RISE_MS = 150, FALL_MS = 500, TOTAL_MS = RISE_MS + FALL_MS;
+  const apexY = Math.min(startY, endY) - Math.max(60, endRect.height*0.55);
   await new Promise(resolve => {
     const t0 = performance.now();
     function step(now){
-      const t = Math.min(1, (now - t0) / THROW_MS);
-      const ex = 1 - Math.pow(1-t, 2); // ease-out horizontal
-      ball.style.left = (startX + (endX-startX)*ex) + 'px';
-      ball.style.top  = (startY + (endY-startY)*t - peak*4*t*(1-t)) + 'px'; // real parabola, apex at t=0.5
-      const frame = Math.floor(t*8*2.5) % 8; // ~2.5 continuous spins over the flight (mod, not clamp, so it doesn't freeze partway through)
-      ballSpin.style.backgroundPositionX = (frame*(100/7)) + '%';
+      const t = Math.min(1, (now - t0) / TOTAL_MS);
+      ball.style.left = (startX + (endX-startX)*t) + 'px';   // linear x
+      let y, angle = 0;
+      const ms = t * TOTAL_MS;
+      if(ms <= RISE_MS){
+        const rt = ms / RISE_MS;
+        const e = 1 - Math.pow(1-rt, 3);                     // cubic-out
+        y = startY + (apexY - startY) * e;
+      } else {
+        const ft = (ms - RISE_MS) / FALL_MS;
+        const e = ft*ft*ft;                                  // cubic-in
+        y = apexY + (endY - apexY) * e;
+        angle = 1440 * ft;                                   // 4 spins on the fall
+      }
+      ball.style.top = y + 'px';
+      cv.style.transform = 'rotate(' + angle + 'deg)';
       if(t < 1) requestAnimationFrame(step); else resolve();
     }
     requestAnimationFrame(step);
   });
 
-  // Landing bounce (squash/stretch, not a position change)
-  ball.style.transition = 'transform 0.14s ease-out';
-  ball.style.transform = 'translate(-50%,-50%) scale(1.18,0.78)';
-  await delay(90);
-  ball.style.transform = 'translate(-50%,-50%) scale(0.9,1.1)';
-  await delay(90);
-  ball.style.transform = 'translate(-50%,-50%) scale(1,1)';
-  await delay(180);
-
-  // Open + flash burst
-  ballSpin.style.display = 'none';
-  ballOpen.style.display = 'block';
-  if(typeof SFX !== 'undefined' && SFX.confirm) SFX.confirm();
+  // Landing: pb_rel + the ball vanishes into the open burst.
+  if(typeof SFX !== 'undefined' && SFX.playSample) SFX.playSample(PB_REL_URL, { volume: 80 });
+  ball.style.display = 'none';
+  cv.style.transform = '';
+  spawnPokeballOpenParticles(endX, endY - 10*scalePx, atlas, scalePx);
   if(flash){
+    const tint = POKEBALL_TINT[ballType] || '#ffffff';
+    flash.style.background = `radial-gradient(circle, ${tint}f2 0%, ${tint}b0 35%, ${tint}00 72%)`;
     flash.style.transition = 'none';
     flash.classList.remove('burst','fade');
     flash.style.left = endX+'px';
-    flash.style.top = endY+'px';
+    flash.style.top = (endY - 10*scalePx)+'px';
     flash.style.display = 'block';
-    void flash.offsetWidth; // force reflow so the class-driven transition actually plays
+    void flash.offsetWidth;
     flash.style.transition = '';
     flash.classList.add('burst');
   }
-  await delay(220);
 
-  // Reveal the Pokémon growing out of the flash
+  // Pokémon scales in 0.5 -> 1 over 250ms (Sine.easeIn in the reference).
   if(spriteImg){
-    spriteImg.style.transition = 'opacity 0.45s ease, transform 0.5s cubic-bezier(0.34,1.56,0.64,1)';
+    spriteImg.style.transition = 'opacity 0.25s ease-in, transform 0.25s ease-in';
     spriteImg.style.opacity = '1';
     spriteImg.style.transform = 'translateX(-50%) scale(1)';
   }
-  // Play the Pokémon's cry as it appears (PokéRogue's own per-species cry).
+  await delay(250);
+  // Cry once it's fully out (the reference cries after the scale-in).
   playOpponentCry();
-  // HP bar + intent slide in just after the Pokémon appears.
   revealOppUI();
   if(flash) flash.classList.add('fade');
-  ball.style.transition = 'opacity 0.35s ease';
-  ball.style.opacity = '0';
-  await delay(480);
+  await delay(420);
+  if(flash){ flash.style.display = 'none'; flash.classList.remove('burst','fade'); flash.style.background=''; }
+}
 
-  ball.style.display = 'none';
-  if(flash){ flash.style.display = 'none'; flash.classList.remove('burst','fade'); }
+// ── Pokéball atlas (PokéRogue's pb.json/pb.png + pb_particles) ─────────
+// 6 ball types x 3 states (closed / _opening / _open), 12x16 logical cells.
+const POKEBALL_BASES = [
+  'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/pokeball/',
+  'https://raw.githubusercontent.com/ethanlam1234/pokevolve/main/assets/pokeball/',
+];
+const POKEBALL_TYPES = ['pb','gb','ub','rb','mb','lb'];   // Poké/Great/Ultra/Rogue/Master/Luxury
+// PokéRogue's per-ball flash tint colors (getPokeballTintColor).
+const POKEBALL_TINT = { pb:'#d52929', gb:'#94b4de', ub:'#e6cd31', rb:'#d52929', mb:'#a441bd', lb:'#ffde6a' };
+const PB_REL_URL   = POKEBALL_BASES[0] + 'pb_rel.wav';
+const PB_THROW_URL = POKEBALL_BASES[0] + 'pb_throw.wav';
+let _pokeballAtlasP = null;
+function loadPokeballAtlas(){
+  if(_pokeballAtlasP) return _pokeballAtlasP;
+  const p = (async () => {
+    const [ballJson, ballImg, partJson, partImg] = await Promise.all([
+      fetchJsonWithFallback(POKEBALL_BASES, 'pb.json'),
+      loadImageWithFallback(POKEBALL_BASES, 'pb.png'),
+      fetchJsonWithFallback(POKEBALL_BASES, 'pb_particles.json'),
+      loadImageWithFallback(POKEBALL_BASES, 'pb_particles.png'),
+    ]);
+    const index = (j) => {
+      const tex = j.textures ? j.textures[0] : j;
+      const map = {};
+      (tex.frames || []).forEach(f => { map[f.filename.replace(/\.png$/,'')] = f; });
+      return map;
+    };
+    return { ballImg, ballFrames: index(ballJson), partImg, partFrames: index(partJson) };
+  })();
+  p.catch(() => { if(_pokeballAtlasP === p) _pokeballAtlasP = null; });
+  _pokeballAtlasP = p;
+  return p;
+}
+// Draws one atlas frame (honoring trim offsets) into a 12x16 logical cell.
+function drawPokeballFrame(ctx, atlas, frameName){
+  const f = atlas.ballFrames[frameName];
+  if(!f) return;
+  ctx.clearRect(0, 0, 12, 16);
+  const off = f.spriteSourceSize || { x:0, y:0 };
+  ctx.drawImage(atlas.ballImg, f.frame.x, f.frame.y, f.frame.w, f.frame.h,
+    off.x, off.y, f.frame.w, f.frame.h);
+}
+// PokéRogue's open-burst: 17 particles animating pb_particles frames 0-3 at
+// 16fps, spawned one per 20ms, each radiating outward at 45-degree steps over
+// 575ms, fading at the end (Animation.doDefaultPbOpenParticles).
+function spawnPokeballOpenParticles(cx, cy, atlas, scalePx){
+  const R = 200;                      // canvas half-size around the burst
+  const cv = document.createElement('canvas');
+  cv.width = R*2; cv.height = R*2;
+  cv.style.cssText = `position:fixed;left:${cx-R}px;top:${cy-R}px;width:${R*2}px;height:${R*2}px;pointer-events:none;z-index:2147483601;image-rendering:pixelated;`;
+  document.body.appendChild(cv);
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const radius = 22 * scalePx;        // ~48 native px at PokéRogue field scale
+  const parts = [];
+  for(let i=0;i<17;i++) parts.push({ born: i*20, angle: (i%8)*(Math.PI/4) + (i>=8?Math.PI/8:0) });
+  const t0 = performance.now();
+  const frames = ['0','1','2','3'].map(n => atlas.partFrames[n]).filter(Boolean);
+  (function step(now){
+    const t = now - t0;
+    ctx.clearRect(0,0,R*2,R*2);
+    let alive = false;
+    for(const pt of parts){
+      const lt = t - pt.born;
+      if(lt < 0){ alive = true; continue; }
+      if(lt > 575) continue;
+      alive = true;
+      const prog = lt/575;
+      const d = radius * prog;
+      const alpha = lt > 500 ? Math.max(0, 1-(lt-500)/75) : 1;
+      const f = frames[Math.floor(lt/1000*16) % frames.length];
+      if(!f) continue;
+      const size = 8 * scalePx * 0.9;
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(atlas.partImg, f.frame.x, f.frame.y, f.frame.w, f.frame.h,
+        R + Math.cos(pt.angle)*d - size/2, R + Math.sin(pt.angle)*d - size/2, size, size);
+    }
+    ctx.globalAlpha = 1;
+    if(alive) requestAnimationFrame(step); else cv.remove();
+  })(t0);
 }
 
 // ── Cries, hit sound, and the damage flash (all from PokéRogue) ──
@@ -10105,7 +10218,8 @@ function renderOpponentPokemonHpBar(){
     const shPct = Math.max(0, Math.min((G.oppShield||0)/max*100, 100-pct));
     shFill.style.left = pct+'%'; shFill.style.width = shPct+'%';
   }
-  if(txt) txt.textContent = fmtNum(cur)+' / '+fmtNum(max)+((G.oppShield||0)>0 ? '  🛡'+fmtNum(G.oppShield) : '');
+  // Current HP only (no "/ max"), and shield as a plain number (no icon).
+  if(txt) txt.textContent = fmtNum(cur)+((G.oppShield||0)>0 ? '  '+fmtNum(G.oppShield) : '');
 }
 function rHpBarClass(pct){ return pct<=25?'hp-low':pct<=55?'hp-mid':''; }
 
@@ -11530,7 +11644,7 @@ function preloadTrainerPortraitAssets(){
 <script>
 // Move sound-effect filenames (PokéRogue PRSFX). Listed here so the loading
 // screen can warm the audio cache without first parsing every move JSON.
-const MOVE_SFX_FILES = ["PRSFX- Absorb1.wav","PRSFX- Absorb2.wav","PRSFX- Acid Armor1.wav","PRSFX- Acid Armor2.wav","PRSFX- Acid.wav","PRSFX- Ancient Power1.wav","PRSFX- Ancient Power2.wav","PRSFX- Brick Break1.wav","PRSFX- Brick Break2.wav","PRSFX- Bubble.wav","PRSFX- Bulk Up1.wav","PRSFX- Bulk Up2.wav","PRSFX- Bullet Punch.wav","PRSFX- Bullet Seed.wav","PRSFX- Charge.wav","PRSFX- Charm.wav","PRSFX- Crunch.wav","PRSFX- Crush Claw.wav","PRSFX- Curse.wav","PRSFX- Detect.wav","PRSFX- Disable.wav","PRSFX- Dizzy Punch1.wav","PRSFX- Dizzy Punch2.wav","PRSFX- Double Kick.wav","PRSFX- Double Slap.wav","PRSFX- Dragon Breath.wav","PRSFX- Dragon Claw.wav","PRSFX- Dragon Dance.wav","PRSFX- Dragon Rage.wav","PRSFX- Dynamic Punch1.wav","PRSFX- Dynamic Punch2.wav","PRSFX- Ember.wav","PRSFX- Encore.wav","PRSFX- Fake Out1.wav","PRSFX- Fake Out2.wav","PRSFX- Fake Tears.wav","PRSFX- Final Gambit1.wav","PRSFX- Final Gambit2.wav","PRSFX- Fire Blast.wav","PRSFX- Fire Fang1.wav","PRSFX- Fire Fang2.wav","PRSFX- Fire Punch1.wav","PRSFX- Fire Punch2.wav","PRSFX- Fire Punch3.wav","PRSFX- Fire Spin.wav","PRSFX- Flail.wav","PRSFX- Follow Me.wav","PRSFX- Foresight1.wav","PRSFX- Foresight2.wav","PRSFX- Frenzy Plant1.wav","PRSFX- Frenzy Plant2.wav","PRSFX- Future Sight2.wav","PRSFX- Giga Drain1.wav","PRSFX- Giga Drain2.wav","PRSFX- Glare.wav","PRSFX- Grass Whistle.wav","PRSFX- Gust.wav","PRSFX- Hydro Pump.wav","PRSFX- Hyper Fang.wav","PRSFX- Ice Ball1.wav","PRSFX- Ice Ball2.wav","PRSFX- Iron Head.wav","PRSFX- Karate Chop1.wav","PRSFX- Karate Chop2.wav","PRSFX- Kinesis.wav","PRSFX- Leech Life1.wav","PRSFX- Leech Life2.wav","PRSFX- Lovely Kiss.wav","PRSFX- Mach Punch.wav","PRSFX- Mean Look.wav","PRSFX- Mega Drain1.wav","PRSFX- Mega Drain2.wav","PRSFX- Mega Punch1.wav","PRSFX- Megahorn1.wav","PRSFX- Megahorn2.wav","PRSFX- Metal Claw1.wav","PRSFX- Metal Claw2.wav","PRSFX- Meteor Mash1.wav","PRSFX- Meteor Mash2.wav","PRSFX- Metronome.wav","PRSFX- Nightmare.wav","PRSFX- Overheat1.wav","PRSFX- Overheat2.wav","PRSFX- Petal Dance.wav","PRSFX- Pin Missile.wav","PRSFX- Poison Fang1.wav","PRSFX- Poison Fang2.wav","PRSFX- Poison Gas.wav","PRSFX- Poison Tail1.wav","PRSFX- Poison Tail2.wav","PRSFX- Pound.wav","PRSFX- Psychic.wav","PRSFX- Psycho Cut.wav","PRSFX- Razor Leaf1.wav","PRSFX- Razor Leaf2.wav","PRSFX- Rock Smash.wav","PRSFX- Rock Throw1.wav","PRSFX- Rock Throw2.wav","PRSFX- Rolling Kick.wav","PRSFX- Sand Attack.wav","PRSFX- Scary Face.wav","PRSFX- Scratch.wav","PRSFX- Shadow Ball1.wav","PRSFX- Shadow Ball2.wav","PRSFX- Sing.wav","PRSFX- Sludge Bomb1.wav","PRSFX- Sludge Bomb2.wav","PRSFX- Smog.wav","PRSFX- Splash.wav","PRSFX- Stealth Rocks.wav","PRSFX- String Shot1.wav","PRSFX- String Shot2.wav","PRSFX- Struggle.wav","PRSFX- Supersonic.wav","PRSFX- Swagger1.wav","PRSFX- Swagger2.wav","PRSFX- Sweet Kiss1.wav","PRSFX- Sweet Kiss2.wav","PRSFX- Thunder Fang.wav","PRSFX- Thunder Punch1.wav","PRSFX- Thunder Punch2.wav","PRSFX- Thunder Wave.wav","PRSFX- Thundershock.wav","PRSFX- Twineedle1.wav","PRSFX- Twister.wav","PRSFX- Vine Whip.wav","PRSFX- Whirlwind.wav","PRSFX- Wrap.wav","PRSFX- Wring Out1.wav","PRSFX- Wring Out2.wav"];
+const MOVE_SFX_FILES = ["Blow3.m4a","Blow4.m4a","PRSFX- Acid Armor1.wav","PRSFX- Acid Armor2.wav","PRSFX- Acid.wav","PRSFX- Amnesia.wav","PRSFX- Ancient Power1.wav","PRSFX- Ancient Power2.wav","PRSFX- Aqua Jet.wav","PRSFX- Aqua Ring1.wav","PRSFX- Aqua Ring2.wav","PRSFX- Aromatherapy.wav","PRSFX- Attack Order1.wav","PRSFX- Attack Order2.wav","PRSFX- Aura Sphere1.wav","PRSFX- Aura Sphere2.wav","PRSFX- Barrier.wav","PRSFX- Blizzard.wav","PRSFX- Bone Club1.wav","PRSFX- Bone Club2.wav","PRSFX- Bonemerang1.wav","PRSFX- Bonemerang2.wav","PRSFX- Bubble.wav","PRSFX- Burn.wav","PRSFX- Charge.wav","PRSFX- Clamp1.wav","PRSFX- Clamp2.wav","PRSFX- Clamp3.wav","PRSFX- Coil.wav","PRSFX- Constrict.wav","PRSFX- Counter1.wav","PRSFX- Counter2.wav","PRSFX- Crabhammer.wav","PRSFX- Curse.wav","PRSFX- Defense Curl1.wav","PRSFX- Dig2.wav","PRSFX- Double Hit.wav","PRSFX- Draco Meteor1.wav","PRSFX- Draco Meteor2.wav","PRSFX- Dragon Rage.wav","PRSFX- Dragon Rush1.wav","PRSFX- Dragon Rush2.wav","PRSFX- Dream Eater1.wav","PRSFX- Dream Eater2.wav","PRSFX- Dream Eater3.wav","PRSFX- Drill Peck.wav","PRSFX- Dynamic Punch1.wav","PRSFX- Dynamic Punch2.wav","PRSFX- Earthquake1.wav","PRSFX- Earthquake2.wav","PRSFX- Egg Bomb1.wav","PRSFX- Egg Bomb2.wav","PRSFX- Ember.wav","PRSFX- Encore.wav","PRSFX- Explosion.wav","PRSFX- Extremespeed1.wav","PRSFX- Extremespeed2.wav","PRSFX- Fake Out1.wav","PRSFX- Fake Out2.wav","PRSFX- Fire Fang1.wav","PRSFX- Fire Fang2.wav","PRSFX- Fire Punch1.wav","PRSFX- Fire Punch2.wav","PRSFX- Fire Punch3.wav","PRSFX- Flame Charge1.wav","PRSFX- Flame Charge2.wav","PRSFX- Flame Wheel1.wav","PRSFX- Flame Wheel2.wav","PRSFX- Flamethrower.wav","PRSFX- Flare Blitz1.wav","PRSFX- Flare Blitz2.wav","PRSFX- Flare Blitz3.wav","PRSFX- Fly2.wav","PRSFX- Focus Energy.wav","PRSFX- Focus Punch1.wav","PRSFX- Focus Punch2.wav","PRSFX- Foresight1.wav","PRSFX- Foresight2.wav","PRSFX- Frozen.wav","PRSFX- Fury Swipes.wav","PRSFX- Future Sight2.wav","PRSFX- Giga Impact1.wav","PRSFX- Giga Impact2.wav","PRSFX- Glare.wav","PRSFX- Grass Knot1.wav","PRSFX- Grass Knot2.wav","PRSFX- Grass Whistle.wav","PRSFX- Growth.wav","PRSFX- Guillotine1.wav","PRSFX- Guillotine2.wav","PRSFX- Harden.wav","PRSFX- Headbutt2.wav","PRSFX- Horn Attack.wav","PRSFX- Horn Drill1.wav","PRSFX- Horn Drill2.wav","PRSFX- Horn Drill3.wav","PRSFX- Hurricane.wav","PRSFX- Hydro Cannon.wav","PRSFX- Hydro Cannon1.wav","PRSFX- Hypnosis.wav","PRSFX- Ice Beam.wav","PRSFX- Ice Punch1.wav","PRSFX- Ice Punch2.wav","PRSFX- Iron Defense.wav","PRSFX- Kinesis.wav","PRSFX- King's Shield1.wav","PRSFX- King's Shield2.wav","PRSFX- Leech Life1.wav","PRSFX- Leech Life2.wav","PRSFX- Leech Seed2.wav","PRSFX- Lick.wav","PRSFX- Lovely Kiss.wav","PRSFX- Mach Punch.wav","PRSFX- Magnet Bomb1.wav","PRSFX- Magnet Bomb2.wav","PRSFX- Magnet Rise.wav","PRSFX- Mega Punch1.wav","PRSFX- Megahorn1.wav","PRSFX- Megahorn2.wav","PRSFX- Metronome.wav","PRSFX- Moonlight.wav","PRSFX- Mystical Fire1.wav","PRSFX- Mystical Fire2.wav","PRSFX- Night Slash1.wav","PRSFX- Night Slash2.wav","PRSFX- Outrage1.wav","PRSFX- Outrage2.wav","PRSFX- Paralysis.wav","PRSFX- Pay Day1.wav","PRSFX- Pay Day2.wav","PRSFX- Peck.wav","PRSFX- Perish Song.wav","PRSFX- Poison Gas.wav","PRSFX- Poison Jab1.wav","PRSFX- Poison Jab2.wav","PRSFX- Poison Sting.wav","PRSFX- Power Whip.wav","PRSFX- Protect.wav","PRSFX- Psybeam.wav","PRSFX- Psystrike1.wav","PRSFX- Psystrike2.wav","PRSFX- Psystrike3.wav","PRSFX- Psywave.wav","PRSFX- Quiver Dance.wav","PRSFX- Rapid Spin.wav","PRSFX- Razor Shell.wav","PRSFX- Recover.wav","PRSFX- Rock Blast.wav","PRSFX- Rock Polish.wav","PRSFX- Rock Slide.wav","PRSFX- Rock Wrecker1.wav","PRSFX- Rock Wrecker2.wav","PRSFX- Rollout1.wav","PRSFX- Rollout2.wav","PRSFX- Sand Attack.wav","PRSFX- Seismic Toss1.wav","PRSFX- Seismic Toss2.wav","PRSFX- Seismic Toss3.wav","PRSFX- Seismic Toss4.wav","PRSFX- Seismic Toss5.wav","PRSFX- Selfdestruct1.wav","PRSFX- Selfedestruct2.wav","PRSFX- Shadow Ball1.wav","PRSFX- Shadow Ball2.wav","PRSFX- Signal Beam.wav","PRSFX- Silver Wind.wav","PRSFX- Sing.wav","PRSFX- Sky Attack1.wav","PRSFX- Sky Attack2.wav","PRSFX- Sky Attack3.wav","PRSFX- Sleep Powder.wav","PRSFX- Sludge.wav","PRSFX- Smokescreen.wav","PRSFX- Snore.wav","PRSFX- Softboiled1.wav","PRSFX- Softboiled2.wav","PRSFX- Solar Beam2.wav","PRSFX- Spike Cannon.wav","PRSFX- Spikes1.wav","PRSFX- Spikes2.wav","PRSFX- Splash.wav","PRSFX- Spore.wav","PRSFX- Stockpile.wav","PRSFX- Stomp.wav","PRSFX- Stored Power1.wav","PRSFX- Stored Power2.wav","PRSFX- String Shot1.wav","PRSFX- String Shot2.wav","PRSFX- Stun Spore.wav","PRSFX- Substitute1.wav","PRSFX- Substitute2.wav","PRSFX- Super Fang1.wav","PRSFX- Superpower2.wav","PRSFX- Supersonic.wav","PRSFX- Swift1.wav","PRSFX- Swift2.wav","PRSFX- Synthesis.wav","PRSFX- Tailwind.wav","PRSFX- Taunt2.wav","PRSFX- Teleport.wav","PRSFX- Thrash2.wav","PRSFX- Thunder Punch1.wav","PRSFX- Thunder Punch2.wav","PRSFX- Thunder Wave.wav","PRSFX- Thunder.wav","PRSFX- Thunderbolt1.wav","PRSFX- Thunderbolt2.wav","PRSFX- Toxic Spikes2.wav","PRSFX- Tri Attack.wav","PRSFX- U-Turn2.wav","PRSFX- Venom Drench.wav","PRSFX- Venoshock1.wav","PRSFX- Venoshock2.wav","PRSFX- Vice Grip.wav","PRSFX- Vine Whip.wav","PRSFX- Volt Switch1.wav","PRSFX- Volt Switch2.wav","PRSFX- Water Pulse.wav","PRSFX- Water Pulse2.wav","PRSFX- Waterfall1.wav","PRSFX- Waterfall2.wav","PRSFX- Will O Wisp1.wav","PRSFX- Will O Wisp2.wav","PRSFX- Withdraw.wav","PRSFX- Wood Hammer.wav","PRSFX- Wrap.wav","PRSFX- X Scissor.wav","throw.m4a"];
 
 // ── ASSET PRELOADER — wait for every base sprite before the game begins ──
 function loadAllAssetsThenStart() {
@@ -11554,7 +11668,27 @@ function loadAllAssetsThenStart() {
   audioUrls.push(sfxBase + 'hit.wav');
   for(let d=1; d<=151; d++) audioUrls.push(cryBase + d + '.m4a');
 
-  const total = (urls.length + audioUrls.length) || 1;
+  // Animations to warm, same reasoning as the audio: every mapped move
+  // animation (JSON + its spritesheet), every opponent sprite atlas, and the
+  // pokeball atlas - so the FIRST play/send-out has no fetch delay. These all
+  // go through the game's own cached loaders, so warming here IS the cache
+  // the battle later reads.
+  const animTasks = [];
+  const queueAnimWarm = (fn) => animTasks.push(fn);
+  if(typeof DEX_TO_ANIM !== 'undefined' && typeof loadAnimJson === 'function'){
+    [...new Set(Object.values(DEX_TO_ANIM))].forEach(k => queueAnimWarm(() =>
+      loadAnimJson(k).then(configs => {
+        const a = configs && configs[0];
+        return (a && a.graphic && typeof loadAnimSheet === 'function') ? loadAnimSheet(a.graphic) : null;
+      })
+    ));
+  }
+  if(typeof loadPokemonAtlas === 'function'){
+    for(let d=1; d<=151; d++){ const dd=d; queueAnimWarm(() => loadPokemonAtlas(dd)); }
+  }
+  if(typeof loadPokeballAtlas === 'function') queueAnimWarm(() => loadPokeballAtlas());
+
+  const total = (urls.length + audioUrls.length + animTasks.length) || 1;
   let done = 0;
   const bump = () => {
     done++;
@@ -11571,7 +11705,8 @@ function loadAllAssetsThenStart() {
   const loadAudio = (url) => Promise.resolve(
     (typeof SFX !== 'undefined' && SFX.preloadSample) ? SFX.preloadSample(url) : null
   ).then(() => bump(), () => bump());
-  const allLoaded = Promise.all([...urls.map(loadOne), ...audioUrls.map(loadAudio)]);
+  const runAnimWarm = (fn) => Promise.resolve().then(fn).then(() => bump(), () => bump());
+  const allLoaded = Promise.all([...urls.map(loadOne), ...audioUrls.map(loadAudio), ...animTasks.map(runAnimWarm)]);
   // Never block the player long - decoding ~280 clips can take a few seconds,
   // but the starter-select screen buys more time and any not-yet-cached clip
   // keeps decoding in the background, so raise the cap modestly.
@@ -13525,12 +13660,16 @@ document.head.insertAdjacentHTML('beforeend', `<style>
   text-shadow:1px 1px 0 #000,0 0 5px rgba(0,0,0,0.8);white-space:nowrap;}
 /* Intent is now icon+number only, sitting above the sprite (first child
    of #opp-pokemon-area's column flow) instead of text below the HP bar. */
-#opp-pkmn-intent-badge{display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:16px;
-  background:rgba(10,12,24,0.8);border:1.5px solid rgba(255,255,255,0.16);
-  box-shadow:0 2px 6px rgba(0,0,0,0.5);}
-#opp-pkmn-intent-badge.intent-attack{border-color:rgba(255,110,90,0.5);}
-#opp-pkmn-intent-badge.intent-block{border-color:rgba(120,180,255,0.5);}
-#opp-pkmn-intent-badge.intent-cc{border-color:rgba(180,140,255,0.5);}
+/* No container chrome (no bg fill / border) - just the icon + number. The
+   font is set here directly because the badge gets reparented to <body> by
+   positionIntentBadge (so it no longer inherits the game font from the area). */
+#opp-pkmn-intent-badge{display:flex;align-items:center;gap:6px;padding:0;
+  background:none;border:none;box-shadow:none;
+  font-family:'PokemonClassic',monospace;
+  /* Lives in <body> (reparented by positionIntentBadge), so it no longer
+     inherits pointer-events:none from the area - set it explicitly or it
+     becomes an invisible fixed tap-eater over other screens. */
+  pointer-events:none;}
 /* Intent icon = PokéRogue's move-split badge (a 3-frame sheet): damage uses the
    physical badge (red), block the special badge (blue barrier), status the
    status badge (grey). Replaces the old emoji. */
@@ -13546,7 +13685,12 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 /* Status icons (Sleep/Poison/Burn/Paralyze/Freeze) - one 44x16 sprite
    sheet, 7 rows stacked vertically (5 used here; FNT/PKRS aren't battle
    statuses in this game). background-position-y picks the row. */
-#opp-pkmn-status-row{display:flex;gap:10px;margin-top:7px;justify-content:center;flex-wrap:wrap;pointer-events:none;}
+/* Absolutely positioned (hangs BELOW the area, out of the flex flow) so a
+   status appearing/disappearing can never reflow the bottom-anchored column
+   and push the Pokémon/HP bar/intent upward. */
+#opp-pkmn-status-row{position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  margin-top:6px;display:flex;gap:10px;justify-content:center;flex-wrap:nowrap;
+  white-space:nowrap;pointer-events:none;}
 /* Each status is a little vertical stack: the icon, with its value as plain
    text directly beneath it (no circle/background badge). */
 .opp-status-item{display:flex;flex-direction:column;align-items:center;gap:2px;}
@@ -13559,21 +13703,12 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 /* (.opp-status-stack circle badge removed - values now render as plain text
    below each icon via .opp-status-val) */
 /* ── Pokeball throw/release sequence ──
-   #pkmn-sendout-ball's left/top are set frame-by-frame in JS (a real
-   parabolic arc, not a CSS easing curve pretending to be one) - only
-   display/opacity/transform-scale are ever touched by CSS/classes. */
+   The ball is a canvas (#pkmn-sendout-ball-cv, created in JS) drawing frames
+   from PokéRogue's pb atlas; this container just tracks the flight position.
+   left/top are set frame-by-frame in JS (a real arc, not a CSS easing curve
+   pretending to be one). */
 #pkmn-sendout-ball{position:fixed;z-index:56;display:none;pointer-events:none;
-  width:clamp(20px,2.6vw,30px);height:clamp(40px,5.2vw,60px);
   transform:translate(-50%,-50%);}
-#pkmn-sendout-ball-spin,#pkmn-sendout-ball-open{
-  position:absolute;inset:0;width:100%;height:100%;
-  image-rendering:pixelated;background-repeat:no-repeat;filter:drop-shadow(0 3px 4px rgba(0,0,0,0.5));}
-#pkmn-sendout-ball-spin{
-  background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAABACAYAAAD1Xam+AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAOSSURBVHhe7dohc9swGMbxbqiwcDCwMDDQcHAw0DBwsDBwcDDQMB9h0DAwsDAfoXBsO0t6fO2bKLIjp3Xq/+/OJ9+W+cnOuveV7NwBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAR+BLGzubz+b9wetJ+v+99zT7IJz+cnkR+v/yvYQQwQclqYStOvVz6kz+VH43i5T6cebkVcWz5u90unJ22WCzCmUf+58r/bPOfFQAwYdHqoMrTVpyYSCUSVaS+lTCVX2y34cyrH/6Gs7dy81MdJ0UdifzbzB/r/G9l5rMCACbsqCq0lUcd9Xvpx5hEBZKulTCVr86vzvD8fHBjWfpKmbsSGKrzWF07Efnn83WdmNS/y51/R955/h/JzGcFAExYugA0FeZUlYn9+cCq+2/uKHfP7pCm86v7v1Y+LNxR/XhyB25b07lfH01nPHfYz2f74Pl/7XxWAMCEtfuBo73HlcT2Ija/6eKNoijcuFr5Pf5m458BVNVvN0pZ/nSj/Vxd126sXvzeMJU/9N7XUlci/3z+crly47r282E237uxq8N+7sZ14e/3drtxYyp/LPP/Wmw+KwBgwtoqNJYKOJv5yq2KPRR1lMPBd5JUB7oWVgDn83X/tWIbilaUqfvPCgDAZBwVAD1FT2kqyesjpet11+sndwyt63Vjbxdydb3uR+c3KyWtlobU9brNnl/7/iF1vW7z7EDPD4bU9brvnc8KAJiwdh+iPUhV+afn6/UvP5qqWc78u3jtFdVV9Eu86vDoRtFTWHVffS62B1K+9fg4C2fdxLrd2PPFfo/cfOVK9P8f7p/um97CFIVfvaW+h3Lr2s8PvYXRPNL8SeVbl74FsMaeL/Z75OYrV5TPCgCYsDdVqNFWwtCBbCXXU1T793ovr6e4tnPEOp9l84dya/mS+z1Snd9q//+RlZzuf4zuf2zleGl+rlvLl9zvEev8wgoAmLCjatRWwEjnsR1f9Es8dXyLFUDP/FD5bQVPfS/b8e11+uYPhfye+eE+x+5nTGy+xOYfKwBgwqLVyFaiS3XtfBb5pzuRrfBW7PND5fdFfma+mX92RWDFPh/LZwUATFiyKqkSSaoj2grVt/JZ5Jv8REeyKwTyP1d++5bF/KpVv9uxb2lS+awAgAnrXZ1sRbJyK14K+eSH05PI75fPCgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4QHd3/wE4DHjasRCBWAAAAABJRU5ErkJggg==);
-  background-size:800% 100%;background-position:0% 0%;}
-#pkmn-sendout-ball-open{
-  background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAABACAYAAAB7jnWuAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAF1SURBVGhD7ZcxTsQwEEUD1ZYcYY+QI+QYW+YIlJQpKTmCS45A6TJlyi1zBEo6kCf+K/azo5FFUCbCT7JmVooi/xfbm9w1hbRt+5nbm0zTVHTP+1w3w5wtJ46nU+4ybyE3C937IXcLlhG/BpBcS8xJ48NH7q7BdZoJfwYuyY1E4zhKPZ9nqX2/mCo1sbkBcwJp5t8HSMnTiHGUAbTrNfysAX72mP3x2Ertuk4qCOEldwt9/5i7hRij1HmepPJ9sRb8GQBa8lLYBPBrYK3kDJtwY6BO4LIGwNprQXv2wJ8BwCaAZQSJgZYc+DUAtBNSA4mBlhz4NwDYhIWVHPjfBYD/7y34fWE/uwDJSxNbwIjfk/CvkjNsYnMDPyaQznI+z9dAu6+/NRDCq/wehmepoPS9gNMOw5NUfEO6WQNXezLBJgAbsUBiwMnBfgz8lv0YAGuZ0JIDvwYATADLCBIDLTnwb4BhI4yVmNncQKVSqVQqlcp/p2m+AMO5zrkYSrIZAAAAAElFTkSuQmCC);
-  background-size:100% 100%;display:none;}
 #pkmn-sendout-flash{position:fixed;z-index:57;display:none;pointer-events:none;
   width:clamp(90px,11vw,150px);height:clamp(90px,11vw,150px);
   transform:translate(-50%,-50%) scale(0.2);border-radius:50%;opacity:0;
@@ -13641,8 +13776,8 @@ function rSetupUI(){
   }
   if(!document.getElementById('pkmn-sendout-ball')){
     document.body.insertAdjacentHTML('beforeend', `<div id="pkmn-sendout-ball">
-      <div id="pkmn-sendout-ball-spin"></div>
-      <div id="pkmn-sendout-ball-open"></div>
+      <!-- ball frames are drawn by JS onto #pkmn-sendout-ball-cv (created on
+           first use) from PokéRogue's pb atlas --> 
     </div>
     <div id="pkmn-sendout-flash"></div>`);
   }
