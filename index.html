@@ -327,9 +327,9 @@ html { overflow: hidden; }
   flex-shrink:0;
 }
 #rp-trainer-name { font-size:clamp(11px,1.2vw,16px); color:#fff; letter-spacing:1px; text-shadow:1px 1px 0 #000; }
-#rp-pokeball-row { display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; }
+#rp-pokeball-row { display:flex; gap:4px; margin-top:5px; flex-wrap:wrap; }
 .rp-pokeball {
-  display:inline-block; width:clamp(22px,2.4vw,32px); height:clamp(22px,2.4vw,32px);
+  display:inline-block; width:clamp(15px,1.5vw,20px); height:clamp(15px,1.5vw,20px);
   background-size:100% 100%; background-repeat:no-repeat; image-rendering:pixelated;
   filter:drop-shadow(1px 1px 0 rgba(0,0,0,0.6));
 }
@@ -1758,7 +1758,7 @@ html { overflow: hidden; }
   #rp-portrait-img-wrap { width:74px !important; min-width:74px !important; height:auto !important; aspect-ratio:1/1 !important; flex-shrink:0 !important; border-radius:8px 0 0 8px !important; border:none !important; overflow:hidden !important; }
   #rp-portrait-img-wrap img#tc-opp-img { width:88% !important; height:88% !important; object-fit:contain !important; }
   #rp-portrait-overlay { flex:1 !important; padding:4px 6px !important; border-radius:0 !important; border-left:none !important; margin-left:0 !important; border-top:none !important; border-bottom:none !important; border-right:none !important; }
-  .rp-pokeball { width:18px !important; height:18px !important; }
+  .rp-pokeball { width:14px !important; height:14px !important; }
   /* Route buttons: horizontal on mobile */
   /* Route buttons: View Deck(left) | ADD TO DECK(center) | Skip(right) — same line */
   #route-btn-row {
@@ -6112,6 +6112,10 @@ function rResolvePlayedMoves(cards, emptiedHand) {
 function rResolveOpponentTurn() {
   const p = G.theirPokemon;
   if (!p) return;
+  // A Pokémon that just switched in (previous one fainted mid-play) doesn't
+  // act the turn it arrives - skip this one enemy turn, keeping its rolled
+  // intent to resolve on the next play.
+  if (G._skipEnemyTurnOnce) { G._skipEnemyTurnOnce = false; return; }
 
   let dot = 0;
   if (G.oppStatus.poison > 0) { dot += G.oppStatus.poison; if (!G._skipNextStatusDecay) G.oppStatus.poison = Math.max(0, G.oppStatus.poison - 1); }
@@ -9421,12 +9425,11 @@ const TRAINER_BATTLEBACK = {
 function renderTrainerPokeballs(trainer){
   const row = document.getElementById('rp-pokeball-row');
   if(!row) return;
-  const tier = (trainer && trainer.tier) || 'normal';
-  const total = tier === 'boss' ? 6 : tier === 'elite' ? 3 : 1;
-  const max = Math.max(1, G.trainerMaxHp||1);
-  const cur = Math.max(0, Math.min(max, G.trainerHp!=null ? G.trainerHp : max));
-  const pct = cur/max;
-  const emptied = Math.min(total, Math.floor((1-pct)*total + 1e-9));
+  // The team now really IS a sequence of separate Pokémon: `total` is the team
+  // size and `emptied` is how many have actually FAINTED (G.oppDefeated), not
+  // an HP fraction. The current Pokémon is the ball at index `emptied`.
+  const total = (G.oppTeamSize != null) ? G.oppTeamSize : oppTeamSizeFor(trainer);
+  const emptied = Math.min(total, G.oppDefeated || 0);
 
   // Fresh trainer or fresh party size (new battle) - don't carry over a
   // stale "previously emptied" count from whoever was fought before.
@@ -9547,18 +9550,23 @@ async function playSendOutAnimation(){
   const trainerWrap = document.getElementById('rp-portrait-img-wrap');
   if(!ball || !imgWrap) return;
 
-  // Smoothly fades/slides the HP bar + intent badge in (they were hidden by
+  // Smoothly fades the HP bar + intent badge in (they were hidden by
   // setupOpponentPokemon so they only appear AFTER the Pokémon is released).
+  // The intent badge fades opacity only (its transform is the position anchor);
+  // the HP wrap also slides up.
   const revealOppUI = () => {
-    ['opp-pkmn-intent-badge','opp-pkmn-hp-wrap'].forEach((id, k) => {
-      const el = document.getElementById(id);
-      if(!el) return;
-      setTimeout(() => {
-        el.style.transition = 'opacity 0.5s ease, transform 0.5s cubic-bezier(0.34,1.5,0.6,1)';
-        el.style.opacity = '1';
-        el.style.transform = 'translateY(0)';
-      }, k * 130);
-    });
+    const intent = document.getElementById('opp-pkmn-intent-badge');
+    if(intent){
+      positionIntentBadge();
+      intent.style.transition = 'opacity 0.5s ease';
+      intent.style.opacity = '1';
+    }
+    const hpw = document.getElementById('opp-pkmn-hp-wrap');
+    if(hpw) setTimeout(() => {
+      hpw.style.transition = 'opacity 0.5s ease, transform 0.5s cubic-bezier(0.34,1.5,0.6,1)';
+      hpw.style.opacity = '1';
+      hpw.style.transform = 'translateY(0)';
+    }, 130);
   };
 
   const startRect = (trainerWrap && trainerWrap.offsetParent) ? trainerWrap.getBoundingClientRect() : null;
@@ -9649,7 +9657,14 @@ async function playSendOutAnimation(){
   if(flash){ flash.style.display = 'none'; flash.classList.remove('burst','fade'); }
 }
 
-function setupOpponentPokemon(trainer){
+// A trainer fields a whole team: 1 (normal), 3 (elite), 6 (gym/boss).
+function oppTeamSizeFor(trainer){
+  const tier = (trainer && trainer.tier) || 'normal';
+  return tier === 'boss' ? 6 : tier === 'elite' ? 3 : 1;
+}
+// Assigns a fresh random Kanto Pokémon to G.theirPokemon (used at battle start
+// and each time the trainer sends out their next Pokémon).
+function assignOpponentPokemon(trainer){
   const dex = 1 + Math.floor(Math.random()*151);
   const pk = KANTO_BY_DEX[dex];
   G.theirPokemon = {
@@ -9658,6 +9673,17 @@ function setupOpponentPokemon(trainer){
     theme: TRAINER_BATTLEBACK[trainer && trainer.name] || 'field',
     intent: 'attack', intentAmt: 0, _lockedIntent: null,
   };
+}
+function setupOpponentPokemon(trainer){
+  assignOpponentPokemon(trainer);
+  // Each Pokémon has its OWN HP: the trainer's total target split evenly
+  // across the team, so overall difficulty is unchanged but you fight them one
+  // at a time. Defeating one sends out the next (see sendOutNextOpponentPokemon).
+  G.oppTeamSize = oppTeamSizeFor(trainer);
+  G.oppDefeated = 0;
+  const total = (typeof getTrainerTarget === 'function') ? getTrainerTarget(G.trainerIdx||0) : (G.trainerMaxHp||300);
+  G.trainerMaxHp = Math.max(1, Math.round(total / G.oppTeamSize));
+  G.trainerHp = G.trainerMaxHp;
   // Hide immediately so renderOpponentPokemon (called by rollOpponentIntent
   // right below) can't flash the sprite visible before the ball reveals it.
   const spriteImg = document.getElementById('opp-pkmn-sprite');
@@ -9668,14 +9694,53 @@ function setupOpponentPokemon(trainer){
   // the sprite appears. Done AFTER rollOpponentIntent so its render doesn't
   // clear this (subsequent in-battle re-renders only touch text/classes, so
   // the inline opacity we set here persists until the send-out reveal).
-  ['opp-pkmn-intent-badge','opp-pkmn-hp-wrap'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el){ el.style.transition='none'; el.style.opacity='0'; el.style.transform='translateY(12px)'; }
-  });
+  // HP wrap slides up as it fades in; the intent badge fades opacity only (its
+  // transform is reserved for the positionIntentBadge anchor).
+  const _hpw = document.getElementById('opp-pkmn-hp-wrap');
+  if(_hpw){ _hpw.style.transition='none'; _hpw.style.opacity='0'; _hpw.style.transform='translateY(12px)'; }
+  const _intent = document.getElementById('opp-pkmn-intent-badge');
+  if(_intent){ _intent.style.transition='none'; _intent.style.opacity='0'; }
   // Delayed so the trainer's own slide-in (0.5s transition, plus its
   // ~100ms trigger offset in the caller) visibly finishes BEFORE the
   // throw starts, instead of both playing at once.
   if(typeof playSendOutAnimation === 'function') setTimeout(playSendOutAnimation, 700);
+}
+
+// Called when the current opponent Pokémon faints but the trainer still has
+// reserves: play a quick faint, pick the next Pokémon (fresh HP + status),
+// then throw the ball to send it out. Returns when the send-out finishes.
+async function sendOutNextOpponentPokemon(){
+  const trainer = (typeof getCurrentTrainer === 'function' && getCurrentTrainer()) || {};
+  G.oppDefeated = (G.oppDefeated || 0) + 1;
+  // Faint the current sprite (drop + fade), then refresh the party balls so a
+  // ball empties for the Pokémon that just went down.
+  const sprite = document.getElementById('opp-pkmn-sprite');
+  if(sprite){
+    sprite.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    sprite.style.opacity = '0';
+    sprite.style.transform = 'translateX(-50%) translateY(24px) scale(0.6)';
+  }
+  if(typeof SFX !== 'undefined' && SFX.faint) SFX.faint();
+  renderTrainerPokeballs(trainer);
+  await delay(480);
+  // Next Pokémon: fresh HP, cleared status/shield, a rolled intent that only
+  // resolves on the player's NEXT play (it just switched in).
+  assignOpponentPokemon(trainer);
+  G.trainerHp = G.trainerMaxHp;
+  G.oppShield = 0;
+  G.oppStatus = { poison:0, burn:0, ccTurns:0, ccLabel:'' };
+  if(_oppSpriteAnim) _oppSpriteAnim.dex = null;   // force the new atlas to load
+  G._skipEnemyTurnOnce = true;
+  rollOpponentIntent();                            // renders the new sprite (hidden below)
+  // Hide sprite + HP + intent, then throw the ball to reveal them.
+  const spr = document.getElementById('opp-pkmn-sprite');
+  if(spr){ spr.style.transition='none'; spr.style.opacity='0'; spr.style.transform='translateX(-50%) scale(0.25)'; }
+  const hpw = document.getElementById('opp-pkmn-hp-wrap');
+  if(hpw){ hpw.style.transition='none'; hpw.style.opacity='0'; hpw.style.transform='translateY(12px)'; }
+  const intent = document.getElementById('opp-pkmn-intent-badge');
+  if(intent){ intent.style.transition='none'; intent.style.opacity='0'; }
+  renderTrainerPokeballs(trainer);                 // active ball moves to the new Pokémon
+  if(typeof playSendOutAnimation === 'function') await playSendOutAnimation();
 }
 
 // Rolls both the intent TYPE and its magnitude, scaled by trainer tier and
@@ -9840,7 +9905,40 @@ function renderOpponentPokemon(){
   }
   renderOpponentPokemonHpBar();
   renderOpponentStatusIcons();
+  // Re-pin the intent badge above the (variable-size) sprite. The sprite loads
+  // its atlas asynchronously, so also nudge it a few times as layout settles.
+  positionIntentBadge();
+  setTimeout(positionIntentBadge, 120);
+  setTimeout(positionIntentBadge, 500);
 }
+
+// Pins the intent badge a CONSTANT gap above the opponent sprite's actual
+// visible top - so it sits the same distance from a tiny Weedle as from a
+// huge Onix, instead of floating way up in the (fixed 4:3) portrait box. The
+// badge is moved out to <body> so position:fixed uses real viewport coords
+// (its normal parent #opp-pokemon-area is transformed, which would otherwise
+// make "fixed" relative to that box).
+function positionIntentBadge(){
+  const badge = document.getElementById('opp-pkmn-intent-badge');
+  if(!badge) return;
+  if(badge.parentElement !== document.body) document.body.appendChild(badge);
+  const sprite = document.getElementById('opp-pkmn-sprite');
+  const wrap = document.getElementById('opp-pokemon-img-wrap');
+  const m = (typeof measureSpriteBody === 'function') ? measureSpriteBody(sprite, wrap) : null;
+  if(!m) return;
+  const visibleTop = m.cy - m.bodyH / 2;
+  const GAP = 16;   // px between the badge and the sprite's visible top
+  badge.style.position = 'fixed';
+  badge.style.margin = '0';
+  badge.style.zIndex = '106';
+  badge.style.left = Math.round(m.cx) + 'px';
+  badge.style.top = Math.round(visibleTop - GAP) + 'px';
+  // Anchor its bottom-center at that point. (Reveal animates opacity only, so
+  // this transform is never fought over.)
+  badge.style.transform = 'translate(-50%,-100%)';
+}
+// Keep it pinned across viewport changes.
+window.addEventListener('resize', () => { try { positionIntentBadge(); } catch(e){} });
 
 // Sleep/Paralyze/Freeze come from the shared CC counter (ccLabel says
 // which); Poison/Burn are stack counters, shown with a small badge.
@@ -12035,9 +12133,9 @@ function startNextBattle() {
   if (shopScreen) shopScreen.classList.add('hidden');
   // Show game UI for next battle
   const trainer = getCurrentTrainer();
+  // setupOpponentPokemon now sets trainerHp/trainerMaxHp itself (per-Pokémon,
+  // total target split across the team), so we no longer override it here.
   setupOpponentPokemon(trainer);
-  const _tgt = getTrainerTarget(G.trainerIdx);
-  G.trainerHp = _tgt; G.trainerMaxHp = _tgt;
   G.ourBoard = new Array(6).fill(null);
   G.theirBoard = new Array(4).fill(null);
   G.ourTurn = true; G.animating = false; G.heroPowerUsed = false; G.ourMana = 10; G.maxMana = 10;
@@ -13298,8 +13396,8 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 /* Each status is a little vertical stack: the icon, with its value as plain
    text directly beneath it (no circle/background badge). */
 .opp-status-item{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.opp-status-val{font-family:'PokemonClassic',monospace;font-size:clamp(11px,1.4vw,17px);
-  color:#fff;line-height:1;text-shadow:1.5px 1.5px 0 #000,-1px 1px 0 #000;}
+.opp-status-val{font-family:'PokemonClassic',monospace;font-size:clamp(7px,0.85vw,10px);
+  color:#fff;line-height:1;text-shadow:1px 1px 0 #000,-1px 1px 0 #000;}
 .opp-status-icon{position:relative;width:clamp(46px,5.2vw,66px);height:clamp(16px,1.9vw,24px);
   background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAABwCAYAAABlyJKNAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAABmJLR0QA/wD/AP+gvaeTAAADuUlEQVR42u2aIVTbYBDHL3u8RyWOuk4yRaaKnKOoMbVNtY7hNsXm6sbUcIArirkxRecqQS1TVHYuuEpQmUgupZdc7/vSluS+x/89Xvp9ue96/Hq53MsXL4oieKjTs2/TEyVrr33gPRw/KzsgW3lIGMkGwTDX8OjwZGr88fOH3PN0XvLD+UP5/gYATEirI7yCHySyRYlyMvWXxtWOD3oJSyQogaJk55V7hFEc6aKSqg4n9whzubvoKmEqvYTDMAQAgHq9nkvCNOds72SSMC6UOsIe7dbevN+pVLf28/xSd7eWqRJHZUckSC/hf0nujsLulMFW389deNUKcuepPbXD86bzkMTVSHJZL2FKlkoiYkuOJUqEcTWSsV7C84ojLRG0lbuEpaufzks5Su1M5S5hKRe53DWtBqbSS3g82AIAgLVXV4UccTkpkZVyGeMCiJtIdYQz/fAvz6tUP/w6ihzrh1snh2XHNFN6Cd+fxs+Hw8FgyqDeu8hdGHZ257Iznk/Kw+qe9ufDlGxRUvMSzXxvEldj7wAANBOWRHNUIrMsuUvYNje5dXSeqy6c1BFeeMBhZ3ep+a2O8GSf7kcfAAD8d61cQ9sqQXO0aC5jXI3zeKyO8FM/vGxl++Fgo+yYZkov4fu/LyIAgPFweld/bfcud+H4opY7T+2pnbU/iONa3bxR3g9TshIBJIXzdMzZmfqjca1vxmN1hJ8CXraM+2Hp6ufs5vVH5S5hUwK2ddf0F0HpJRwE8dH3HzcAqY5jXNtv46M6wpl++PeXavXD21+V98MZwi+vrytF+E+zqZtwWiWQbICXZaK7Tmemg1qvN9MOz9v6S+NKng8jab2EKVnpPze1Q6I4z/nhyKdxNZsAoJlwWaK/gCR3CdMcM81Fyc6ULMpdwrZVgrvqi5JFKSa84IaYkja942XIk/uDOsKZbs3b369UtxYdHzvSraFG41HZMc2UXsL4/jDu2qBad7OfG/RrtSk7HNP11E7SxI/y94fTKsHtHnHkODtKSFpv6h93k9QRfgp42TLu1rgcpbKtBrZyl7B0FT+W1BFOAx4kf4tSv1ZbyK9C41JHONMPf6rY+xLftb8vkRK+PbutFFmq9fa6zl7CC3th/N7wcA0AAJ538w1HXTOHKFs/1J7a1TfGAKCQ8AqSlUggAZyXxkX9cHYYpz7C3AkppxYljjT3fe4QNiXK5SA9L/mVchrlDmFTmVYJri5zucv500cY98H85LlwWdVAynWMUx3htFs726nWLj5V+1LpXvN/mJMbXSlyXfoAAAAldEVYdGRhdGU6Y3JlYXRlADIwMjAtMDktMDJUMTg6MTU6NDIrMDA6MDCmAecAAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDE5LTAzLTA4VDIzOjA0OjMxKzAwOjAwCL24GwAAAABJRU5ErkJggg==);
   background-size:100% 700%;image-rendering:pixelated;border-radius:2px;
@@ -13835,9 +13933,16 @@ playSelectedHand = async function(){
   rRenderAll();
 
   if(G.trainerHp <= 0){
-    G.animating = false;
-    setTimeout(advanceTrainer, 600);
-    return;
+    if(G.oppDefeated + 1 < (G.oppTeamSize||1)){
+      // A Pokémon fainted but the trainer has more - send out the next one,
+      // then let this play finish normally (reflow + enemy turn + draw below).
+      // The freshly-sent Pokémon won't act this turn (G._skipEnemyTurnOnce).
+      await sendOutNextOpponentPokemon();
+    } else {
+      G.animating = false;
+      setTimeout(advanceTrainer, 600);
+      return;
+    }
   }
 
   // Nine Lives (Ninetales): if the enemy survived this play, bank half
@@ -14031,8 +14136,11 @@ updateActionBar = function(){
       discardBtn.textContent = discardBlocked ? 'DISCARD LOCKED' : (G.discardsLeft > 0 ? `DISCARD (${sel})` : 'NO DISCARDS');
     }
     if(nameEl){
-      if(action){
-        nameEl.textContent = action.bonus ? action.bonus.label : 'PLAYED HAND';
+      // Only show a label when an actual bonus pattern is detected (e.g. a
+      // "Blastoise Pair"/species-set/type-set/evolution bonus). A plain
+      // selection with no bonus shows nothing rather than "PLAYED HAND".
+      if(action && action.bonus){
+        nameEl.textContent = action.bonus.label;
         nameEl.className='';
       } else { nameEl.textContent = '—'; nameEl.className='no-hand'; }
     }
@@ -14393,6 +14501,18 @@ showDefeatScreen = function(){
 // the NEXT screen (map/shop/route/cinnabar) actually takes over.
 (function(){
   advanceTrainer = async function(){
+    // The trainer still has Pokémon in reserve: this "defeat" is just the
+    // current Pokémon fainting. Send out the next one and RESUME the battle
+    // instead of advancing to the next trainer. (Covers defeat paths other
+    // than the main play loop - e.g. a Pokémon fainting from poison/burn on
+    // the enemy turn.)
+    if(G.oppDefeated + 1 < (G.oppTeamSize||1)){
+      await sendOutNextOpponentPokemon();
+      G.animating = false;
+      G._rummyPhase = 'play';
+      if(typeof updateActionBar === 'function') updateActionBar();
+      return;
+    }
     G._rummyPhase = 'setup';
     G._runStats && G._runStats.battles++;
 
