@@ -2024,11 +2024,21 @@ const NATIVE_HALF_H = 36;
 const _animJsonCache = {};   // kebab -> Promise<AnimConfig[]>
 const _animSheetCache = {};  // graphic name -> Promise<HTMLImageElement>
 
+// Both loaders: (a) time out - the battle sequence awaits the animations via
+// Promise.all, so a hung CDN request with no timeout would soft-lock the whole
+// hand resolution; (b) reject on non-2xx instead of trying to parse an error
+// body; (c) evict the cache entry on rejection - otherwise one transient
+// network blip permanently disables that move's (or, for sheets, EVERY move
+// sharing that sheet's) animation for the rest of the session. The `=== p`
+// identity check ensures a stale failure only evicts itself, never a newer
+// retry's promise.
 function loadAnimJson(kebab){
   if(_animJsonCache[kebab]) return _animJsonCache[kebab];
-  const p = fetch(BATTLE_ANIM_BASE + 'moves/' + kebab + '.json')
-    .then(r => r.json())
+  const p = fetch(BATTLE_ANIM_BASE + 'moves/' + kebab + '.json',
+      { signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined })
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status + ' for anim ' + kebab); return r.json(); })
     .then(j => Array.isArray(j) ? j : [j]);
+  p.catch(() => { if(_animJsonCache[kebab] === p) delete _animJsonCache[kebab]; });
   _animJsonCache[kebab] = p;
   return p;
 }
@@ -2036,11 +2046,13 @@ function loadAnimSheet(graphic){
   if(_animSheetCache[graphic]) return _animSheetCache[graphic];
   const p = new Promise((res, rej) => {
     const im = new Image();
+    const to = setTimeout(() => rej(new Error('sheet timeout ' + graphic)), 10000);
     im.crossOrigin = 'anonymous';
-    im.onload = () => res(im);
-    im.onerror = () => rej(new Error('sheet ' + graphic));
+    im.onload = () => { clearTimeout(to); res(im); };
+    im.onerror = () => { clearTimeout(to); rej(new Error('sheet ' + graphic)); };
     im.src = BATTLE_ANIM_BASE + 'gfx/' + encodeURIComponent(graphic) + '.png';
   });
+  p.catch(() => { if(_animSheetCache[graphic] === p) delete _animSheetCache[graphic]; });
   _animSheetCache[graphic] = p;
   return p;
 }
@@ -2087,7 +2099,8 @@ function playMoveAnimation(kebab, opts){
     // Work in PokéRogue native units, but map them COMPACTLY: a full-height
     // native battler (~72 units) maps to roughly the sprite's on-screen height,
     // so a screen-filling native effect ends up about the size of the Pokémon.
-    const S = (tR.height / 72) * scale;
+    // let (not const): the step loop re-derives it if the viewport changes.
+    let S = (tR.height / 72) * scale;
 
     // Both the target and the (reconstructed) user anchor sit right on/under
     // the sprite, so target-focused cels land on the Pokémon and user-focused
@@ -2100,11 +2113,12 @@ function playMoveAnimation(kebab, opts){
     const toScreenX = nx => impact.x + nx * S;
     const toScreenY = ny => impact.y + ny * S;
 
-    // Full-screen canvas over the game.
+    // Full-screen canvas over the game. Rounded store size so the step
+    // loop's resize check compares like for like on fractional-dpr displays.
     const canvas = document.createElement('canvas');
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = window.innerWidth * dpr;
-    canvas.height = window.innerHeight * dpr;
+    canvas.width = Math.round(window.innerWidth * dpr);
+    canvas.height = Math.round(window.innerHeight * dpr);
     canvas.style.cssText =
       'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;' +
       'z-index:2147483600;';
@@ -2138,29 +2152,76 @@ function playMoveAnimation(kebab, opts){
     const frameMs = 1000 / speedFps;
     const firedSounds = {};
 
+    // PokéRogue's setSpritePriority is NOT a linear z-order: priority 2 is a
+    // behind-layer only when the anim has a bg sprite or the cel focuses
+    // USER/TARGET; priority 3 sits just above its focus battler; otherwise
+    // both fall through to bringToTop (topmost, like priority 1). Verified
+    // against a simulation of the reference across all used anims.
+    const animHasBg = !!(anim.frameTimedEvents && Object.values(anim.frameTimedEvents)
+      .some(evts => evts.some(e => e.eventType === 'AnimTimedAddBgEvent')));
+    const drawRank = c => {
+      const p = c.priority || 0, f = c.focus;
+      if (p === 2) return (animHasBg || f === 1 || f === 2) ? 0 : 3;
+      if (p === 3) return (f === 1 || f === 2) ? 1 : 3;
+      return p === 0 ? 2 : 3;
+    };
+
     await new Promise(resolve => {
       let fi = 0, last = -1;
       function step(ts){
         if(last < 0 || ts - last >= frameMs){
-          last = ts;
-          ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+          // Tear down on the tick AFTER the last frame was drawn, so the
+          // final frame is actually painted and held for a full frame
+          // duration (removing the canvas in the same rAF callback that drew
+          // it meant the last frame of every animation was never displayed).
+          if(fi >= anim.frames.length){ canvas.remove(); resolve(); return; }
+          // Advance by exactly frameMs (not to ts) so the sub-tick remainder
+          // is credited back and playback averages a true 20fps on any
+          // display refresh rate; clamp the debt to one frame after jank.
+          last = (last < 0) ? ts : Math.max(last + frameMs, ts - frameMs);
+          // Handle viewport changes mid-play (rotation/resize/zoom): resize
+          // the backing store (which also clears it fully - a plain clearRect
+          // with a stale store leaves smears), re-apply the dpr transform,
+          // and re-anchor on the sprite's post-reflow position.
+          const vw = window.innerWidth, vh = window.innerHeight,
+                d = window.devicePixelRatio || 1;
+          if(canvas.width !== Math.round(vw * d) || canvas.height !== Math.round(vh * d)){
+            canvas.width = Math.round(vw * d);
+            canvas.height = Math.round(vh * d);
+            ctx.setTransform(d, 0, 0, d, 0, 0);
+            let r = spriteEl.getBoundingClientRect();
+            if(r.width < 4 || r.height < 4) r = targetEl.getBoundingClientRect();
+            if(r.width >= 4 && r.height >= 4){
+              impact.x = r.left + r.width / 2;
+              impact.y = r.top + r.height * 0.45;
+              S = (r.height / 72) * scale;
+            }
+          } else {
+            ctx.clearRect(0, 0, vw, vh);
+          }
           const cels = anim.frames[fi] || [];
-          // Draw in priority order (low first), so higher-priority cels sit
-          // on top - PokéRogue reorders sprites by the same field.
           const ordered = cels
             .map((c, idx) => ({ c, idx }))
-            .sort((a, b) => ((a.c.priority||0) - (b.c.priority||0)) || (a.idx - b.idx));
+            .sort((a, b) => (drawRank(a.c) - drawRank(b.c)) || (a.idx - b.idx));
           for(const { c } of ordered){
             if(c.visible === false) continue;
+            // Only GRAPHIC cels (target 2) are spritesheet tiles. target 0/1
+            // are USER/TARGET battler refs (compiled from raw pattern -1/-2)
+            // that move/tint the actual Pokémon sprites in PokéRogue - we
+            // have no battler sprites to drive, and drawing them stamped a
+            // garbage copy of tile 0 over the Pokémon in every animation.
+            if(c.target !== 2) continue;
             const gf = c.graphicFrame || 0;
-            if(gf < 0) continue;                       // -1/-2 = draw a battler sprite; skipped
             const sx = (gf % cols) * TILE, sy = Math.floor(gf / cols) * TILE;
             const nat = celNative(c);
             // Cel size: native tile (96) * zoom%, then the uniform scale S.
             const zx = (c.zoomX == null ? 100 : c.zoomX) / 100 * S * (c.mirror ? -1 : 1);
             const zy = (c.zoomY == null ? 100 : c.zoomY) / 100 * S;
             ctx.save();
-            ctx.globalAlpha = (c.opacity == null ? 255 : c.opacity) / 255;
+            // The JSON exporter drops falsy fields, so a MISSING opacity was
+            // authored as 0 (invisible) - PokéRogue's importer defaults it to
+            // 0, not 255 (battle-anims.ts AnimFrame init semantics).
+            ctx.globalAlpha = (c.opacity || 0) / 255;
             ctx.globalCompositeOperation =
               c.blendType === 1 ? 'lighter' :          // ADD
               c.blendType === 2 ? 'difference' : 'source-over';
@@ -2179,8 +2240,7 @@ function playMoveAnimation(kebab, opts){
           }
           fi++;
         }
-        if(fi < anim.frames.length) requestAnimationFrame(step);
-        else { canvas.remove(); resolve(); }
+        requestAnimationFrame(step);
       }
       requestAnimationFrame(step);
     });
@@ -2199,9 +2259,9 @@ const PKMN_ANIM_SCALE = 1.0;
 // metronome) and otherwise the richest, most-visible animation of its type.
 // 87 distinct animations across the 151 (only ~11 of the available anims go
 // unused; full uniqueness is impossible with 98 anims for 151 Pokémon).
-const DEX_TO_ANIM = {"1":"giga-drain","2":"frenzy-plant","3":"petal-dance","4":"fire-spin","5":"fire-blast","6":"gust","7":"wring-out","8":"hydro-pump","9":"bubble","10":"megahorn","11":"leech-life","12":"sing","13":"poison-tail","14":"pin-missile","15":"string-shot","16":"final-gambit","17":"whirlwind","18":"flail","19":"swagger","20":"hyper-fang","21":"dizzy-punch","22":"glare","23":"sludge-bomb","24":"scary-face","25":"thunder-wave","26":"thunder-shock","27":"stealth-rock","28":"scratch","29":"poison-fang","30":"poison-gas","31":"smog","32":"acid","33":"twineedle","34":"poison-gas","35":"metronome","36":"sweet-kiss","37":"overheat","38":"fire-fang","39":"charm","40":"encore","41":"supersonic","42":"leech-life","43":"mega-drain","44":"razor-leaf","45":"bullet-seed","46":"leech-life","47":"poison-gas","48":"pin-missile","49":"petal-dance","50":"sand-attack","51":"ancient-power","52":"disable","53":"fake-out","54":"crush-claw","55":"psychic","56":"brick-break","57":"dynamic-punch","58":"fire-punch","59":"mach-punch","60":"dragon-rage","61":"hydro-pump","62":"bubble","63":"future-sight","64":"kinesis","65":"psycho-cut","66":"rock-smash","67":"karate-chop","68":"bulk-up","69":"vine-whip","70":"wrap","71":"absorb","72":"poison-gas","73":"poison-gas","74":"rock-throw","75":"ancient-power","76":"stealth-rock","77":"charge","78":"ember","79":"dragon-rage","80":"hydro-pump","81":"thunder-fang","82":"thunder-punch","83":"follow-me","84":"growl","85":"fake-tears","86":"bubble","87":"ice-ball","88":"sludge-bomb","89":"poison-gas","90":"wring-out","91":"crush-claw","92":"shadow-ball","93":"curse","94":"nightmare","95":"rock-throw","96":"foresight","97":"nightmare","98":"dragon-rage","99":"hydro-pump","100":"charge","101":"thunder-punch","102":"giga-drain","103":"frenzy-plant","104":"stealth-rock","105":"sand-attack","106":"rolling-kick","107":"double-kick","108":"struggle","109":"smog","110":"poison-gas","111":"ancient-power","112":"rock-throw","113":"pound","114":"petal-dance","115":"mega-punch","116":"bubble","117":"wring-out","118":"gust","119":"dragon-rage","120":"hydro-pump","121":"bubble","122":"kinesis","123":"crush-claw","124":"lovely-kiss","125":"thunder-punch","126":"fire-punch","127":"megahorn","128":"double-slap","129":"splash","130":"dragon-rage","131":"crush-claw","132":"final-gambit","133":"flail","134":"dragon-rage","135":"thunder-wave","136":"fire-spin","137":"swagger","138":"wring-out","139":"ancient-power","140":"stealth-rock","141":"crush-claw","142":"ancient-power","143":"dizzy-punch","144":"ice-ball","145":"thunder-punch","146":"overheat","147":"dragon-breath","148":"dragon-dance","149":"dragon-claw","150":"psycho-cut","151":"psychic"};
+const DEX_TO_ANIM = {"1":"giga-drain","2":"frenzy-plant","3":"petal-dance","4":"fire-spin","5":"fire-blast","6":"gust","7":"wring-out","8":"hydro-pump","9":"bubble","10":"megahorn","11":"leech-life","12":"sing","13":"poison-tail","14":"pin-missile","15":"string-shot","16":"final-gambit","17":"whirlwind","18":"flail","19":"swagger","20":"hyper-fang","21":"dizzy-punch","22":"glare","23":"sludge-bomb","24":"scary-face","25":"thunder-wave","26":"thunder-shock","27":"stealth-rock","28":"scratch","29":"poison-fang","30":"poison-gas","31":"smog","32":"acid","33":"twineedle","34":"poison-gas","35":"metronome","36":"sweet-kiss","37":"overheat","38":"fire-fang","39":"charm","40":"encore","41":"supersonic","42":"leech-life","43":"mega-drain","44":"razor-leaf","45":"bullet-seed","46":"leech-life","47":"poison-gas","48":"pin-missile","49":"petal-dance","50":"sand-attack","51":"ancient-power","52":"metal-claw","53":"fake-out","54":"crush-claw","55":"kinesis","56":"brick-break","57":"dynamic-punch","58":"fire-punch","59":"mach-punch","60":"dragon-rage","61":"hydro-pump","62":"bubble","63":"future-sight","64":"kinesis","65":"psycho-cut","66":"rock-smash","67":"karate-chop","68":"brick-break","69":"vine-whip","70":"wrap","71":"absorb","72":"poison-gas","73":"poison-gas","74":"rock-throw","75":"ancient-power","76":"stealth-rock","77":"charge","78":"ember","79":"dragon-rage","80":"hydro-pump","81":"thunder-fang","82":"thunder-punch","83":"follow-me","84":"growl","85":"fake-tears","86":"bubble","87":"ice-ball","88":"sludge-bomb","89":"poison-gas","90":"wring-out","91":"crush-claw","92":"shadow-ball","93":"curse","94":"shadow-ball","95":"rock-throw","96":"foresight","97":"future-sight","98":"dragon-rage","99":"hydro-pump","100":"charge","101":"thunder-punch","102":"giga-drain","103":"frenzy-plant","104":"stealth-rock","105":"sand-attack","106":"rolling-kick","107":"double-kick","108":"wrap","109":"smog","110":"poison-gas","111":"ancient-power","112":"rock-throw","113":"pound","114":"petal-dance","115":"mega-punch","116":"bubble","117":"wring-out","118":"gust","119":"dragon-rage","120":"hydro-pump","121":"bubble","122":"kinesis","123":"crush-claw","124":"lovely-kiss","125":"thunder-punch","126":"fire-punch","127":"megahorn","128":"double-slap","129":"splash","130":"dragon-rage","131":"crush-claw","132":"final-gambit","133":"flail","134":"dragon-rage","135":"thunder-wave","136":"fire-spin","137":"swagger","138":"wring-out","139":"ancient-power","140":"stealth-rock","141":"crush-claw","142":"ancient-power","143":"dizzy-punch","144":"ice-ball","145":"thunder-punch","146":"overheat","147":"dragon-breath","148":"dragon-dance","149":"dragon-claw","150":"psycho-cut","151":"meteor-mash"};
 // Per-type animation pools, for cards whose dex we cannot resolve.
-const ANIM_BY_TYPE = {"Grass":["giga-drain","frenzy-plant","petal-dance","mega-drain","razor-leaf","bullet-seed","vine-whip","wrap","absorb"],"Fire":["fire-spin","fire-blast","gust","overheat","fire-fang","fire-punch","mach-punch","charge","ember"],"Water":["wring-out","hydro-pump","bubble","crush-claw","psychic","dragon-rage","poison-gas","ice-ball","gust","splash"],"Bug":["megahorn","leech-life","sing","poison-tail","pin-missile","string-shot","poison-gas","petal-dance","crush-claw"],"Normal":["final-gambit","whirlwind","flail","swagger","hyper-fang","dizzy-punch","glare","disable","fake-out","follow-me","growl","fake-tears","struggle","pound","mega-punch","double-slap"],"Poison":["sludge-bomb","scary-face","poison-fang","poison-gas","smog","acid","twineedle","supersonic","leech-life"],"Electric":["thunder-wave","thunder-shock","thunder-fang","thunder-punch","charge"],"Ground":["stealth-rock","scratch","sand-attack","ancient-power","rock-throw"],"Fairy":["metronome","sweet-kiss","charm","encore"],"Fighting":["brick-break","dynamic-punch","rock-smash","karate-chop","bulk-up","rolling-kick","double-kick"],"Psychic":["future-sight","kinesis","psycho-cut","foresight","nightmare","psychic"],"Rock":["rock-throw","ancient-power","stealth-rock","wring-out","crush-claw"],"Ghost":["shadow-ball","curse","nightmare"],"Ice":["lovely-kiss","ice-ball"],"Dragon":["dragon-breath","dragon-dance","dragon-claw"]};
+const ANIM_BY_TYPE = {"Grass":["giga-drain","frenzy-plant","petal-dance","mega-drain","razor-leaf","bullet-seed","vine-whip","wrap","absorb"],"Fire":["fire-spin","fire-blast","gust","overheat","fire-fang","fire-punch","mach-punch","charge","ember"],"Water":["wring-out","hydro-pump","bubble","crush-claw","dragon-rage","poison-gas","ice-ball","gust","splash"],"Bug":["megahorn","leech-life","sing","poison-tail","pin-missile","string-shot","poison-gas","petal-dance","crush-claw"],"Normal":["final-gambit","whirlwind","flail","swagger","hyper-fang","dizzy-punch","glare","disable","fake-out","follow-me","growl","fake-tears","pound","mega-punch","double-slap"],"Poison":["sludge-bomb","scary-face","poison-fang","poison-gas","smog","acid","twineedle","supersonic","leech-life"],"Electric":["thunder-wave","thunder-shock","thunder-fang","thunder-punch","charge"],"Ground":["stealth-rock","scratch","sand-attack","ancient-power","rock-throw"],"Fairy":["metronome","sweet-kiss","charm","encore"],"Fighting":["brick-break","dynamic-punch","rock-smash","karate-chop","bulk-up","rolling-kick","double-kick"],"Psychic":["future-sight","kinesis","psycho-cut","foresight"],"Rock":["rock-throw","ancient-power","stealth-rock","wring-out","crush-claw"],"Ghost":["shadow-ball","curse"],"Ice":["lovely-kiss","ice-ball"],"Dragon":["dragon-breath","dragon-dance","dragon-claw"]};
 
 
 
