@@ -1650,49 +1650,45 @@ html { overflow: hidden; }
 .shop-tab:hover, .shop-tab.active { color:#aaccff; border-color:rgba(100,140,255,0.7); background:rgba(20,30,70,0.8); }
 /* Shop gold display */
 /* Item grid */
-#shop-items-grid { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; max-width:min(90vw,900px); touch-action:pan-y; }
+/* The store options render as a vertical table of rows (icon | name + desc),
+   so 7 choices stack cleanly instead of overflowing side-by-side. */
+#shop-items-grid { display:flex; flex-direction:column; gap:6px; width:100%; max-width:min(92vw,600px); touch-action:pan-y; }
 .shop-item {
-  display:flex; flex-direction:column; align-items:center;
-  width:clamp(130px,13vw,175px); cursor:pointer;
-  animation:shopItemIn 0.4s var(--sd,0s) cubic-bezier(0.15,1.1,0.35,1) both;
-  transition:transform 0.15s ease;
+  display:flex; flex-direction:row; align-items:center; gap:14px;
+  width:100%; padding:7px 14px; cursor:pointer; text-align:left;
+  border-radius:8px; border:1px solid rgba(80,100,160,0.28);
+  background:rgba(10,14,30,0.5);
+  animation:shopItemIn 0.35s var(--sd,0s) cubic-bezier(0.15,1.1,0.35,1) both;
+  transition:transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
 }
-.shop-item:hover:not(.purchased):not(.cant-afford) { transform:translateY(-6px); }
-@keyframes shopItemIn { from{opacity:0;transform:translateY(24px) scale(0.88)} to{opacity:1;transform:none} }
+.shop-item:hover:not(.purchased):not(.cant-afford) {
+  transform:translateX(4px); background:rgba(28,38,78,0.75); border-color:rgba(120,150,255,0.6);
+}
+@keyframes shopItemIn { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
 .shop-item.purchased { opacity:0.35; pointer-events:none; filter:saturate(0.3); }
 .shop-item.cant-afford { opacity:0.5; cursor:not-allowed; }
 .shop-item-frame {
-  /* No decorative frame box anymore - just a square that holds the icon. */
-  position:relative; width:clamp(70px,7.4vw,96px); aspect-ratio:1/1;
-  margin-bottom:8px; flex-shrink:0;
+  /* No decorative frame box - just a small square holding the icon. */
+  position:relative; width:clamp(46px,5vw,60px); aspect-ratio:1/1;
+  margin:0; flex-shrink:0;
 }
 .shop-item-icon {
-  /* fixed size independent of the frame now (was a % of it), so growing
-     the frame above doesn't also grow the icon - matches the original
-     92-132px frame's 64% (~59-84px) so the icon itself looks unchanged */
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-  width:clamp(58px,6.1vw,84px); height:clamp(58px,6.1vw,84px);
+  width:clamp(40px,4.4vw,54px); height:clamp(40px,4.4vw,54px);
   object-fit:contain; image-rendering:pixelated; z-index:2;
   pointer-events:none;
 }
+.shop-item-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
 .shop-item-name {
   font-family:'PokemonClassic',monospace; font-size:clamp(10.5px,1.1vw,14px);
-  color:#ffdd66; letter-spacing:0.3px; text-align:center;
+  color:#ffdd66; letter-spacing:0.3px; text-align:left;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;
-  margin-bottom:3px;
 }
 .shop-item-desc {
   font-family:'PokemonClassic',monospace; font-size:clamp(9px,0.95vw,12px);
-  color:#a8bacc; line-height:1.42; text-align:center;
-  max-height:4.4em; overflow:hidden; width:100%;
-  margin-bottom:4px;
+  color:#a8bacc; line-height:1.4; text-align:left;
+  overflow:hidden; width:100%;
 }
-.shop-item-cost {
-  font-family:'PokemonClassic',monospace; font-size:clamp(11px,1.15vw,15px);
-  font-weight:bold;
-}
-.shop-item-cost.affordable { color:#ffdd44; }
-.shop-item-cost.expensive  { color:#886644; }
 /* Card rewards section */
 #shop-cards-section { margin-top:20px; width:100%; display:flex; flex-direction:column; align-items:center; gap:8px; }
 #shop-cards-label { font-size:clamp(9px,1vw,14px); color:#7799bb; letter-spacing:2px; }
@@ -1871,10 +1867,12 @@ html { overflow: hidden; }
   #shop-screen { padding:8px 0 !important; }
   #shop-title    { font-size:16px !important; margin-bottom:2px !important; }
   #shop-subtitle { font-size:8px !important; margin-bottom:8px !important; }
-  .shop-item     { width:clamp(95px,17vw,130px) !important; min-height:150px !important; padding:7px 6px 38px 6px !important; border-radius:8px !important; }
-  .shop-item-name  { font-size:7px !important; margin-bottom:3px !important; }
-  .shop-item-desc  { font-size:6px !important; margin-bottom:5px !important; }
-  .shop-item-cost  { font-size:10px !important; }
+  #shop-items-grid { max-width:94vw !important; gap:5px !important; }
+  .shop-item       { width:100% !important; padding:6px 10px !important; gap:10px !important; }
+  .shop-item-frame { width:40px !important; }
+  .shop-item-icon  { width:34px !important; height:34px !important; }
+  .shop-item-name  { font-size:8px !important; }
+  .shop-item-desc  { font-size:7px !important; line-height:1.35 !important; }
   #shop-skip-btn   { font-size:8px !important; padding:5px 14px !important; margin-top:10px !important; }
 
   /* ── Between screens (route / daycare) ── */
@@ -2059,6 +2057,10 @@ const MOVE_ANIM_DROP = 0.22;
 // the played card (self-target/status moves like Metronome and Kadabra's
 // Disable). For these the "user" anchor is the opponent too.
 const MOVE_ON_OPPONENT = new Set(['metronome','kinesis']);
+// Moves whose animation should play ON OUR OWN played card, not on the
+// opponent - self-target moves whose PokéRogue cels are authored as TARGET-
+// focused (e.g. Abra's Teleport) and would otherwise render on the enemy.
+const MOVE_ON_SELF = new Set(['teleport']);
 // PokéRogue's own field anchors (src/data/battle-anims.ts). Cels are placed
 // in this native space: base offset is always (x+106, y+116); a USER-focused
 // cel is then shifted so native (106,116) lands on the user, and a TARGET-
@@ -2201,6 +2203,9 @@ function playMoveAnimation(kebab, opts){
         : { x: impact.x, y: impact.y + NATIVE_HALF_H * S };
     }
     const launch = attackerCenter();
+    // Self-moves (Teleport) play entirely on our card: collapse the impact
+    // anchor onto the launch point so even TARGET-focused cels land on the card.
+    if(MOVE_ON_SELF.has(kebab)){ impact = { x: launch.x, y: launch.y }; }
 
     // Full-screen canvas over the game. Rounded store size so the step
     // loop's resize check compares like for like on fractional-dpr displays.
@@ -2311,6 +2316,8 @@ function playMoveAnimation(kebab, opts){
             // The card moved too (reflow) - re-derive the launch point.
             const l2 = attackerCenter();
             launch.x = l2.x; launch.y = l2.y;
+            // Keep self-moves pinned to our card after the reflow too.
+            if(MOVE_ON_SELF.has(kebab)){ impact.x = launch.x; impact.y = launch.y; }
           } else {
             ctx.clearRect(0, 0, vw, vh);
           }
@@ -2388,7 +2395,7 @@ const PKMN_ANIM_SCALE = 1.0;
 // metronome) and otherwise the richest, most-visible animation of its type.
 // 87 distinct animations across the 151 (only ~11 of the available anims go
 // unused; full uniqueness is impossible with 98 anims for 151 Pokémon).
-const DEX_TO_ANIM = {"1":"synthesis","2":"growth","3":"solar-beam","4":"ember","5":"flamethrower","6":"fly","7":"withdraw","8":"razor-shell","9":"hydro-cannon","10":"string-shot","11":"harden","12":"sleep-powder","13":"poison-sting","14":"silver-wind","15":"attack-order","16":"foresight","17":"tailwind","18":"hurricane","19":"u-turn","20":"super-fang","21":"peck","22":"drill-peck","23":"coil","24":"glare","25":"thunder-wave","26":"thunderbolt","27":"sand-attack","28":"fury-swipes","29":"poison-jab","30":"protect","31":"venom-drench","32":"horn-attack","33":"megahorn","34":"venoshock","35":"metronome","36":"moonlight","37":"will-o-wisp","38":"mystical-fire","39":"sing","40":"encore","41":"supersonic","42":"leech-life","43":"grass-whistle","44":"stun-spore","45":"aromatherapy","46":"leech-seed","47":"spore","48":"signal-beam","49":"quiver-dance","50":"dig","51":"earthquake","52":"pay-day","53":"fake-out","54":"zen-headbutt","55":"psybeam","56":"rage-fist","57":"outrage","58":"fire-fang","59":"extreme-speed","60":"water-pulse","61":"counter","62":"focus-punch","63":"teleport","64":"kinesis","65":"future-sight","66":"focus-energy","67":"seismic-toss","68":"dynamic-punch","69":"vine-whip","70":"power-whip","71":"grass-knot","72":"acid","73":"toxic-spikes","74":"rock-polish","75":"rollout","76":"explosion","77":"flame-charge","78":"flare-blitz","79":"stored-power","80":"amnesia","81":"magnet-rise","82":"magnet-bomb","83":"meteor-assault","84":"double-hit","85":"triple-axel","86":"recover","87":"ice-beam","88":"sludge","89":"acid-armor","90":"clamp","91":"spike-cannon","92":"lick","93":"curse","94":"shadow-ball","95":"iron-defense","96":"hypnosis","97":"dream-eater","98":"vise-grip","99":"crabhammer","100":"charge","101":"self-destruct","102":"egg-bomb","103":"wood-hammer","104":"bone-club","105":"bonemerang","106":"high-jump-kick","107":"mach-punch","108":"stockpile","109":"smokescreen","110":"poison-gas","111":"stomp","112":"rock-wrecker","113":"soft-boiled","114":"constrict","115":"mega-punch","116":"bubble","117":"aqua-jet","118":"waterfall","119":"horn-drill","120":"rapid-spin","121":"psywave","122":"barrier","123":"x-scissor","124":"lovely-kiss","125":"thunder-punch","126":"fire-punch","127":"guillotine","128":"thrash","129":"splash","130":"dragon-rage","131":"perish-song","132":"substitute","133":"swift","134":"aqua-ring","135":"volt-switch","136":"flame-wheel","137":"tri-attack","138":"ancient-power","139":"rock-blast","140":"defense-curl","141":"night-slash","142":"rock-slide","143":"snore","144":"blizzard","145":"thunder","146":"sky-attack","147":"wrap","148":"dragon-rush","149":"draco-meteor","150":"psystrike","151":"aura-sphere"};
+const DEX_TO_ANIM = {"1":"synthesis","2":"growth","3":"solar-beam","4":"ember","5":"flamethrower","6":"fly","7":"withdraw","8":"razor-shell","9":"hydro-cannon","10":"string-shot","11":"harden","12":"sleep-powder","13":"poison-sting","14":"silver-wind","15":"attack-order","16":"foresight","17":"tailwind","18":"hurricane","19":"u-turn","20":"super-fang","21":"peck","22":"drill-peck","23":"coil","24":"glare","25":"thunder-wave","26":"thunderbolt","27":"sand-attack","28":"fury-swipes","29":"poison-jab","30":"protect","31":"venom-drench","32":"horn-attack","33":"megahorn","34":"venoshock","35":"metronome","36":"moonlight","37":"will-o-wisp","38":"mystical-fire","39":"sing","40":"encore","41":"supersonic","42":"leech-life","43":"grass-whistle","44":"stun-spore","45":"aromatherapy","46":"leech-seed","47":"spore","48":"signal-beam","49":"quiver-dance","50":"twister","51":"earthquake","52":"pay-day","53":"fake-out","54":"zen-headbutt","55":"psybeam","56":"rage-fist","57":"outrage","58":"fire-fang","59":"extreme-speed","60":"water-pulse","61":"counter","62":"focus-punch","63":"teleport","64":"kinesis","65":"future-sight","66":"focus-energy","67":"meteor-mash","68":"dynamic-punch","69":"vine-whip","70":"power-whip","71":"grass-knot","72":"acid","73":"toxic-spikes","74":"rock-polish","75":"rollout","76":"explosion","77":"flame-charge","78":"flare-blitz","79":"stored-power","80":"amnesia","81":"magnet-rise","82":"magnet-bomb","83":"meteor-assault","84":"double-hit","85":"triple-axel","86":"recover","87":"ice-beam","88":"sludge","89":"acid-armor","90":"clamp","91":"spike-cannon","92":"lick","93":"curse","94":"shadow-ball","95":"iron-defense","96":"hypnosis","97":"dream-eater","98":"vise-grip","99":"crabhammer","100":"charge","101":"self-destruct","102":"egg-bomb","103":"wood-hammer","104":"bone-club","105":"bonemerang","106":"high-jump-kick","107":"mach-punch","108":"stockpile","109":"smokescreen","110":"poison-gas","111":"stomp","112":"rock-wrecker","113":"soft-boiled","114":"constrict","115":"mega-punch","116":"bubble","117":"aqua-jet","118":"waterfall","119":"horn-drill","120":"rapid-spin","121":"psywave","122":"barrier","123":"x-scissor","124":"lovely-kiss","125":"thunder-punch","126":"fire-punch","127":"guillotine","128":"thrash","129":"splash","130":"dragon-rage","131":"perish-song","132":"substitute","133":"swift","134":"aqua-ring","135":"volt-switch","136":"flame-wheel","137":"tri-attack","138":"ancient-power","139":"rock-blast","140":"defense-curl","141":"night-slash","142":"rock-slide","143":"snore","144":"blizzard","145":"thunder","146":"sky-attack","147":"wrap","148":"dragon-rush","149":"draco-meteor","150":"psystrike","151":"aura-sphere"};
 // Per-type animation pools, for cards whose dex we cannot resolve.
 const ANIM_BY_TYPE = {"Grass":["giga-drain","frenzy-plant","petal-dance","mega-drain","razor-leaf","bullet-seed","vine-whip","wrap","absorb"],"Fire":["fire-spin","fire-blast","gust","overheat","fire-fang","fire-punch","mach-punch","charge","ember"],"Water":["wring-out","hydro-pump","bubble","crush-claw","dragon-rage","poison-gas","ice-ball","gust","splash"],"Bug":["megahorn","leech-life","sing","poison-tail","pin-missile","string-shot","poison-gas","petal-dance","crush-claw"],"Normal":["final-gambit","whirlwind","flail","swagger","hyper-fang","dizzy-punch","glare","disable","fake-out","follow-me","growl","fake-tears","pound","mega-punch","double-slap"],"Poison":["sludge-bomb","scary-face","poison-fang","poison-gas","smog","acid","twineedle","supersonic","leech-life"],"Electric":["thunder-wave","thunder-shock","thunder-fang","thunder-punch","charge"],"Ground":["stealth-rock","scratch","sand-attack","ancient-power","rock-throw"],"Fairy":["metronome","sweet-kiss","charm","encore"],"Fighting":["brick-break","dynamic-punch","rock-smash","karate-chop","bulk-up","rolling-kick","double-kick"],"Psychic":["future-sight","kinesis","psycho-cut","foresight"],"Rock":["rock-throw","ancient-power","stealth-rock","wring-out","crush-claw"],"Ghost":["shadow-ball","curse"],"Ice":["lovely-kiss","ice-ball"],"Dragon":["dragon-breath","dragon-dance","dragon-claw"]};
 
@@ -11978,8 +11985,10 @@ function renderShop() {
       <div class="shop-item-frame">
         <img class="shop-item-icon" src="${item.img}" alt="">
       </div>
-      <div class="shop-item-name">${item.name}</div>
-      <div class="shop-item-desc">${item.desc}</div>
+      <div class="shop-item-text">
+        <div class="shop-item-name">${item.name}</div>
+        <div class="shop-item-desc">${item.desc}</div>
+      </div>
     `;
     el.addEventListener('click', () => chooseShopItem(item, el));
     el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
@@ -12419,23 +12428,11 @@ const SHOP_ITEMS = [
 let _shopItemPool = []; // current shop items for sale
 
 function getShopItems() {
-  // Offer exactly 3 choices (the store is a free "pick one" now, not a buy-many
-  // shop), weighted so there's a cheap, a mid, and an occasional rare option.
+  // Offer 7 choices as a table; the store is a free "pick one" reward now, so
+  // just take 7 random items the player doesn't already own.
   const owned = new Set(G_items.map(i=>i.id));
   const pool = SHOP_ITEMS.filter(i=>!owned.has(i.id)).sort(()=>Math.random()-0.5);
-  const cheap = pool.filter(i=>i.cost<=4);
-  const mid   = pool.filter(i=>i.cost>4&&i.cost<=6);
-  const rare  = pool.filter(i=>i.cost>6);
-  const picks = [];
-  if(cheap.length) picks.push(cheap[0]);
-  if(mid.length) picks.push(mid[0]);
-  if(rare.length && Math.random()<0.4) picks.push(rare[0]);
-  else if(cheap.length>1) picks.push(cheap[1]);
-  while(picks.length < 3 && pool.length > picks.length) {
-    const next = pool.find(p=>!picks.includes(p));
-    if(next) picks.push(next); else break;
-  }
-  return picks.slice(0,3);
+  return pool.slice(0,7);
 }
 
 function applyItemEffect(item) {
