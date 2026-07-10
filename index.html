@@ -2070,10 +2070,12 @@ function playMoveAnimation(kebab, opts){
     if(!sheet) return;
 
     // These moves were authored for PokéRogue's battle layout, where user and
-    // target are two battlers a fixed distance apart. Here there's really only
-    // one thing to hit - the opponent Pokémon - so we center the whole effect
-    // ON the opponent sprite and keep it compact around it, rather than trying
-    // to stretch it across the card->enemy gap (which flung cels off-screen).
+    // target are two battlers a fixed distance apart. Here the "user" is the
+    // played card and the "target" is the opponent Pokémon: launch cels anchor
+    // on the card, impact cels on the opponent, and traveling cels are
+    // projected along the card->opponent line (see celScreen) - while cel
+    // SIZE stays compact (scaled to the opponent, not to the card->enemy
+    // distance, which is what previously flung cels off-screen).
     //
     // Crucially we anchor on the actual SPRITE, not its wrapper. The wrapper
     // box sits high and the sprite overflows below it onto the platform, so
@@ -2102,16 +2104,18 @@ function playMoveAnimation(kebab, opts){
     // let (not const): the step loop re-derives it if the viewport changes.
     let S = (tR.height / 72) * scale;
 
-    // Both the target and the (reconstructed) user anchor sit right on/under
-    // the sprite, so target-focused cels land on the Pokémon and user-focused
-    // "launch" cels originate just below it and rise into it - a tight, legible
-    // hit instead of a stretched-out streak.
-    const targetNative = { x: 0, y: 0 };                 // impact center
-    const userNative   = { x: 0, y: NATIVE_HALF_H };     // just below impact
-
-    // native (relative to impact) -> screen
-    const toScreenX = nx => impact.x + nx * S;
-    const toScreenY = ny => impact.y + ny * S;
+    // Launch point: the ATTACKING CARD's center. USER-focused cels (launch
+    // flares, muzzle effects) originate here, so each played card's move
+    // visibly starts from that card rather than from a shared spot under the
+    // enemy. Falls back to just-below-the-impact when no attacker is given.
+    function attackerCenter(){
+      const r = attackerEl && attackerEl.getBoundingClientRect
+        ? attackerEl.getBoundingClientRect() : null;
+      return (r && r.width >= 2 && r.height >= 2)
+        ? { x: r.left + r.width/2, y: r.top + r.height/2 }
+        : { x: impact.x, y: impact.y + NATIVE_HALF_H * S };
+    }
+    const launch = attackerCenter();
 
     // Full-screen canvas over the game. Rounded store size so the step
     // loop's resize check compares like for like on fractional-dpr displays.
@@ -2128,24 +2132,38 @@ function playMoveAnimation(kebab, opts){
 
     const cols = Math.max(1, Math.floor(sheet.width / TILE)) || ANIM_COLS;
 
-    // Native position of a cel RELATIVE TO THE IMPACT POINT, per PokéRogue's
-    // focus rules. In PokéRogue screen_x = (frame.x + 106) + (anchorX - focusX);
-    // measured relative to that focus anchor this is just frame.x + 106 - focusX
-    // (and similarly in y, with the half-height term). We fold each focus's
-    // anchor onto our compact userNative/targetNative points around the impact.
-    function celNative(cel){
+    // Screen position of a cel, per PokéRogue's focus rules but with OUR
+    // anchors: USER cels ride the attacking card, TARGET cels ride the
+    // opponent's impact point, and USER_TARGET cels (the traveling part of a
+    // move) are projected onto the card->opponent line the same way PokéRogue
+    // maps its native focus line onto the actual battler positions - so
+    // projectiles genuinely fly from the played card to the enemy, however
+    // far apart they are, while each cel's local offsets stay compact (*S).
+    // Native focus anchors: user (106,116), target (234,52); the axis between
+    // them is A=(128,-64), |A|^2 = 20480, |A| ~= 143.1.
+    function celScreen(cel){
       const fx = cel.x || 0, fy = cel.y || 0;
+      const nx = fx + 106, ny = fy + 116;      // raw native position
       switch(cel.focus){
-        case 2: // USER - anchor just below the impact
-          return { x: userNative.x + fx + 106 - USER_FOCUS_X,
-                   y: userNative.y + fy + 116 - USER_FOCUS_Y - NATIVE_HALF_H };
-        case 4: // SCREEN - centered on the impact, no battler re-anchor
-          return { x: fx, y: fy };
-        case 3: // USER_TARGET - user and target coincide here, so treat like
-                // target (the projected line collapses to the impact point).
-        default: // TARGET (1) and anything unset - on the impact
-          return { x: targetNative.x + fx + 106 - TARGET_FOCUS_X,
-                   y: targetNative.y + fy + 116 - TARGET_FOCUS_Y - NATIVE_HALF_H };
+        case 2: // USER - offsets from the native user anchor, around the card
+          return { x: launch.x + (nx - 106) * S,
+                   y: launch.y + (ny - 116) * S };
+        case 4: // SCREEN - field-wide effect; keep it centered on the impact
+          return { x: impact.x + fx * S, y: impact.y + fy * S };
+        case 3: { // USER_TARGET - project along the card->opponent line
+          const rx = nx - 106, ry = ny - 116;
+          // Progress along the native user->target axis (0 = user, 1 = target)
+          const t = (rx * 128 + ry * -64) / 20480;
+          // Signed perpendicular distance from that axis, in native px
+          const c = (rx * -64 - ry * 128) / 143.108;
+          const ax = impact.x - launch.x, ay = impact.y - launch.y;
+          const al = Math.hypot(ax, ay) || 1;
+          return { x: launch.x + ax * t + (-ay / al) * c * S,
+                   y: launch.y + ay * t + ( ax / al) * c * S };
+        }
+        default: // TARGET (1) and anything unset - offsets around the impact
+          return { x: impact.x + (nx - TARGET_FOCUS_X) * S,
+                   y: impact.y + (ny - TARGET_FOCUS_Y - NATIVE_HALF_H) * S };
       }
     }
 
@@ -2196,6 +2214,9 @@ function playMoveAnimation(kebab, opts){
               impact.y = r.top + r.height * 0.45;
               S = (r.height / 72) * scale;
             }
+            // The card moved too (reflow) - re-derive the launch point.
+            const l2 = attackerCenter();
+            launch.x = l2.x; launch.y = l2.y;
           } else {
             ctx.clearRect(0, 0, vw, vh);
           }
@@ -2213,7 +2234,7 @@ function playMoveAnimation(kebab, opts){
             if(c.target !== 2) continue;
             const gf = c.graphicFrame || 0;
             const sx = (gf % cols) * TILE, sy = Math.floor(gf / cols) * TILE;
-            const nat = celNative(c);
+            const pos = celScreen(c);
             // Cel size: native tile (96) * zoom%, then the uniform scale S.
             const zx = (c.zoomX == null ? 100 : c.zoomX) / 100 * S * (c.mirror ? -1 : 1);
             const zy = (c.zoomY == null ? 100 : c.zoomY) / 100 * S;
@@ -2225,7 +2246,7 @@ function playMoveAnimation(kebab, opts){
             ctx.globalCompositeOperation =
               c.blendType === 1 ? 'lighter' :          // ADD
               c.blendType === 2 ? 'difference' : 'source-over';
-            ctx.translate(toScreenX(nat.x), toScreenY(nat.y));
+            ctx.translate(pos.x, pos.y);
             if(c.angle) ctx.rotate(-c.angle * Math.PI / 180);
             ctx.scale(zx, zy);
             // Tiles are center-origin in PokéRogue (Phaser sprite default).
