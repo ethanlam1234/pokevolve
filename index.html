@@ -310,9 +310,10 @@ html { overflow: hidden; }
   image-rendering:pixelated; z-index:1; opacity:0.45;
 }
 /* The battle platform/base (moved here from behind the opponent Pokémon) - the
-   floor the trainer stands on inside their portrait card. */
+   floor the trainer stands on inside their portrait card. Sits low (overflowing
+   the bottom a touch) so the trainer reads as standing ON it. */
 #rp-base-img {
-  position:absolute; left:50%; bottom:4%; width:82%; height:auto;
+  position:absolute; left:50%; bottom:-18%; width:90%; height:auto;
   transform:translateX(-50%); object-fit:contain;
   image-rendering:pixelated; z-index:2; opacity:0.92;
   pointer-events:none;
@@ -2435,7 +2436,7 @@ const GYM_TRANSITION_FILE_NAME = {
 document.head.insertAdjacentHTML('beforeend', `<style>
 #gym-transition {
   position: fixed; inset: 0; z-index: 2147483000; /* just under the animation engine's own layer */
-  background: rgba(6,8,20,0.62); /* see-through on purpose - the battle scene stays visible behind it */
+  background: rgba(4,6,16,0.9); /* strong dim so the VS banner really pops over the battle scene */
   opacity: 0; pointer-events: none; overflow: hidden;
   font-family: 'PokemonClassic', monospace;
   /* The bar's native art is 2:1 (256x128), so stretched to fill 100vw
@@ -10009,17 +10010,18 @@ function renderOpponentPokemon(){
   const numEl = document.getElementById('opp-pkmn-intent-num');
   if(badge){
     badge.classList.remove('intent-attack','intent-block','intent-cc');
+    if(iconEl){ iconEl.textContent = ''; iconEl.classList.remove('ii-attack','ii-block','ii-status'); }
     if(p.intent === 'attack'){
       badge.classList.add('intent-attack');
-      if(iconEl) iconEl.textContent = '⚔️';
+      if(iconEl) iconEl.classList.add('ii-attack');
       if(numEl) numEl.textContent = fmtNum(p.intentAmt||0);
     } else if(p.intent === 'block'){
       badge.classList.add('intent-block');
-      if(iconEl) iconEl.textContent = '🛡️';
+      if(iconEl) iconEl.classList.add('ii-block');
       if(numEl) numEl.textContent = fmtNum(p.intentAmt||0);
     } else {
       badge.classList.add('intent-cc');
-      if(iconEl) iconEl.textContent = '💫';
+      if(iconEl) iconEl.classList.add('ii-status');
       if(numEl) numEl.textContent = '';
     }
   }
@@ -13523,13 +13525,23 @@ document.head.insertAdjacentHTML('beforeend', `<style>
   text-shadow:1px 1px 0 #000,0 0 5px rgba(0,0,0,0.8);white-space:nowrap;}
 /* Intent is now icon+number only, sitting above the sprite (first child
    of #opp-pokemon-area's column flow) instead of text below the HP bar. */
-#opp-pkmn-intent-badge{display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:16px;
-  background:rgba(10,12,24,0.75);border:1.5px solid rgba(255,255,255,0.18);
+#opp-pkmn-intent-badge{display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:16px;
+  background:rgba(10,12,24,0.8);border:1.5px solid rgba(255,255,255,0.16);
   box-shadow:0 2px 6px rgba(0,0,0,0.5);}
-#opp-pkmn-intent-badge.intent-attack{border-color:rgba(255,110,90,0.65);}
-#opp-pkmn-intent-badge.intent-block{border-color:rgba(120,180,255,0.65);}
-#opp-pkmn-intent-badge.intent-cc{border-color:rgba(180,140,255,0.65);}
-#opp-pkmn-intent-icon{font-size:clamp(14px,1.6vw,21px);line-height:1;}
+#opp-pkmn-intent-badge.intent-attack{border-color:rgba(255,110,90,0.5);}
+#opp-pkmn-intent-badge.intent-block{border-color:rgba(120,180,255,0.5);}
+#opp-pkmn-intent-badge.intent-cc{border-color:rgba(180,140,255,0.5);}
+/* Intent icon = PokéRogue's move-split badge (a 3-frame sheet): damage uses the
+   physical badge (red), block the special badge (blue barrier), status the
+   status badge (grey). Replaces the old emoji. */
+#opp-pkmn-intent-icon{display:inline-block; height:clamp(15px,1.9vw,23px); aspect-ratio:28/11;
+  line-height:0; font-size:0; flex:0 0 auto;
+  background-image:url(https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/ui/move-categories.png);
+  background-repeat:no-repeat; background-size:300% 100%; image-rendering:pixelated;
+  filter:drop-shadow(1px 1px 0 rgba(0,0,0,0.55));}
+#opp-pkmn-intent-icon.ii-attack{background-position:0% 0;}
+#opp-pkmn-intent-icon.ii-block {background-position:50% 0;}
+#opp-pkmn-intent-icon.ii-status{background-position:100% 0;}
 #opp-pkmn-intent-num{font-size:clamp(13px,1.4vw,18px);color:#fff;font-weight:bold;text-shadow:1px 1px 0 #000;}
 /* Status icons (Sleep/Poison/Burn/Paralyze/Freeze) - one 44x16 sprite
    sheet, 7 rows stacked vertically (5 used here; FNT/PKRS aren't battle
