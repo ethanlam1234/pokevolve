@@ -2002,8 +2002,36 @@ html { overflow: hidden; }
 // offset (x+106, y+116), then focus shifts the cel onto the user/target
 // field position. See assets/battle-anims/ for the vendored data.
 // ═══════════════════════════════════════════════════════════════════
-const BATTLE_ANIM_BASE =
-  "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/battle-anims/";
+// Primary CDN plus a fallback: jsDelivr occasionally 503s, and its error
+// responses carry no CORS headers - so a transient blip shows up in the
+// console as BOTH a 503 and a CORS error. raw.githubusercontent serves the
+// same repo files with CORS enabled, so one CDN having a bad moment no
+// longer silently kills animations.
+const BATTLE_ANIM_BASES = [
+  "https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/battle-anims/",
+  "https://raw.githubusercontent.com/ethanlam1234/pokevolve/main/assets/battle-anims/",
+];
+const BATTLE_ANIM_BASE = BATTLE_ANIM_BASES[0]; // kept for anything that reads it
+// Shared fetch/image helpers with per-base timeout + fallback. Also used by
+// the opponent-Pokémon sprite atlas loader further down.
+function fetchJsonWithFallback(bases, path){
+  const tryOne = i => fetch(bases[i] + path,
+      { signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined })
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status + ' ' + path); return r.json(); })
+    .catch(err => { if(i + 1 < bases.length) return tryOne(i + 1); throw err; });
+  return tryOne(0);
+}
+function loadImageWithFallback(bases, path){
+  const tryOne = i => new Promise((res, rej) => {
+    const im = new Image();
+    const to = setTimeout(() => rej(new Error('img timeout ' + path)), 10000);
+    im.crossOrigin = 'anonymous';
+    im.onload = () => { clearTimeout(to); res(im); };
+    im.onerror = () => { clearTimeout(to); rej(new Error('img ' + path)); };
+    im.src = bases[i] + path;
+  }).catch(err => { if(i + 1 < bases.length) return tryOne(i + 1); throw err; });
+  return tryOne(0);
+}
 const BATTLE_ANIM_FPS = 20;   // PokéRogue's native playback rate
 const TILE = 96;              // sheet tile size (loadSpritesheet(..., 96))
 const ANIM_COLS = 5;          // sheets are 5 tiles wide
@@ -2034,9 +2062,7 @@ const _animSheetCache = {};  // graphic name -> Promise<HTMLImageElement>
 // retry's promise.
 function loadAnimJson(kebab){
   if(_animJsonCache[kebab]) return _animJsonCache[kebab];
-  const p = fetch(BATTLE_ANIM_BASE + 'moves/' + kebab + '.json',
-      { signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined })
-    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status + ' for anim ' + kebab); return r.json(); })
+  const p = fetchJsonWithFallback(BATTLE_ANIM_BASES, 'moves/' + kebab + '.json')
     .then(j => Array.isArray(j) ? j : [j]);
   p.catch(() => { if(_animJsonCache[kebab] === p) delete _animJsonCache[kebab]; });
   _animJsonCache[kebab] = p;
@@ -2044,14 +2070,7 @@ function loadAnimJson(kebab){
 }
 function loadAnimSheet(graphic){
   if(_animSheetCache[graphic]) return _animSheetCache[graphic];
-  const p = new Promise((res, rej) => {
-    const im = new Image();
-    const to = setTimeout(() => rej(new Error('sheet timeout ' + graphic)), 10000);
-    im.crossOrigin = 'anonymous';
-    im.onload = () => { clearTimeout(to); res(im); };
-    im.onerror = () => { clearTimeout(to); rej(new Error('sheet ' + graphic)); };
-    im.src = BATTLE_ANIM_BASE + 'gfx/' + encodeURIComponent(graphic) + '.png';
-  });
+  const p = loadImageWithFallback(BATTLE_ANIM_BASES, 'gfx/' + encodeURIComponent(graphic) + '.png');
   p.catch(() => { if(_animSheetCache[graphic] === p) delete _animSheetCache[graphic]; });
   _animSheetCache[graphic] = p;
   return p;
@@ -6988,21 +7007,8 @@ async function playSelectedHand() {
     return;
   }
 
-  // ── DEFEAT CHECK: out of hands, trainer still standing ──────
-  if(G.handsLeft <= 0) {
-    if(hasItem('focus_sash') && !G._sashUsed) {
-      G._sashUsed = true;
-      const si = G_items.findIndex(it=>it.id==='focus_sash');
-      if(si>-1){ G_items.splice(si,1); renderOwnedItemsPanel(); }
-      G.handsLeft = 2;
-      announceText('\ud83d\udd30 FOCUS SASH! +2 HANDS', 2200);
-      updateRunPanel();
-    } else {
-      renderHand();
-      setTimeout(showDefeatScreen, 700);
-      return;
-    }
-  }
+  // (The out-of-hands defeat check lived here. Melds/hands are unlimited
+  // now - the only battle-ending conditions are the two HP totals.)
 
   G.animating = false;
   renderHand();
@@ -9603,22 +9609,26 @@ function rollOpponentIntent() {
 // to keep the sprite from jittering. The animation is simply every frame in
 // numeric filename order, looped, at ~20fps (PokéRogue's rate) - there's no
 // separate "animations" block in these atlases.
-const POKE_ANIM_BASE = 'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/pokemon-anim/';
+// Primary CDN plus a fallback: jsDelivr occasionally 503s (and its error
+// responses carry no CORS headers, so a blip also surfaces as a CORS error
+// in the console). raw.githubusercontent serves the same repo files with
+// CORS enabled, so a transient jsDelivr outage no longer kills sprites.
+const POKE_ANIM_BASES = [
+  'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/pokemon-anim/',
+  'https://raw.githubusercontent.com/ethanlam1234/pokevolve/main/assets/pokemon-anim/',
+];
 const POKE_ANIM_FPS = 20;
 const _pokeAtlasCache = {};   // dex -> Promise<{img, frames, w, h}>
 
 function loadPokemonAtlas(dex){
   if(_pokeAtlasCache[dex]) return _pokeAtlasCache[dex];
+  // fetchJsonWithFallback/loadImageWithFallback are defined alongside the
+  // battle-anim loaders (same timeout + jsDelivr->raw.githubusercontent
+  // fallback behavior).
   const p = (async () => {
     const [meta, img] = await Promise.all([
-      fetch(POKE_ANIM_BASE + dex + '.json').then(r => r.json()),
-      new Promise((res, rej) => {
-        const im = new Image();
-        im.crossOrigin = 'anonymous';
-        im.onload = () => res(im);
-        im.onerror = rej;
-        im.src = POKE_ANIM_BASE + dex + '.png';
-      }),
+      fetchJsonWithFallback(POKE_ANIM_BASES, dex + '.json'),
+      loadImageWithFallback(POKE_ANIM_BASES, dex + '.png'),
     ]);
     const tex = meta.textures[0];
     // Sort frames by their numeric filename (e.g. "0007.png" -> 7).
@@ -9627,6 +9637,9 @@ function loadPokemonAtlas(dex){
     const w = frames[0].sourceSize.w, h = frames[0].sourceSize.h;
     return { img, frames, w, h };
   })();
+  // Evict on failure so the next send-out retries instead of the sprite
+  // staying broken for the whole session after one bad request.
+  p.catch(() => { if(_pokeAtlasCache[dex] === p) delete _pokeAtlasCache[dex]; });
   _pokeAtlasCache[dex] = p;
   return p;
 }
@@ -13034,8 +13047,12 @@ function activeGymRule(){ return (G._boss && G._boss.rule) || null; }
 applyBattleStartEffects = function(){
   const trainer = (typeof getCurrentTrainer==='function') ? getCurrentTrainer() : {};
   const tier = trainer.tier || 'normal';
-  G.handsLeft = (tier==='boss'?RBAL.playsBoss : tier==='elite'?RBAL.playsElite : RBAL.playsNormal)
-              + sumEffectAmount('meld_count');
+  // Melds are UNLIMITED - discards are the only per-battle resource, and a
+  // battle only ends when one side's HP hits zero. 9999 (rather than
+  // Infinity) keeps every piece of leftover arithmetic on this counter
+  // (decrements, Giovanni's handsPenalty, bonus-meld effects, the unused-
+  // melds gold bonus) finite and well-behaved.
+  G.handsLeft = 9999;
   G.discardsLeft = RBAL.discards;
   G._board = [];
   G._discardPile = [];
@@ -13794,22 +13811,9 @@ function rAfterPlay(){
   rRenderAll();
   const finish = () => {
     if(G.trainerHp <= 0){ setTimeout(advanceTrainer, 400); return; }
-    if(G.handsLeft <= 0){
-      if(hasEffect('survive_once') && !G._sashUsed){
-        G._sashUsed = true;
-        const savedBy = ownedItemsWithEffect('survive_once')[0];
-        const si = G_items.findIndex(it=>it.id===savedBy.id);
-        if(si>-1){ G_items.splice(si,1); if(typeof renderOwnedItemsPanel==='function') renderOwnedItemsPanel(); }
-        G.handsLeft = 2;
-        announceText('🔰 '+savedBy.name.toUpperCase()+'! +2 MELDS', 2200);
-        rRenderAll();
-        updateActionBar();
-      } else {
-        setTimeout(showDefeatScreen, 700);
-      }
-      return;
-    }
-    if(G.handsLeft === 1) announceText('⚠ LAST MELD!', 1500);
+    // Melds are unlimited now - running "out" can't happen and is no longer
+    // a defeat. The battle only ends by HP: theirs (above) or ours (the
+    // enemy-turn damage path).
     updateActionBar();
   };
   finish();
