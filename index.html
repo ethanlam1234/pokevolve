@@ -309,6 +309,14 @@ html { overflow: hidden; }
   object-fit:cover; object-position:center;
   image-rendering:pixelated; z-index:1; opacity:0.45;
 }
+/* The battle platform/base (moved here from behind the opponent Pokémon) - the
+   floor the trainer stands on inside their portrait card. */
+#rp-base-img {
+  position:absolute; left:50%; bottom:4%; width:82%; height:auto;
+  transform:translateX(-50%); object-fit:contain;
+  image-rendering:pixelated; z-index:2; opacity:0.92;
+  pointer-events:none;
+}
 #rp-portrait-img-wrap img#tc-opp-img {
   position:absolute; left:50%; top:50%; width:82%; height:82%;
   transform:translate(-150%,-50%);
@@ -2973,6 +2981,7 @@ document.addEventListener('keydown',e=>{
   <div id="rp-portrait" onmouseenter="if(typeof SFX!=='undefined') SFX.hover();" onclick="const t=getCurrentTrainer(); if(t) { if(typeof SFX!=='undefined') SFX.uiClick(); showTrainerDialogue(t.name); }" style="cursor:pointer;">
     <div id="rp-portrait-img-wrap">
       <img id="rp-bg-img" class="battleback-layer" alt="">
+      <img id="rp-base-img" class="battleback-layer" alt="">
       <img id="tc-opp-img" src="https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/trainers/LEADER_Brock.png" alt="">
     </div>
     <div id="rp-portrait-overlay">
@@ -6124,8 +6133,12 @@ function rOnCardDiscarded(card) {
 
 // ── Main resolver ────────────────────────────────────────────────
 function rResolvePlayedMoves(cards, emptiedHand) {
-  const pairs = cards.flatMap(card => getCardMoves(card).map(p => ({ card, dex: p.dex, move: p.move })));
+  const pairs = cards.flatMap((card, ci) => getCardMoves(card).map(p => ({ card, ci, dex: p.dex, move: p.move })));
   cards.forEach(c => { if (c.name) G._battlePlayedNames.add(c.name.split(' ')[0]); });
+  // Per-card opponent-status delta, so the sequential play loop can reveal the
+  // status each card applies AS that card plays (not all at the end). Index =
+  // position in `cards`. { poison, burn } are additive; cc is set if changed.
+  const perCardStatus = cards.map(() => ({ poison: 0, burn: 0, ccTurns: 0, ccLabel: '', ccChanged: false }));
 
   // Pre-pass 1: Venusaur consumes every OTHER Grass card in this play.
   if (pairs.some(p => p.dex === 3)) {
@@ -6154,8 +6167,18 @@ function rResolvePlayedMoves(cards, emptiedHand) {
     const f = MOVE_FX[p.dex];
     if (!f) return;
     const ctx = { card: p.card, dex: p.dex, move: p.move, idx, pairs, emptiedHand, isFirst: idx === 0, isLast: idx === pairs.length - 1 };
+    // Snapshot the opponent status so we can attribute what THIS move applied.
+    const sB = { poison: G.oppStatus.poison, burn: G.oppStatus.burn, ccTurns: G.oppStatus.ccTurns, ccLabel: G.oppStatus.ccLabel };
     let res;
     try { res = f(ctx) || {}; } catch (e) { res = {}; }
+    const rec = perCardStatus[p.ci];
+    if (rec) {
+      rec.poison += (G.oppStatus.poison - sB.poison);
+      rec.burn += (G.oppStatus.burn - sB.burn);
+      if (G.oppStatus.ccTurns !== sB.ccTurns || G.oppStatus.ccLabel !== sB.ccLabel) {
+        rec.ccChanged = true; rec.ccTurns = G.oppStatus.ccTurns; rec.ccLabel = G.oppStatus.ccLabel;
+      }
+    }
     let d = res.dmg || 0;
     // Type-triggered bonuses from earlier cards this same play (Swarm/Thunderbolt)
     if (G._typeBonusFlat[p.move.type]) d += G._typeBonusFlat[p.move.type];
@@ -6179,7 +6202,7 @@ function rResolvePlayedMoves(cards, emptiedHand) {
 
   const moveScore = Math.round(bonusDmg * (1 + multAdd / 100) * multX);
   const keepHalfArmed = G._keepHalfArmed; G._keepHalfArmed = false;
-  return { bonusDmg: moveScore, pierceDmg, keepHalfArmed };
+  return { bonusDmg: moveScore, pierceDmg, keepHalfArmed, perCardStatus };
 }
 // Resolves the opponent's currently-shown intent, ticks poison/burn (plus
 // Leech Seed's separate growing drain) against trainerHp, then rolls the
@@ -9499,44 +9522,30 @@ const TRAINER_BATTLEBACK = {
 function renderTrainerPokeballs(trainer){
   const row = document.getElementById('rp-pokeball-row');
   if(!row) return;
-  // The team now really IS a sequence of separate Pokémon: `total` is the team
-  // size and `emptied` is how many have actually FAINTED (G.oppDefeated), not
-  // an HP fraction. The current Pokémon is the ball at index `emptied`.
+  // The team is a real sequence of Pokémon: `total` is the team size, `defeated`
+  // is how many have FAINTED. Always render 6 slots. The team is left-aligned;
+  // slots beyond it are shown as EMPTY balls ("no Pokémon here" - the only use
+  // of the empty ball, for normal/elite trainers that have <6). Within the team
+  // Pokémon #1 sits at the RIGHTMOST team slot and faints progress right->left;
+  // a fainted Pokémon shows the "dead" ball and STAYS that way (no fade to
+  // empty), so a KO is a single current->dead transition.
   const total = (G.oppTeamSize != null) ? G.oppTeamSize : oppTeamSizeFor(trainer);
-  const emptied = Math.min(total, G.oppDefeated || 0);
-
-  // Fresh trainer or fresh party size (new battle) - don't carry over a
-  // stale "previously emptied" count from whoever was fought before.
-  if(G._pokeballTrainerName !== (trainer&&trainer.name) || G._pokeballTotal !== total){
-    G._pokeballTrainerName = trainer && trainer.name;
-    G._pokeballTotal = total;
-    G._pokeballLastEmptied = 0;
-  }
-  const justEmptied = Math.max(0, emptied - (G._pokeballLastEmptied||0));
-
-  // Always render a full party of 6 slots. The trainer's actual team fills
-  // the first `total`; any slots beyond that are shown as empty balls (this
-  // trainer simply doesn't have those Pokémon), so a 1-Pokémon trainer still
-  // shows 1 real ball + 5 empties instead of a lone ball.
+  const defeated = Math.min(total, G.oppDefeated || 0);
   const SLOTS = 6;
   let html = '';
   for(let i=0;i<SLOTS;i++){
     let cls;
-    if(i >= total) cls = 'ball-empty';             // no Pokémon in this slot
-    else if(i < emptied - justEmptied) cls = 'ball-empty';
-    else if(i < emptied) cls = 'ball-faint';       // emptied THIS update - brief flash
-    else if(i === emptied) cls = 'ball-active';    // the one currently being fought
-    else cls = 'ball-full';
+    if(i >= total){
+      cls = 'ball-empty';                       // padding - no Pokémon in this slot
+    } else {
+      const pokeIndex = (total - 1) - i;        // #1 at the rightmost team slot
+      if(pokeIndex < defeated) cls = 'ball-faint';        // fainted - stays "dead"
+      else if(pokeIndex === defeated) cls = 'ball-active'; // currently out
+      else cls = 'ball-full';                              // reserve, healthy
+    }
     html += `<span class="rp-pokeball ${cls}"></span>`;
   }
   row.innerHTML = html;
-  G._pokeballLastEmptied = emptied;
-
-  if(justEmptied > 0){
-    setTimeout(() => {
-      row.querySelectorAll('.rp-pokeball.ball-faint').forEach(b => b.classList.replace('ball-faint','ball-empty'));
-    }, 700);
-  }
 }
 
 function setTrainerPortrait(trainer) {
@@ -9546,6 +9555,8 @@ function setTrainerPortrait(trainer) {
 
   const theme = TRAINER_BATTLEBACK[trainer.name] || 'field';
   if(bgImg) bgImg.src = BATTLEBACK_BASE + theme + '_bg.png';
+  const baseImg = document.getElementById('rp-base-img');
+  if(baseImg) baseImg.src = BATTLEBACK_BASE + theme + '_base1.png';
 
   // Hide the image box entirely if no image — never show an empty square
   if(imgWrap) imgWrap.style.display = trainer.img ? '' : 'none';
@@ -9744,9 +9755,10 @@ function playOpponentCry(){
     SFX.playSample(CRY_BASE + dex + '.m4a', { volume: 75 });
   }
 }
-// PokéRogue's damage hit sound (se/hit).
+// PokéRogue's damage hit sound (se/hit) - kept quiet so it sits under the
+// move SFX and cries rather than dominating.
 function playHitSound(){
-  if(typeof SFX !== 'undefined' && SFX.playSample) SFX.playSample(HIT_SFX_URL, { volume: 90 });
+  if(typeof SFX !== 'undefined' && SFX.playSample) SFX.playSample(HIT_SFX_URL, { volume: 28 });
 }
 // PokéRogue's damage flash: the sprite blinks in/out ~6 times over ~0.6s, the
 // classic "took a hit" flicker from the mainline games (DamageAnimPhase toggles
@@ -13937,10 +13949,21 @@ playSelectedHand = async function(){
   const portraitWrap = document.getElementById('opp-pokemon-img-wrap');
 
   // Whole-play scoring/effects resolve ONCE - rResolvePlayedMoves has ordered
-  // side effects (status, block, shield, setup queue) that can't be split per
-  // card - then we present the resulting damage card by card.
+  // side effects (block, shield, setup queue) that can't be split per card -
+  // then we present the resulting damage card by card. For opponent STATUS we
+  // capture each card's contribution (perCardStatus) and hide the status until
+  // its card actually plays: snapshot the status now, run the resolve, remember
+  // the FINAL status, then roll the opponent's status back so the loop can
+  // reveal it card by card.
+  const _cloneStatus = () => ({ poison: G.oppStatus.poison, burn: G.oppStatus.burn, ccTurns: G.oppStatus.ccTurns, ccLabel: G.oppStatus.ccLabel });
   const blockBefore = G.playerBlock || 0;
+  const preStatus = _cloneStatus();
   const moveFx = rResolvePlayedMoves(cards, emptiedHand);
+  const finalStatus = _cloneStatus();
+  const perCardStatus = moveFx.perCardStatus || cards.map(() => null);
+  // Hide the status again until each card reveals its own.
+  Object.assign(G.oppStatus, preStatus);
+  renderOpponentStatusIcons();
   const blockGained = Math.max(0, (G.playerBlock||0) - blockBefore);
 
   // A play made ENTIRELY of Block-role cards deals no meld damage.
@@ -14026,6 +14049,19 @@ playSelectedHand = async function(){
       renderOpponentPokemonHpBar();
       updatePortraits();
     }
+    // KILL: if this card dropped the Pokémon to 0, stop here - don't play the
+    // remaining cards, and don't bother rendering any status this card applied
+    // (the Pokémon is fainting). The post-loop check sends out the next one or
+    // advances.
+    if(G.trainerHp <= 0){ break; }
+    // Reveal the opponent status THIS card applied (poison/burn/CC), right now.
+    const st = perCardStatus[i];
+    if(st && (st.poison || st.burn || st.ccChanged)){
+      G.oppStatus.poison += st.poison;
+      G.oppStatus.burn += st.burn;
+      if(st.ccChanged){ G.oppStatus.ccTurns = st.ccTurns; G.oppStatus.ccLabel = st.ccLabel; }
+      renderOpponentStatusIcons();
+    }
     // block cards: show the block we gained (once, on the first block card)
     const isBlockCard = getCardMoves(cards[i]).some(({move}) => move.role === 'block');
     if(isBlockCard && !blockShown && blockGained > 0){
@@ -14035,6 +14071,10 @@ playSelectedHand = async function(){
     }
     await delay(240);
   }
+  // If the opponent survived the whole hand, make sure the FULL final status is
+  // applied (covers status amplification and any card whose status we revealed
+  // incrementally) before the enemy turn ticks it.
+  if(G.trainerHp > 0) Object.assign(G.oppStatus, finalStatus);
   if(typeof renderPlayerHpBar==='function') renderPlayerHpBar();
 
   // GIN — emptied the whole hand in one play
@@ -14254,7 +14294,10 @@ updateActionBar = function(){
   const discardBtn = document.getElementById('discard-btn');
   const nameEl = document.getElementById('rp-hand-name');
   const movesEl = document.getElementById('rp-hand-moves');
+  const previewEl = document.getElementById('rp-hand-preview');
   const inPlay = G._rummyPhase === 'play' && !G.animating;
+  // The Selected Meld panel only exists while at least one card is selected.
+  if(previewEl) previewEl.style.display = (inPlay && sel) ? 'flex' : 'none';
   if(inPlay && sel){
     const cards = rSelCards();
     const action = rClassifySelection(cards);
@@ -14273,13 +14316,14 @@ updateActionBar = function(){
       discardBtn.textContent = discardBlocked ? 'DISCARD LOCKED' : (G.discardsLeft > 0 ? `DISCARD (${sel})` : 'NO DISCARDS');
     }
     if(nameEl){
-      // Only show a label when an actual bonus pattern is detected (e.g. a
-      // "Blastoise Pair"/species-set/type-set/evolution bonus). A plain
-      // selection with no bonus shows nothing rather than "PLAYED HAND".
+      // Show a label ONLY when an actual bonus pattern is detected (e.g. a
+      // "Blastoise Pair"/species-set/type-set/evolution bonus). With no bonus,
+      // render nothing at all - not even a "—".
       if(action && action.bonus){
         nameEl.textContent = action.bonus.label;
         nameEl.className='';
-      } else { nameEl.textContent = '—'; nameEl.className='no-hand'; }
+        nameEl.style.display = '';
+      } else { nameEl.textContent = ''; nameEl.style.display = 'none'; }
     }
     // Each selected Pokémon's move name (type-colored) + full description.
     if(movesEl && typeof getCardMoves === 'function'){
