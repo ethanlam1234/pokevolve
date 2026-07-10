@@ -2067,9 +2067,19 @@ function playMoveAnimation(kebab, opts){
     // box sits high and the sprite overflows below it onto the platform, so
     // the wrapper's center is well above where the Pokémon actually stands -
     // aiming at it was a big part of why effects looked "completely off".
+    // NOTE: query the sprite by its EXACT id. A grouped selector like
+    // '#opp-pkmn-sprite, canvas, img' returns the FIRST match in DOM order,
+    // and in the real battle DOM that's the display:none battleback <img>
+    // (the wrap's first child) - a zero-size rect, which drove S to 0 and
+    // rendered every cel at zero scale, i.e. the animation was completely
+    // invisible in the actual game.
     const spriteEl = (targetEl && targetEl.querySelector
-      && targetEl.querySelector('#opp-pkmn-sprite, canvas, img')) || targetEl;
-    const tR = spriteEl.getBoundingClientRect();
+      && targetEl.querySelector('#opp-pkmn-sprite')) || targetEl;
+    let tR = spriteEl.getBoundingClientRect();
+    // Guard: if the sprite isn't laid out (hidden/zero box), fall back to the
+    // wrapper; if that's degenerate too, skip rather than render invisibly.
+    if(tR.width < 4 || tR.height < 4) tR = targetEl.getBoundingClientRect();
+    if(tR.width < 4 || tR.height < 4) return;
     // Impact point: horizontal center of the sprite, and ~45% down from its
     // top (the Pokémon's body mass, a touch above the platform/feet).
     const impact = { x: tR.left + tR.width/2, y: tR.top + tR.height*0.45 };
