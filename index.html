@@ -7192,6 +7192,9 @@ function getInterludeType() {
 }
 
 function openInterlude() {
+  // The post-battle interlude is an "other" screen, so the NEXT autoAdvanceRun
+  // stop should be a battle (keeps the battle<->other alternation).
+  G._lastNodeWasBattle = false;
   const type = getInterludeType();
   if(type === 'shop')       openShop();
   else if(type === 'route')    openRouteChoiceScreen();
@@ -7674,6 +7677,9 @@ async function selectActNode(node) {
   G._actMap.cursorId = node.id;
   if(!G._actMap.visitedPath) G._actMap.visitedPath = [];
   G._actMap.visitedPath.push(node.id);
+  // Remember whether this stop is a battle, for the battle<->other alternation
+  // enforced in autoAdvanceRun.
+  G._lastNodeWasBattle = (node.type === 'battle' || node.type === 'boss');
   document.getElementById('act-map-screen').style.display = 'none';
   if(node.type === 'boss') await playGymTransition(node.trainer);
   if(node.type === 'battle' || node.type === 'boss'){
@@ -7975,7 +7981,21 @@ function autoAdvanceRun() {
   rCleanupUI();
   const available = G._actMap.rows.flat().filter(isNodeAvailable);
   if (!available.length) return;   // shouldn't happen - the graph always has a path to Giovanni
-  const node = available[Math.floor(Math.random() * available.length)];
+  // Strict alternation: a battle is always followed by an "other" screen and
+  // vice-versa, so you never get two shops/daycares/etc (or two battles) in a
+  // row. G._lastNodeWasBattle tracks what the last stop was; pick the opposite
+  // kind here when that kind is available (fall back to anything otherwise, so
+  // the run can never soft-lock on a row that lacks the preferred kind).
+  const isBattleNode = n => n.type === 'battle' || n.type === 'boss';
+  let pool = available;
+  if (G._lastNodeWasBattle === true) {
+    const others = available.filter(n => !isBattleNode(n));
+    if (others.length) pool = others;
+  } else if (G._lastNodeWasBattle === false) {
+    const battles = available.filter(isBattleNode);
+    if (battles.length) pool = battles;
+  }
+  const node = pool[Math.floor(Math.random() * pool.length)];
   selectActNode(node);
 }
 
@@ -9417,10 +9437,16 @@ function renderTrainerPokeballs(trainer){
   }
   const justEmptied = Math.max(0, emptied - (G._pokeballLastEmptied||0));
 
+  // Always render a full party of 6 slots. The trainer's actual team fills
+  // the first `total`; any slots beyond that are shown as empty balls (this
+  // trainer simply doesn't have those Pokémon), so a 1-Pokémon trainer still
+  // shows 1 real ball + 5 empties instead of a lone ball.
+  const SLOTS = 6;
   let html = '';
-  for(let i=0;i<total;i++){
+  for(let i=0;i<SLOTS;i++){
     let cls;
-    if(i < emptied - justEmptied) cls = 'ball-empty';
+    if(i >= total) cls = 'ball-empty';             // no Pokémon in this slot
+    else if(i < emptied - justEmptied) cls = 'ball-empty';
     else if(i < emptied) cls = 'ball-faint';       // emptied THIS update - brief flash
     else if(i === emptied) cls = 'ball-active';    // the one currently being fought
     else cls = 'ball-full';
@@ -9521,12 +9547,27 @@ async function playSendOutAnimation(){
   const trainerWrap = document.getElementById('rp-portrait-img-wrap');
   if(!ball || !imgWrap) return;
 
+  // Smoothly fades/slides the HP bar + intent badge in (they were hidden by
+  // setupOpponentPokemon so they only appear AFTER the Pokémon is released).
+  const revealOppUI = () => {
+    ['opp-pkmn-intent-badge','opp-pkmn-hp-wrap'].forEach((id, k) => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      setTimeout(() => {
+        el.style.transition = 'opacity 0.5s ease, transform 0.5s cubic-bezier(0.34,1.5,0.6,1)';
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      }, k * 130);
+    });
+  };
+
   const startRect = (trainerWrap && trainerWrap.offsetParent) ? trainerWrap.getBoundingClientRect() : null;
   const endRect = imgWrap.getBoundingClientRect();
   if(endRect.width === 0 || endRect.height === 0){
     // Area isn't laid out/visible yet (e.g. very first battle, before
     // display:flex has taken effect) - skip the flourish, just reveal.
     if(spriteImg){ spriteImg.style.transition='opacity 0.3s ease'; spriteImg.style.opacity='1'; spriteImg.style.transform='translateX(-50%) scale(1)'; }
+    revealOppUI();
     return;
   }
   const startX = startRect ? startRect.left + startRect.width*0.75 : window.innerWidth*0.12;
@@ -9597,6 +9638,8 @@ async function playSendOutAnimation(){
     spriteImg.style.opacity = '1';
     spriteImg.style.transform = 'translateX(-50%) scale(1)';
   }
+  // HP bar + intent slide in just after the Pokémon appears.
+  revealOppUI();
   if(flash) flash.classList.add('fade');
   ball.style.transition = 'opacity 0.35s ease';
   ball.style.opacity = '0';
@@ -9620,6 +9663,15 @@ function setupOpponentPokemon(trainer){
   const spriteImg = document.getElementById('opp-pkmn-sprite');
   if(spriteImg){ spriteImg.style.transition='none'; spriteImg.style.opacity='0'; }
   rollOpponentIntent();
+  // Also hide the HP bar + intent badge until the Pokémon is actually
+  // released from the ball - playSendOutAnimation animates them back in once
+  // the sprite appears. Done AFTER rollOpponentIntent so its render doesn't
+  // clear this (subsequent in-battle re-renders only touch text/classes, so
+  // the inline opacity we set here persists until the send-out reveal).
+  ['opp-pkmn-intent-badge','opp-pkmn-hp-wrap'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el){ el.style.transition='none'; el.style.opacity='0'; el.style.transform='translateY(12px)'; }
+  });
   // Delayed so the trainer's own slide-in (0.5s transition, plus its
   // ~100ms trigger offset in the caller) visibly finishes BEFORE the
   // throw starts, instead of both playing at once.
@@ -11195,6 +11247,7 @@ function beginBattleWithDeck(deckId){
   _popoverEnabled = true;
   BATTLE_SEQUENCE = [];
   G._gameStarted = false;
+  G._lastNodeWasBattle = false;   // so the very first stop of the run is a battle
   G._actMap = generateFullRunMap();
   preloadGymTransitionAssets();
   preloadTrainerPortraitAssets();
@@ -13628,118 +13681,147 @@ playSelectedHand = async function(){
     el.style.opacity='0'; el.style.pointerEvents='none';
   });
 
-  // Phase 3: BALATRO COUNT-UP — each card bounces as it's counted,
-  // a live "chips ✕ mult" counter ticks above the fan
-  const _mobileScoreUI = Math.min(window.screen.width, window.screen.height) < 600;
-  const counter = document.createElement('div');
-  counter.style.cssText = `position:fixed;left:${cx}px;top:${cy-(_mobileScoreUI?95:165)}px;transform:translate(-50%,-50%) scale(1);z-index:960;font-family:'PokemonClassic',monospace;font-size:${_mobileScoreUI?'clamp(13px,4.2vw,19px)':'clamp(18px,2.4vw,34px)'};font-weight:bold;color:#fff;text-shadow:2.5px 2.5px 0 #000,0 0 20px rgba(80,140,255,0.55);pointer-events:none;white-space:nowrap;transition:transform 0.09s ease;`;
-  document.body.appendChild(counter);
+  // ── SEQUENTIAL PER-CARD RESOLUTION ──────────────────────────────
+  // Each played card, in order: bump it up, play its own move animation, then
+  // land its share of the damage on the opponent (dropping their HP) or show
+  // the block it grants us. Replaces the old all-at-once count-up + all move
+  // animations firing simultaneously + one lump HP drop.
   const bounce = gh => {
     if(!gh) return;
-    // Uses the STABLE base captured at ghost creation (the card's
-    // natural resting tilt right in the hand - it never moves from here
-    // anymore), not the live style.transform - a card with 2+ matching
-    // item bonuses gets multiple chip pops in quick succession (only
-    // ~170-210ms apart), each independently calling bounce(), but the
-    // bounce-back animation itself takes 270ms to fully settle. Reading
-    // the live transform meant a second bounce could capture the ghost
-    // mid-settle as its "base" and permanently drift its resting
-    // position - this is the actual root cause of the extra/offset
-    // sprite that kept appearing during the animation right after.
     const base = gh.baseTransform || gh.g.style.transform;
-    gh.g.style.transition = 'transform 0.09s ease-out';
-    gh.g.style.transform = base + ' translateY(-18px) scale(1.12)';
-    setTimeout(()=>{ gh.g.style.transition='transform 0.17s cubic-bezier(0.3,1.8,0.4,1)'; gh.g.style.transform = base; }, 100);
+    gh.g.style.transition = 'transform 0.10s ease-out';
+    gh.g.style.transform = base + ' translateY(-26px) scale(1.14)';
+    setTimeout(()=>{ gh.g.style.transition='transform 0.20s cubic-bezier(0.3,1.7,0.4,1)'; gh.g.style.transform = base; }, 120);
   };
-  let popDelay = 0;
-  groups.forEach(grp => {
-    let chipsShown = 0, multShown = grp.detail.baseMult, xmShown = 1;
-    const upd = () => {
-      counter.textContent = fmtNum(Math.round(chipsShown)) + ' \u2715 ' + (Math.round(multShown*xmShown*10)/10);
-      counter.style.transform = 'translate(-50%,-50%) scale(1.14)';
-      setTimeout(()=>{ counter.style.transform = 'translate(-50%,-50%) scale(1)'; }, 85);
-    };
-    setTimeout(upd, popDelay);
-    grp.detail.pops.forEach(p => {
-      setTimeout(()=>{
-        const gh = ghosts[grp.idx[p.ci]];
-        if(p.kind === 'chips'){
-          chipsShown += p.amount;
-          bounce(gh);
-          if(typeof SFX!=='undefined' && SFX.scoreChips) SFX.scoreChips();
-          if(p.text && gh) rPopAt(gh.destX, gh.destY - (_mobileScoreUI?70:110), p.text, p.color, 0);
-        }
-        upd();
-      }, popDelay);
-      popDelay += p.text ? 210 : 170;
-    });
-    grp.detail.handPops.forEach(p => {
-      setTimeout(()=>{
-        if(p.kind === 'chips') chipsShown += p.amount;
-        else if(p.kind === 'mult') multShown += p.amount;
-        else if(p.kind === 'xmult'){ xmShown *= p.factor; if(typeof SFX!=='undefined' && SFX.scoreMult) SFX.scoreMult(); }
-        rPopAt(cx, cy - (_mobileScoreUI?80:125), p.text, p.color, 0);
-        upd();
-      }, popDelay);
-      popDelay += 250;
-    });
-    // group slam: show the group's total
-    setTimeout(()=>{
-      counter.textContent = '= ' + fmtNum(grp.detail.total);
-      counter.style.transform = 'translate(-50%,-50%) scale(1.3)';
-      setTimeout(()=>{ counter.style.transform = 'translate(-50%,-50%) scale(1)'; }, 130);
-      grp.idx.forEach(li => bounce(ghosts[li]));
-    }, popDelay);
-    popDelay += 480;
-  });
-  await delay(popDelay + 220);
-  counter.remove();
+  const _floatOppDmg = (amount) => {
+    const pw = document.getElementById('opp-pokemon-img-wrap');
+    const pr = pw ? pw.getBoundingClientRect() : {left:60,top:80,width:80,height:80};
+    const de = document.createElement('div');
+    de.style.cssText = `position:fixed;left:${pr.left+pr.width/2}px;top:${pr.top+pr.height*0.4}px;font-family:'PokemonClassic',monospace;font-weight:bold;font-size:clamp(22px,3vw,48px);color:#ff2222;text-shadow:2px 2px 0 #000;z-index:800;pointer-events:none;transform:translateX(-50%);animation:floatDmg 1.4s ease forwards;`;
+    de.textContent = '-'+fmtNum(amount);
+    document.body.appendChild(de);
+    setTimeout(()=>de.remove(), 1500);
+  };
 
-  // Pokemon Essentials battle-animation flourish: one per played card,
-  // each starting from wherever that card's ghost is CURRENTLY sitting
-  // (its original hand position - the played hand never moves from here
-  // at all now), converging on the opponent Pokémon above the hand.
-  // Awaited as a group - the discard-off animation right below does not
-  // start until every one of these has finished playing.
-  if (groups.some(g => g.detail.total > 0)) {
-    const portraitWrap = document.getElementById('opp-pokemon-img-wrap');
-    const gameWrap = document.getElementById('gameWrap');
-    if (!portraitWrap || !gameWrap) {
-      console.warn('[MoveAnim] no opponent-pokemon/gameWrap element found - skipping all card animations this hand');
-    } else {
-      const _animMobile = Math.min(window.screen.width, window.screen.height) < 600;
-      const _animScale = _animMobile ? PKMN_ANIM_SCALE * 0.72 : PKMN_ANIM_SCALE;
-      const plays = cards.map((card, i) => {
-        const attackerEl = ghosts[i] && ghosts[i].g;
-        const moveName = moveForCard(card);
-        if (!attackerEl || !moveName) {
-          console.warn('[MoveAnim] skipped animation for', card.name, { hasGhost: !!attackerEl, moveName });
-          return Promise.resolve();
-        }
-        return delay(i * 90).then(() => {
-          return playMoveAnimation(moveName, {
-            container: gameWrap,
-            attackerEl: attackerEl,
-            targetEl: portraitWrap,
-            speedFps: PKMN_ANIM_FPS,
-            scale: _animScale,
-            onSoundEffect: () => { if (typeof SFX !== 'undefined' && SFX.hit) SFX.hit(); },
-          }).catch(err => console.warn('[MoveAnim] failed for', moveName, err));
-        });
-      });
-      await Promise.all(plays);
+  const _animMobile = Math.min(window.screen.width, window.screen.height) < 600;
+  const _animScale = _animMobile ? PKMN_ANIM_SCALE * 0.72 : PKMN_ANIM_SCALE;
+  const gameWrap = document.getElementById('gameWrap');
+  const portraitWrap = document.getElementById('opp-pokemon-img-wrap');
+
+  // Whole-play scoring/effects resolve ONCE - rResolvePlayedMoves has ordered
+  // side effects (status, block, shield, setup queue) that can't be split per
+  // card - then we present the resulting damage card by card.
+  const blockBefore = G.playerBlock || 0;
+  const moveFx = rResolvePlayedMoves(cards, emptiedHand);
+  const blockGained = Math.max(0, (G.playerBlock||0) - blockBefore);
+
+  // A play made ENTIRELY of Block-role cards deals no meld damage.
+  const isBlockOnlyPlay = cards.length > 0 && cards.every(c => {
+    const moves = getCardMoves(c);
+    return moves.length > 0 && moves.every(({move}) => move.role === 'block');
+  });
+  const meldDmg = isBlockOnlyPlay ? 0 : groups.reduce((s,g)=>s+g.detail.total, 0);
+  const grossDmg = meldDmg + (moveFx.bonusDmg||0);
+
+  // run stats
+  groups.forEach(g => {
+    G._runStats.totalDmg += g.detail.total;
+    if(g.detail.total > G._runStats.biggest.dmg){
+      G._runStats.biggest = { label: (g.meld.label||'PLAYED HAND'), dmg: g.detail.total };
     }
+  });
+  G._runStats.totalDmg += (moveFx.bonusDmg||0);
+
+  // Pierce ignores shield - land it up front on the opponent.
+  if(moveFx.pierceDmg > 0){
+    G.trainerHp = Math.max(0, G.trainerHp - moveFx.pierceDmg);
+    _floatOppDmg(moveFx.pierceDmg);
+    renderOpponentPokemonHpBar();
   }
 
-  // Phase 4: flash, then the played hand flies off to the right - the
-  // same motion discardSelected uses for a real discard - instead of
-  // transitioning into board slots. There's no more board: meld patterns
-  // are optional bonuses now, not something that gets laid down and
-  // extended over multiple turns, so the played cards just resolve and
-  // go, exactly like a discard would.
+  // Distribute the gross damage across the played cards, weighted by each
+  // card's own chip contribution, so the shares sum EXACTLY to grossDmg (the
+  // last card takes the remainder). Cards that contribute nothing deal 0.
+  const cardChips = cards.map((_, i) => {
+    let sum = 0;
+    groups.forEach(g => {
+      const gi = g.idx.indexOf(i);
+      if(gi >= 0) g.detail.pops.forEach(p => { if(p.ci === gi && p.kind === 'chips') sum += p.amount; });
+    });
+    return sum;
+  });
+  const totalChips = cardChips.reduce((s,v)=>s+v,0) || 1;
+  const shares = [];
+  let distributed = 0;
+  cards.forEach((_, i) => {
+    const share = (i === cards.length-1) ? (grossDmg - distributed)
+      : Math.round(grossDmg * cardChips[i] / totalChips);
+    shares.push(Math.max(0, share));
+    distributed += shares[i];
+  });
+
+  let dmg = 0;              // total damage that actually hit HP (for Nine Lives)
+  let blockShown = false;
+  for(let i=0;i<cards.length;i++){
+    const gh = ghosts[i];
+    bounce(gh);
+    await delay(150);
+    // this card's move animation, launched from the card, awaited
+    const moveName = moveForCard(cards[i]);
+    if(gh && gh.g && moveName){
+      await playMoveAnimation(moveName, {
+        container: gameWrap, attackerEl: gh.g, targetEl: portraitWrap,
+        speedFps: PKMN_ANIM_FPS, scale: _animScale,
+        onSoundEffect: () => { if (typeof SFX !== 'undefined' && SFX.hit) SFX.hit(); },
+      }).catch(err => console.warn('[MoveAnim] failed for', moveName, err));
+    }
+    // land this card's damage: shield first, then HP
+    let d = shares[i];
+    if(d > 0){
+      if(G.oppShield > 0){
+        const hadShield = G.oppShield;
+        const absorbed = Math.min(G.oppShield, d);
+        G.oppShield -= absorbed; d -= absorbed;
+        if(hadShield > 0 && G.oppShield === 0) G._shieldsBrokenThisBattle = (G._shieldsBrokenThisBattle||0) + 1;
+      }
+      if(d > 0){
+        G.trainerHp = Math.max(0, G.trainerHp - d);
+        dmg += d;
+        if(typeof SFX!=='undefined' && SFX.damageHit) SFX.damageHit(d);
+        _floatOppDmg(d);
+      }
+      renderOpponentPokemonHpBar();
+      updatePortraits();
+    }
+    // block cards: show the block we gained (once, on the first block card)
+    const isBlockCard = getCardMoves(cards[i]).some(({move}) => move.role === 'block');
+    if(isBlockCard && !blockShown && blockGained > 0){
+      blockShown = true;
+      if(typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('rp-health'), '🛡 +'+fmtNum(blockGained), '#66ccff');
+      if(typeof renderPlayerHpBar === 'function') renderPlayerHpBar();
+    }
+    await delay(240);
+  }
+  if(typeof renderPlayerHpBar==='function') renderPlayerHpBar();
+
+  // GIN — emptied the whole hand in one play
+  if(emptiedHand && G.trainerHp > 0){
+    let gin = Math.max(60, Math.round(G.trainerMaxHp * RBAL.ginPct));
+    gin *= multiplyEffectFactor('gin_xmult');
+    G._runStats.gins++;
+    G.gold = (G.gold||0) + RBAL.ginGold;
+    announceText('🀄 GIN! '+fmtNum(gin)+' BONUS DMG  +$'+RBAL.ginGold+'!', 2400);
+    G.trainerHp = Math.max(0, G.trainerHp - gin);
+    dmg += gin;
+    _floatOppDmg(gin);
+    renderOpponentPokemonHpBar();
+    updatePortraits();
+  }
+
+  // Played cards flash then fly off to the right (same motion as a discard).
   ghosts.forEach(({g}) => { g.style.transition='filter 0.12s ease'; g.style.filter='brightness(2.4) saturate(0.4)'; });
-  await delay(140);
-  const FLY_DUR = 0.52, STAGGER = 0.06;
+  await delay(120);
+  const FLY_DUR = 0.5, STAGGER = 0.05;
   ghosts.forEach((gh, i) => {
     const base = gh.baseTransform || gh.g.style.transform;
     gh.g.style.transition = `transform ${FLY_DUR}s cubic-bezier(0.25,0,0.6,0.8) ${i*STAGGER}s, filter 0.25s ease, opacity ${FLY_DUR}s ease ${i*STAGGER}s`;
@@ -13750,70 +13832,6 @@ playSelectedHand = async function(){
   await delay(Math.round((FLY_DUR + n*STAGGER)*1000) + 80);
   ghosts.forEach(({g})=>g.remove());
 
-  // ── damage: every meld lands immediately, boss battles included ──
-  // A play made ENTIRELY of Block-role cards deals no meld damage - the
-  // rummy scorer (rMeldDamage/rVal) gives every card a flat base chip
-  // value regardless of its move, which is exactly the "block cards
-  // still somehow deal damage" problem: that flat value has nothing to
-  // do with what the cards actually do. A single non-Block card in the
-  // play is enough to opt back into normal meld scoring.
-  const isBlockOnlyPlay = cards.length > 0 && cards.every(c => {
-    const moves = getCardMoves(c);
-    return moves.length > 0 && moves.every(({move}) => move.role === 'block');
-  });
-  let dmg = isBlockOnlyPlay ? 0 : groups.reduce((s,g)=>s+g.detail.total, 0);
-  const burst = false;
-
-  // Pokémon moves now genuinely fire here - real bonus damage, block,
-  // shield, status effects, heal, gold, etc - not just the animation
-  // trigger + flavor text they were before. See rResolvePlayedMoves near
-  // POKEMON_MOVES for the full effect-key reference.
-  const moveFx = rResolvePlayedMoves(cards, emptiedHand);
-  dmg += moveFx.bonusDmg;
-  G._runStats.totalDmg += moveFx.bonusDmg;
-  if(moveFx.pierceDmg > 0){
-    G.trainerHp = Math.max(0, G.trainerHp - moveFx.pierceDmg); // pierce ignores oppShield entirely
-  }
-  if(G.oppShield > 0 && dmg > 0){
-    const hadShield = G.oppShield;
-    const absorbed = Math.min(G.oppShield, dmg);
-    G.oppShield -= absorbed;
-    dmg -= absorbed;
-    if(hadShield > 0 && G.oppShield === 0) G._shieldsBrokenThisBattle = (G._shieldsBrokenThisBattle||0) + 1;
-  }
-  if(typeof renderPlayerHpBar==='function') renderPlayerHpBar();
-
-  // run stats
-  groups.forEach(g => {
-    G._runStats.totalDmg += g.detail.total;
-    if(g.detail.total > G._runStats.biggest.dmg){
-      G._runStats.biggest = { label: (g.meld.label||'PLAYED HAND'), dmg: g.detail.total };
-    }
-  });
-
-  if(dmg > 0){
-    G.trainerHp = Math.max(0, G.trainerHp - dmg);
-    if(typeof SFX!=='undefined') SFX.damageHit && SFX.damageHit(dmg);
-    const pw = document.getElementById('opp-pokemon-img-wrap');
-    const pr = pw ? pw.getBoundingClientRect() : {left:60,top:80,width:80,height:80};
-    const de = document.createElement('div');
-    de.style.cssText = `position:fixed;left:${pr.left+pr.width/2}px;top:${pr.top+pr.height*0.4}px;font-family:'PokemonClassic',monospace;font-weight:bold;font-size:clamp(22px,${burst?'4vw':'3vw'},48px);color:#ff2222;text-shadow:2px 2px 0 #000;z-index:800;pointer-events:none;transform:translateX(-50%);animation:floatDmg 1.4s ease forwards;`;
-    de.textContent = '-'+fmtNum(dmg);
-    document.body.appendChild(de);
-    setTimeout(()=>de.remove(), 1500);
-    updatePortraits();
-  }
-
-  // GIN — emptied the whole hand in one play
-  if(emptiedHand && G.trainerHp > 0){
-    let gin = Math.max(60, Math.round(G.trainerMaxHp * RBAL.ginPct));
-    gin *= multiplyEffectFactor('gin_xmult');
-    G._runStats.gins++;
-    G.gold = (G.gold||0) + RBAL.ginGold;
-    announceText('🀄 GIN! '+fmtNum(gin)+' BONUS DMG  +$'+RBAL.ginGold+'!', 2400);
-    G.trainerHp = Math.max(0, G.trainerHp - gin);
-    updatePortraits();
-  }
   rRenderAll();
 
   if(G.trainerHp <= 0){
