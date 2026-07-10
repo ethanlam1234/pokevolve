@@ -1869,7 +1869,7 @@ html { overflow: hidden; }
   #shop-screen { padding:8px 0 !important; }
   #shop-title    { font-size:16px !important; margin-bottom:2px !important; }
   #shop-subtitle { font-size:8px !important; margin-bottom:8px !important; }
-  #shop-items-grid { max-width:94vw !important; gap:5px !important; }
+  #shop-items-grid { max-width:min(60vw,440px) !important; gap:5px !important; }
   .shop-item       { width:100% !important; padding:6px 10px !important; gap:10px !important; }
   .shop-item-frame { width:40px !important; }
   .shop-item-icon  { width:34px !important; height:34px !important; }
@@ -5712,7 +5712,7 @@ const POKEMON_MOVES = {
   6:{name:'Fly',type:'Fire',role:'tempo',desc:'Leave the battle. Return next turn and deal 300 Damage.'},
   7:{name:'Withdraw',type:'Water',role:'block',desc:'Gain 25 Block.'},
   8:{name:'Shell Bash',type:'Water',role:'investment',desc:'Deal double Damage if held since last turn.'},
-  9:{name:'Hydro Cannon',type:'Water',role:'draw',desc:'Draw 3 extra Pokémon next turn.'},
+  9:{name:'Hydro Cannon',type:'Water',role:'draw',desc:'Draw 1 extra Pokémon next turn.'},
   10:{name:'Metamorphosis',type:'Bug',role:'investment',desc:'Evolves into Metapod after 2 turns in hand.'},
   11:{name:'Detect',type:'Bug',role:'block',desc:'Brace for impact. Gain 40 Block.'},
   12:{name:'Sleep Powder',type:'Bug',role:'status',desc:'Apply 60 Sleep to the enemy.'},
@@ -5720,7 +5720,7 @@ const POKEMON_MOVES = {
   14:{name:'Shed Skin',type:'Bug',role:'survival',desc:'If discarded, return to hand next turn with 80 Damage.'},
   15:{name:'Swarm',type:'Bug',role:'payoff',desc:'Bug Pokémon played this turn gain 50 Damage.'},
   16:{name:'Keen Eye',type:'Normal',role:'information',desc:'Reveal your next 3 draws.'},
-  17:{name:'Roar',type:'Normal',role:'draw',desc:'Let out a rallying cry. Draw 2 Pokémon.'},
+  17:{name:'Roar',type:'Normal',role:'draw',desc:'Let out a rallying cry. Draw 1 Pokémon.'},
   18:{name:'Gale Wings',type:'Normal',role:'rule_breaker',desc:'Play 1 extra Pokémon after this one.'},
   19:{name:'Run Away',type:'Normal',role:'discard',desc:'Gain +1 discard this turn.'},
   20:{name:'Super Fang',type:'Normal',role:'finisher',desc:'Deal Damage equal to 20% of the enemy\'s current HP.'},
@@ -5946,7 +5946,7 @@ MOVE_FX[5] = (ctx) => ({ dmg: G._battlePlayedNames.has('Charmander') ? 60 : 30 }
 MOVE_FX[6] = (ctx) => { G._setupQueue.push(300); return { dmg: 0 }; }; // Fly - lands next play
 MOVE_FX[7] = fx.block(25); // Withdraw
 MOVE_FX[8] = (ctx) => ({ dmg: (ctx.card._turnsInHand || 0) >= 1 ? 80 : 40 }); // Shell Bash
-MOVE_FX[9] = (ctx) => { G._tempHandSizeBonus = (G._tempHandSizeBonus || 0) + 3; return { dmg: 0 }; }; // Hydro Cannon
+MOVE_FX[9] = (ctx) => { G._tempHandSizeBonus = (G._tempHandSizeBonus || 0) + 1; return { dmg: 0 }; }; // Hydro Cannon
 MOVE_FX[10] = (ctx) => ({ dmg: 0 }); // Metamorphosis - the evolution itself is handled by tickTurnThresholdAbility (existing ability system), not here
 MOVE_FX[11] = fx.block(40); // Harden
 MOVE_FX[12] = fx.sleep(60); // Sleep Powder
@@ -5955,7 +5955,7 @@ MOVE_FX[14] = (ctx) => ({ dmg: 0 }); // Shed Skin - handled entirely at discard 
 MOVE_FX[15] = (ctx) => { G._typeBonusFlat = G._typeBonusFlat || {}; G._typeBonusFlat.Bug = (G._typeBonusFlat.Bug || 0) + 50; return { dmg: 0 }; }; // Swarm - Bug cards resolved from THIS point onward in the play (including
   // Beedrill itself, since the flag check runs right after this returns) get +50
 MOVE_FX[16] = (ctx) => { G._revealDraws = 3; return { dmg: 0 }; }; // Keen Eye
-MOVE_FX[17] = (ctx) => { G._tempHandSizeBonus = (G._tempHandSizeBonus || 0) + 2; return { dmg: 0 }; }; // Tailwind
+MOVE_FX[17] = (ctx) => { G._tempHandSizeBonus = (G._tempHandSizeBonus || 0) + 1; return { dmg: 0 }; }; // Roar
 MOVE_FX[18] = (ctx) => { G.handsLeft++; return { dmg: 0 }; }; // Gale Wings (rule breaker -> bonus hand)
 MOVE_FX[19] = (ctx) => { G.discardsLeft = (G.discardsLeft || 0) + 1; return { dmg: 0 }; }; // Run Away
 MOVE_FX[20] = (ctx) => ({ dmg: Math.round(G.trainerHp * 0.2) }); // Super Fang
@@ -12651,11 +12651,11 @@ const SHOP_ITEMS = [
 let _shopItemPool = []; // current shop items for sale
 
 function getShopItems() {
-  // Offer 7 choices as a table; the store is a free "pick one" reward now, so
-  // just take 7 random items the player doesn't already own.
+  // Offer 3 choices; the store is a free "pick one" reward, so just take 3
+  // random items the player doesn't already own.
   const owned = new Set(G_items.map(i=>i.id));
   const pool = SHOP_ITEMS.filter(i=>!owned.has(i.id)).sort(()=>Math.random()-0.5);
-  return pool.slice(0,7);
+  return pool.slice(0,3);
 }
 
 function applyItemEffect(item) {
@@ -12990,7 +12990,7 @@ function startNextBattle() {
 
 const RBAL = {
   cardValue: 20,
-  handStart: 5,   // draw a 5-card hand each turn
+  handStart: 6,   // draw a 6-card hand each turn
   playsNormal: 2, playsElite: 3, playsBoss: 3,
   discards: 3,
   speciesMult: 2, speciesPerExtra: 1,
@@ -14350,20 +14350,14 @@ playSelectedHand = async function(){
   const portraitWrap = document.getElementById('opp-pokemon-img-wrap');
 
   // Whole-play scoring/effects resolve ONCE - rResolvePlayedMoves has ordered
-  // side effects (block, shield, setup queue) that can't be split per card -
-  // then we present the resulting damage card by card. For opponent STATUS we
-  // capture each card's contribution (perCardStatus) and hide the status until
-  // its card actually plays: snapshot the status now, run the resolve, remember
-  // the FINAL status, then roll the opponent's status back so the loop can
-  // reveal it card by card.
-  const _cloneStatus = () => ({ poison: G.oppStatus.poison, burn: G.oppStatus.burn, ccTurns: G.oppStatus.ccTurns, ccLabel: G.oppStatus.ccLabel });
+  // side effects (block, shield, status, setup queue). We then run the turn in
+  // three phases: (1) our block + status, (2) the opponent's turn, (3) our
+  // damage - card by card.
   const blockBefore = G.playerBlock || 0;
-  const preStatus = _cloneStatus();
   const moveFx = rResolvePlayedMoves(cards, emptiedHand);
-  const finalStatus = _cloneStatus();
-  const perCardStatus = moveFx.perCardStatus || cards.map(() => null);
-  // Hide the status again until each card reveals its own.
-  Object.assign(G.oppStatus, preStatus);
+  // Our block + status (poison/burn) are applied now and STAY applied - the
+  // opponent's turn below ticks the status. This is the "our status & blocks"
+  // phase, shown before the opponent acts.
   renderOpponentStatusIcons();
   const blockGained = Math.max(0, (G.playerBlock||0) - blockBefore);
 
@@ -14384,8 +14378,27 @@ playSelectedHand = async function(){
   });
   G._runStats.totalDmg += (moveFx.bonusDmg||0);
 
-  // Pierce ignores shield - land it up front on the opponent.
-  if(moveFx.pierceDmg > 0){
+  // ── Phase 2: THE OPPONENT'S TURN, BEFORE our damage. It attacks (absorbed by
+  //    the block we just gained) or blocks (its shield then reduces the damage
+  //    our cards deal below). Turn resolution: our status/blocks -> opponent ->
+  //    our damaging moves. ──
+  if(blockGained > 0){
+    if(typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('rp-health'), '🛡 +'+fmtNum(blockGained), '#66ccff');
+    if(typeof renderPlayerHpBar === 'function') renderPlayerHpBar();
+  }
+  await delay(300);
+  if(typeof rResolveOpponentTurn === 'function') rResolveOpponentTurn();
+  if(typeof renderPlayerHpBar === 'function') renderPlayerHpBar();
+  renderOpponentPokemonHpBar();
+  await delay(650);
+  if(G.playerHp <= 0){   // the enemy's attack KO'd us - defeat already scheduled
+    ghosts.forEach(({g}) => g.remove());
+    G.animating = false;
+    return;
+  }
+
+  // Pierce ignores shield - land it now, at the start of our damage phase.
+  if(moveFx.pierceDmg > 0 && G.trainerHp > 0){
     G.trainerHp = Math.max(0, G.trainerHp - moveFx.pierceDmg);
     playHitSound();
     flashOpponentSprite();
@@ -14415,8 +14428,8 @@ playSelectedHand = async function(){
   });
 
   let dmg = 0;              // total damage that actually hit HP (for Nine Lives)
-  let blockShown = false;
   for(let i=0;i<cards.length;i++){
+    if(G.trainerHp <= 0) break;   // opponent already down (e.g. poison DoT above)
     const gh = ghosts[i];
     bounce(gh);
     await delay(150);
@@ -14454,28 +14467,9 @@ playSelectedHand = async function(){
     // remaining cards, and don't bother rendering any status this card applied
     // (the Pokémon is fainting). The post-loop check sends out the next one or
     // advances.
-    if(G.trainerHp <= 0){ break; }
-    // Reveal the opponent status THIS card applied (poison/burn/CC), right now.
-    const st = perCardStatus[i];
-    if(st && (st.poison || st.burn || st.ccChanged)){
-      G.oppStatus.poison += st.poison;
-      G.oppStatus.burn += st.burn;
-      if(st.ccChanged){ G.oppStatus.ccTurns = st.ccTurns; G.oppStatus.ccLabel = st.ccLabel; }
-      renderOpponentStatusIcons();
-    }
-    // block cards: show the block we gained (once, on the first block card)
-    const isBlockCard = getCardMoves(cards[i]).some(({move}) => move.role === 'block');
-    if(isBlockCard && !blockShown && blockGained > 0){
-      blockShown = true;
-      if(typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('rp-health'), '🛡 +'+fmtNum(blockGained), '#66ccff');
-      if(typeof renderPlayerHpBar === 'function') renderPlayerHpBar();
-    }
+    if(G.trainerHp <= 0){ break; }   // this card KO'd the opponent - stop
     await delay(240);
   }
-  // If the opponent survived the whole hand, make sure the FULL final status is
-  // applied (covers status amplification and any card whose status we revealed
-  // incrementally) before the enemy turn ticks it.
-  if(G.trainerHp > 0) Object.assign(G.oppStatus, finalStatus);
   if(typeof renderPlayerHpBar==='function') renderPlayerHpBar();
 
   // GIN — emptied the whole hand in one play
@@ -14545,7 +14539,8 @@ function rAfterPlay(){
   G.handsLeft = Math.max(0, G.handsLeft - 1);
   G._playsUsed = (G._playsUsed||0) + 1;
   G._heroUsedThisTurn = false;   // a new play resets the ability for next time
-  rResolveOpponentTurn();
+  // (The opponent's turn now resolves inside playSelectedHand, BEFORE our
+  // damage lands - so it isn't called here anymore.)
   // v2 move-engine: investment accrual for cards still sitting in hand
   // (Bulbasaur/Coil/Leech Seed/Focus Energy/Rollout/Charge/Splash/
   // Withdraw-Omanyte/Wrap-Dratini). Evolution-in-hand (Caterpie/Magikarp)
