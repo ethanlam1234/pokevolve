@@ -1662,12 +1662,9 @@ html { overflow: hidden; }
 .shop-item.purchased { opacity:0.35; pointer-events:none; filter:saturate(0.3); }
 .shop-item.cant-afford { opacity:0.5; cursor:not-allowed; }
 .shop-item-frame {
-  position:relative; width:clamp(110px,11.5vw,155px); aspect-ratio:1/1;
+  /* No decorative frame box anymore - just a square that holds the icon. */
+  position:relative; width:clamp(70px,7.4vw,96px); aspect-ratio:1/1;
   margin-bottom:8px; flex-shrink:0;
-}
-.shop-item-frame-bg {
-  position:absolute; inset:0; width:100%; height:100%;
-  image-rendering:pixelated; z-index:1; pointer-events:none;
 }
 .shop-item-icon {
   /* fixed size independent of the frame now (was a % of it), so growing
@@ -4277,6 +4274,15 @@ function openCinnabarMansion() {
   }
   const show = basicCards.slice(0,5);
 
+  // Warm every possible fusion pairing (HEAD check + image body) as soon as the
+  // screen opens, so picking two cards starts the animation with zero network
+  // wait no matter how fast the player clicks.
+  if(typeof checkFusionCached === 'function'){
+    for(let x=0;x<show.length;x++) for(let y=x+1;y<show.length;y++){
+      if(show[x].name !== show[y].name) checkFusionCached(show[x].name, show[y].name).catch(()=>{});
+    }
+  }
+
   show.forEach((card, i) => {
     const wrap = makeCardVisual(card, `width:clamp(120px,12vw,160px);aspect-ratio:2/3;transition:transform 0.2s,border-color 0.2s;`);
     wrap.dataset.idx = i;
@@ -4294,11 +4300,13 @@ function openCinnabarMansion() {
       }
       if(_cinnabarSelected.length >= 2) return;
 
-      // First card — just select it
+      // First card — select it AND prefetch its fusion sprite against every
+      // other card on offer, so the second click has no network wait.
       if(_cinnabarSelected.length === 0) {
         _cinnabarSelected.push(i);
         wrap.classList.add('cv-selected');
         if(typeof SFX!=='undefined') SFX.cardSelect();
+        if(typeof prefetchFusionsFor === 'function') prefetchFusionsFor(card.name, show);
         updateCinnabarPreview(show);
         return;
       }
@@ -11280,14 +11288,34 @@ function checkFusionSprite(nameA, nameB) {
   });
 }
 
-// Cache to avoid repeated HEAD requests
+// Cache to avoid repeated HEAD requests. _fusionCacheP holds the in-flight
+// promise so a background prefetch and the click that follows share ONE
+// request instead of racing two (the click then resolves instantly).
 const _fusionCache = {};
+const _fusionCacheP = {};
 function checkFusionCached(nameA, nameB) {
   const key = [nameA,nameB].map(normPokeName).sort().join('|');
   if(key in _fusionCache) return Promise.resolve(_fusionCache[key]);
-  return checkFusionSprite(nameA, nameB).then(result=>{
+  if(key in _fusionCacheP) return _fusionCacheP[key];
+  const p = checkFusionSprite(nameA, nameB).then(result=>{
     _fusionCache[key] = result;
+    delete _fusionCacheP[key];
+    // Warm the actual image body so the fusion animation's <img> paints
+    // instantly rather than fetching the PNG when the burst starts.
+    if(result && result.url){ const im = new Image(); im.src = result.url; }
     return result;
+  }).catch(err=>{ delete _fusionCacheP[key]; throw err; });
+  _fusionCacheP[key] = p;
+  return p;
+}
+// When the first card is picked, quietly resolve+preload the fusion sprite for
+// it against every other card on offer, so clicking the second card starts the
+// animation with no network wait.
+function prefetchFusionsFor(selName, shownCards){
+  if(!selName || !Array.isArray(shownCards)) return;
+  shownCards.forEach(c => {
+    if(!c || !c.name || c.name === selName) return;
+    checkFusionCached(selName, c.name).catch(()=>{});
   });
 }
 
@@ -11606,7 +11634,6 @@ function beginBattleWithDeck(deckId){
   G._actMap = generateFullRunMap();
   preloadGymTransitionAssets();
   preloadTrainerPortraitAssets();
-  preloadSprites([SHOP_CHOICE_FRAME_URL]);
   autoAdvanceRun();
 }
 
@@ -11920,10 +11947,11 @@ function openShop() {
   });
   if(typeof hideHandsPanel==='function') hideHandsPanel();
   if(typeof hideRotomRadio==='function') hideRotomRadio();
-  // Gold stays exactly where it is during battles (bottom-right) instead
-  // of a separate "GOLD: $X" line above the item grid
+  // The store is a free "pick one of 3" reward now - no spending, so hide the
+  // gold counter here (it comes back on the battle screen).
   const gdEl = document.getElementById('gold-display');
-  if(gdEl) { gdEl.textContent = '$' + (G.gold||0); gdEl.style.display='block'; }
+  if(gdEl) gdEl.style.display='none';
+  G._shopPicked = false;
   document.getElementById('bf-ours') && (document.getElementById('bf-ours').innerHTML='');
   document.getElementById('bf-theirs') && (document.getElementById('bf-theirs').innerHTML='');
   const screen = document.getElementById('shop-screen');
@@ -11938,9 +11966,7 @@ function openShop() {
 }
 
 function renderShop() {
-  const goldEl = document.getElementById('gold-display');
-  if(goldEl) goldEl.textContent = '$' + (G.gold||0);
-  // Items grid
+  // Free "pick one of 3" - no prices, no gold, no decorative frame box.
   const grid = document.getElementById('shop-items-grid');
   if(!grid) return;
   grid.innerHTML = '';
@@ -11948,24 +11974,16 @@ function renderShop() {
     const el = document.createElement('div');
     el.className = 'shop-item';
     el.style.setProperty('--sd', (i*0.07)+'s');
-    const canAfford = (G.gold||0) >= item.cost;
-    const owned = G_items.some(x=>x.id===item.id);
-    if(owned) el.classList.add('purchased');
-    else if(!canAfford) el.classList.add('cant-afford');
     el.innerHTML = `
       <div class="shop-item-frame">
-        <img class="shop-item-frame-bg" src="${SHOP_CHOICE_FRAME_URL}" alt="">
         <img class="shop-item-icon" src="${item.img}" alt="">
       </div>
       <div class="shop-item-name">${item.name}</div>
       <div class="shop-item-desc">${item.desc}</div>
-      <div class="shop-item-cost ${canAfford?'affordable':'expensive'}">$${item.cost}</div>
     `;
-    if(!owned && canAfford) {
-      el.addEventListener('click', () => buyItem(item, el));
-      el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
-      el.addEventListener('touchend', (e) => { e.preventDefault(); buyItem(item, el); }, {passive:false});
-    }
+    el.addEventListener('click', () => chooseShopItem(item, el));
+    el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+    el.addEventListener('touchend', (e) => { e.preventDefault(); chooseShopItem(item, el); }, {passive:false});
     grid.appendChild(el);
   });
   // Owned items (in-shop display)
@@ -11988,22 +12006,22 @@ function persistentCardPool(){
   return [...starter, ...bonuses];
 }
 
-function buyItem(item, el) {
-  if((G.gold||0) < item.cost) { if(typeof SFX!=='undefined') SFX.error(); return; }
+// The store is a free reward node: pick ONE of the three items (no gold),
+// assign it to a Pokémon, then leave the store automatically.
+function chooseShopItem(item, el) {
+  if(G._shopPicked) return;                      // only one pick per visit
   const pool = persistentCardPool().filter(c => !c.equippedItem);
   if(!pool.length) {
     if(typeof SFX!=='undefined') SFX.error();
     announceText('EVERY POKÉMON ALREADY HOLDS AN ITEM', 1600);
-    return;
+    return;                                       // nothing can hold it - let them just leave
   }
+  G._shopPicked = true;
+  G._shopLeaveAfterAssign = true;                 // closeItemAssignScreen leaves the store when done
   if(typeof SFX!=='undefined') SFX.purchase();
-  G.gold = (G.gold||0) - item.cost;
-  el.classList.add('purchased');
-  el.classList.remove('cant-afford');
-  el.querySelector('.shop-item-cost').textContent = '✓ OWNED';
-  const goldEl = document.getElementById('gold-display');
-  if(goldEl) goldEl.textContent = '$' + G.gold;
-  renderOwnedItemsInShop();
+  // Dim the other two so it reads as "this one chosen"
+  const grid = document.getElementById('shop-items-grid');
+  if(grid) [...grid.children].forEach(c => { if(c!==el){ c.style.transition='opacity 0.25s'; c.style.opacity='0.3'; c.style.pointerEvents='none'; } });
   openItemAssignScreen(item);
 }
 
@@ -12149,6 +12167,11 @@ function closeItemAssignScreen() {
   // immediately wherever that card is next seen.
   if(typeof renderHand === 'function') renderHand();
   if(typeof rRenderBoard === 'function') rRenderBoard();
+  // A store pick is a single choice - once it's assigned, leave the store.
+  if(G._shopLeaveAfterAssign) {
+    G._shopLeaveAfterAssign = false;
+    setTimeout(() => { if(typeof shopSkip === 'function') shopSkip(); }, 250);
+  }
 }
 
 function renderShopCards() {
@@ -12396,23 +12419,23 @@ const SHOP_ITEMS = [
 let _shopItemPool = []; // current shop items for sale
 
 function getShopItems() {
-  // Pick 4 random items not already owned
+  // Offer exactly 3 choices (the store is a free "pick one" now, not a buy-many
+  // shop), weighted so there's a cheap, a mid, and an occasional rare option.
   const owned = new Set(G_items.map(i=>i.id));
   const pool = SHOP_ITEMS.filter(i=>!owned.has(i.id)).sort(()=>Math.random()-0.5);
-  // Weight: more universal/cheap early, legendary rare
   const cheap = pool.filter(i=>i.cost<=4);
   const mid   = pool.filter(i=>i.cost>4&&i.cost<=6);
   const rare  = pool.filter(i=>i.cost>6);
   const picks = [];
   if(cheap.length) picks.push(cheap[0]);
-  if(cheap.length>1) picks.push(cheap[1]);
   if(mid.length) picks.push(mid[0]);
-  if(rare.length && Math.random()<0.3) picks.push(rare[0]);
+  if(rare.length && Math.random()<0.4) picks.push(rare[0]);
+  else if(cheap.length>1) picks.push(cheap[1]);
   while(picks.length < 3 && pool.length > picks.length) {
     const next = pool.find(p=>!picks.includes(p));
     if(next) picks.push(next); else break;
   }
-  return picks.slice(0,4);
+  return picks.slice(0,3);
 }
 
 function applyItemEffect(item) {
@@ -12536,7 +12559,7 @@ function startNextBattle() {
 
 <div id="shop-screen" class="hidden">
   <div id="shop-title">CELADON DEPT. STORE</div>
-  <div id="shop-subtitle">SPEND YOUR GOLD WISELY</div>
+  <div id="shop-subtitle">CHOOSE ONE ITEM</div>
   <div id="shop-items-grid"></div>
   <button id="shop-skip-btn" onclick="if(typeof SFX!='undefined') SFX.back(); shopSkip();" style="margin-top:20px;">LEAVE STORE →</button>
 </div>
