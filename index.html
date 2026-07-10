@@ -327,9 +327,9 @@ html { overflow: hidden; }
   flex-shrink:0;
 }
 #rp-trainer-name { font-size:clamp(11px,1.2vw,16px); color:#fff; letter-spacing:1px; text-shadow:1px 1px 0 #000; }
-#rp-pokeball-row { display:flex; gap:3px; margin-top:4px; flex-wrap:wrap; }
+#rp-pokeball-row { display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; }
 .rp-pokeball {
-  display:inline-block; width:clamp(11px,1.1vw,15px); height:clamp(11px,1.1vw,15px);
+  display:inline-block; width:clamp(22px,2.4vw,32px); height:clamp(22px,2.4vw,32px);
   background-size:100% 100%; background-repeat:no-repeat; image-rendering:pixelated;
   filter:drop-shadow(1px 1px 0 rgba(0,0,0,0.6));
 }
@@ -367,6 +367,13 @@ html { overflow: hidden; }
   min-height:1.4em; transition:color 0.2s;
 }
 #rp-hand-name.no-hand { color:#334455; }
+/* Per-card move list under the meld name: each selected Pokémon's move name
+   (colored by its type) with the full move description beneath it. */
+#rp-hand-moves { display:flex; flex-direction:column; gap:6px; margin-top:2px; }
+#rp-hand-moves:empty { display:none; }
+.rphm-item { border-top:1px solid rgba(80,100,160,0.28); padding-top:5px; }
+.rphm-name { font-size:clamp(8px,0.85vw,10.5px); letter-spacing:0.5px; line-height:1.2; }
+.rphm-desc { font-size:clamp(7px,0.72vw,9px); color:#aab6cc; line-height:1.35; margin-top:2px; }
 /* Hands / Discards — styled like the blue/red Balatro chips×mult boxes */
 #hd-row {
   position:fixed; bottom:16px; left:10px;
@@ -1751,7 +1758,7 @@ html { overflow: hidden; }
   #rp-portrait-img-wrap { width:74px !important; min-width:74px !important; height:auto !important; aspect-ratio:1/1 !important; flex-shrink:0 !important; border-radius:8px 0 0 8px !important; border:none !important; overflow:hidden !important; }
   #rp-portrait-img-wrap img#tc-opp-img { width:88% !important; height:88% !important; object-fit:contain !important; }
   #rp-portrait-overlay { flex:1 !important; padding:4px 6px !important; border-radius:0 !important; border-left:none !important; margin-left:0 !important; border-top:none !important; border-bottom:none !important; border-right:none !important; }
-  .rp-pokeball { width:9px !important; height:9px !important; }
+  .rp-pokeball { width:18px !important; height:18px !important; }
   /* Route buttons: horizontal on mobile */
   /* Route buttons: View Deck(left) | ADD TO DECK(center) | Skip(right) — same line */
   #route-btn-row {
@@ -2076,6 +2083,45 @@ function loadAnimSheet(graphic){
   return p;
 }
 
+// Returns the on-screen center {cx,cy} and body height {bodyH} of the actual
+// opaque pixels of the opponent sprite canvas (so move effects aim at the
+// Pokémon's real body, not the transparent frame box). Falls back to the
+// element's geometric box if the canvas isn't readable/laid out. Returns null
+// only if nothing usable is laid out at all.
+function measureSpriteBody(spriteEl, targetEl){
+  let el = spriteEl, r = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+  if(!r || r.width < 4 || r.height < 4){
+    el = targetEl; r = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+  }
+  if(!r || r.width < 4 || r.height < 4) return null;
+  // Default: geometric center + full box height.
+  let out = { cx: r.left + r.width/2, cy: r.top + r.height/2, bodyH: r.height };
+  try {
+    if(spriteEl && spriteEl.getContext && spriteEl.width > 0 && spriteEl.height > 0){
+      const cw = spriteEl.width, ch = spriteEl.height;
+      const data = spriteEl.getContext('2d').getImageData(0, 0, cw, ch).data;
+      let minX = cw, minY = ch, maxX = -1, maxY = -1;
+      for(let y = 0; y < ch; y++){
+        const row = y * cw;
+        for(let x = 0; x < cw; x++){
+          if(data[(row + x) * 4 + 3] > 24){
+            if(x < minX) minX = x; if(x > maxX) maxX = x;
+            if(y < minY) minY = y; if(y > maxY) maxY = y;
+          }
+        }
+      }
+      if(maxX >= minX && maxY >= minY){
+        // spriteEl's box (r) may differ from its backing store (cw x ch) - map.
+        const sx = r.width / cw, sy = r.height / ch;
+        out.cx = r.left + ((minX + maxX + 1) / 2) * sx;
+        out.cy = r.top  + ((minY + maxY + 1) / 2) * sy;
+        out.bodyH = (maxY - minY + 1) * sy;
+      }
+    }
+  } catch(e){ /* tainted/unreadable canvas - keep the geometric fallback */ }
+  return out;
+}
+
 // Plays one move animation on a full-screen canvas overlaid on `container`,
 // with the effect anchored between attackerEl (the played card) and
 // targetEl (the opponent Pokémon). Resolves when the timeline finishes.
@@ -2108,20 +2154,19 @@ function playMoveAnimation(kebab, opts){
     // invisible in the actual game.
     const spriteEl = (targetEl && targetEl.querySelector
       && targetEl.querySelector('#opp-pkmn-sprite')) || targetEl;
-    let tR = spriteEl.getBoundingClientRect();
-    // Guard: if the sprite isn't laid out (hidden/zero box), fall back to the
-    // wrapper; if that's degenerate too, skip rather than render invisibly.
-    if(tR.width < 4 || tR.height < 4) tR = targetEl.getBoundingClientRect();
-    if(tR.width < 4 || tR.height < 4) return;
-    // Impact point: horizontal center of the sprite, and ~45% down from its
-    // top (the Pokémon's body mass, a touch above the platform/feet).
-    const impact = { x: tR.left + tR.width/2, y: tR.top + tR.height*0.45 };
-
-    // Work in PokéRogue native units, but map them COMPACTLY: a full-height
-    // native battler (~72 units) maps to roughly the sprite's on-screen height,
-    // so a screen-filling native effect ends up about the size of the Pokémon.
-    // let (not const): the step loop re-derives it if the viewport changes.
-    let S = (tR.height / 72) * scale;
+    // Aim at the Pokémon's ACTUAL pixels, not the sprite element's box. Sprite
+    // frames carry transparent headroom (for bob/float animation), so the
+    // element's center sits well above the body - which is exactly why moves
+    // were "hitting too far above". Scanning the opaque bounding box gives the
+    // true center AND the true body height, so effects both land on the
+    // Pokémon and scale to its real size (small Weedle -> small effect). Falls
+    // back to the element box if the canvas can't be read.
+    let impact, S;
+    const spriteMetrics = measureSpriteBody(spriteEl, targetEl);
+    if(!spriteMetrics) return;   // nothing laid out to aim at
+    impact = { x: spriteMetrics.cx, y: spriteMetrics.cy };
+    // Map the native battler height (~72 units) onto the real body height.
+    S = (spriteMetrics.bodyH / 72) * scale;
 
     // Launch point: the ATTACKING CARD's center. USER-focused cels (launch
     // flares, muzzle effects) originate here, so each played card's move
@@ -2234,13 +2279,9 @@ function playMoveAnimation(kebab, opts){
             canvas.width = Math.round(vw * d);
             canvas.height = Math.round(vh * d);
             ctx.setTransform(d, 0, 0, d, 0, 0);
-            let r = spriteEl.getBoundingClientRect();
-            if(r.width < 4 || r.height < 4) r = targetEl.getBoundingClientRect();
-            if(r.width >= 4 && r.height >= 4){
-              impact.x = r.left + r.width / 2;
-              impact.y = r.top + r.height * 0.45;
-              S = (r.height / 72) * scale;
-            }
+            // Re-measure the sprite body (its size/position may have reflowed).
+            const m = measureSpriteBody(spriteEl, targetEl);
+            if(m){ impact.x = m.cx; impact.y = m.cy; S = (m.bodyH / 72) * scale; }
             // The card moved too (reflow) - re-derive the launch point.
             const l2 = attackerCenter();
             launch.x = l2.x; launch.y = l2.y;
@@ -2981,6 +3022,7 @@ document.addEventListener('keydown',e=>{
 <div id="rp-hand-preview">
   <div id="rp-hand-preview-label">Selected Meld</div>
   <div id="rp-hand-name" class="no-hand">—</div>
+  <div id="rp-hand-moves"></div>
 </div>
 <div id="hands-panel"></div>
 
@@ -3726,14 +3768,27 @@ function updateActionBar() {
   if(playBtn)   { playBtn.disabled = sel === 0;    playBtn.textContent   = sel > 0 ? `PLAY HAND (${sel})` : 'PLAY HAND'; }
   if(discardBtn){ discardBtn.disabled = sel === 0; discardBtn.textContent = sel > 0 ? `DISCARD (${sel})` : 'DISCARD'; }
   // Live hand name preview in left panel
+  const movesEl = document.getElementById('rp-hand-moves');
   const nameEl = document.getElementById('rp-hand-name');
   if(nameEl) {
     if(sel === 0) {
       nameEl.textContent = '—';
       nameEl.className = 'no-hand';
+      if(movesEl) movesEl.innerHTML = '';
       if(_activeHandType) { _activeHandType = null; renderHandsPanel(); }
     } else {
       const selectedCards = Array.from(G_selected).sort((a,b)=>a-b).map(i=>G.hand[i]).filter(Boolean);
+      // List each selected Pokémon's move + full description in the panel.
+      if(movesEl && typeof getCardMoves === 'function'){
+        const esc = s => String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+        movesEl.innerHTML = selectedCards.flatMap(c => getCardMoves(c)).map(m => {
+          const col = (typeof TYPE_COLORS!=='undefined' && TYPE_COLORS[m.move.type]) || '#ffdd66';
+          return `<div class="rphm-item">`
+            + `<div class="rphm-name" style="color:${col}">${esc(m.move.name)}</div>`
+            + `<div class="rphm-desc">${esc(m.move.desc)}</div>`
+            + `</div>`;
+        }).join('');
+      }
       const result = evaluateHand(selectedCards);
       let _pv = null;
       try { _pv = scoreHandDetailed(selectedCards, result, {preview:true, handNum:Math.max(1,(BAL.handsPerBattle+1)-Math.max(1,G.handsLeft))}); } catch(e){}
@@ -9664,6 +9719,13 @@ function playOpponentSpriteAnim(dex){
     if(!_oppSpriteAnim || _oppSpriteAnim.token !== token) return; // superseded
     canvas.width = atlas.w;
     canvas.height = atlas.h;
+    // Keep each species' RELATIVE size: scale the on-screen height by the
+    // sprite's native height (Charizard ~90px native fills the box; a Weedle
+    // ~46px renders about half as tall). Bottom-anchored, so they all stand on
+    // the same line. width:auto (from the CSS) preserves the native aspect.
+    const REF_NATIVE_H = 90;      // ~tallest Kanto sprite -> ~full height
+    const hPct = Math.max(40, Math.min(106, (atlas.h / REF_NATIVE_H) * 98));
+    canvas.style.height = hPct + '%';
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     const frameMs = 1000 / POKE_ANIM_FPS;
@@ -9744,8 +9806,11 @@ function renderOpponentStatusIcons(){
     else if(st.ccLabel==='FROZEN') active.push({key:'FRZ'});
   }
   row.innerHTML = active.map(a => {
-    const badge = a.stack ? `<span class="opp-status-stack">${fmtNum(a.stack)}</span>` : '';
-    return `<span class="opp-status-icon" style="background-position:0 ${STATUS_ICON_Y[a.key]}%">${badge}</span>`;
+    const val = a.stack ? `<span class="opp-status-val">${fmtNum(a.stack)}</span>` : '';
+    return `<span class="opp-status-item">`
+      + `<span class="opp-status-icon" style="background-position:0 ${STATUS_ICON_Y[a.key]}%"></span>`
+      + val
+      + `</span>`;
   }).join('');
 }
 
@@ -13124,15 +13189,22 @@ applyBattleStartEffects = function(){
 
 // ══ UI ════════════════════════════════════════════════════════
 document.head.insertAdjacentHTML('beforeend', `<style>
-#opp-pokemon-area{position:fixed;left:50%;transform:translateX(-50%);bottom:58vh;z-index:55;
+/* z-index above the hand (#hand-container is 100) so the opponent's HP bar and
+   status icons are never hidden behind the card fan. The sprite sits well above
+   the cards, so raising the whole cluster doesn't cover the hand. */
+#opp-pokemon-area{position:fixed;left:50%;transform:translateX(-50%);bottom:58vh;z-index:105;
   display:none;flex-direction:column;align-items:center;gap:6px;pointer-events:none;
   font-family:'PokemonClassic',monospace;}
 #opp-pokemon-img-wrap{position:relative;width:clamp(195px,21vw,285px);aspect-ratio:4/3;}
 #opp-pkmn-bg-img,#opp-pkmn-base-img{position:absolute;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;}
 #opp-pkmn-bg-img{display:none;}   /* battleback scene removed - was reading as an unwanted "background" behind the sprite */
 #opp-pkmn-base-img{display:none;} /* platform/pedestal removed per request - the Pokémon now floats free, no dirt oval behind it */
+/* Height is set per-Pokémon in JS (playOpponentSpriteAnim) so each species
+   keeps its RELATIVE size - a Weedle renders smaller than an Onix instead of
+   every sprite being force-fit to the same box. width:auto keeps the native
+   aspect; bottom-anchored so all species share one "feet" baseline. */
 #opp-pkmn-sprite{position:absolute;left:50%;bottom:-14%;transform:translateX(-50%);
-  width:88%;height:88%;object-fit:contain;image-rendering:pixelated;z-index:3;
+  width:auto;height:80%;image-rendering:pixelated;z-index:3;
   filter:drop-shadow(0 4px 10px rgba(0,0,0,0.6));}
 /* The base/sprite images intentionally extend below #opp-pokemon-img-wrap's
    own box (bottom:-24%/-14%) so the platform reads as something the
@@ -13169,15 +13241,18 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 /* Status icons (Sleep/Poison/Burn/Paralyze/Freeze) - one 44x16 sprite
    sheet, 7 rows stacked vertically (5 used here; FNT/PKRS aren't battle
    statuses in this game). background-position-y picks the row. */
-#opp-pkmn-status-row{display:flex;gap:4px;margin-top:5px;justify-content:center;flex-wrap:wrap;pointer-events:none;}
-.opp-status-icon{position:relative;width:clamp(28px,3.2vw,40px);height:clamp(10px,1.15vw,14.5px);
+#opp-pkmn-status-row{display:flex;gap:10px;margin-top:7px;justify-content:center;flex-wrap:wrap;pointer-events:none;}
+/* Each status is a little vertical stack: the icon, with its value as plain
+   text directly beneath it (no circle/background badge). */
+.opp-status-item{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.opp-status-val{font-family:'PokemonClassic',monospace;font-size:clamp(11px,1.4vw,17px);
+  color:#fff;line-height:1;text-shadow:1.5px 1.5px 0 #000,-1px 1px 0 #000;}
+.opp-status-icon{position:relative;width:clamp(46px,5.2vw,66px);height:clamp(16px,1.9vw,24px);
   background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAABwCAYAAABlyJKNAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAABmJLR0QA/wD/AP+gvaeTAAADuUlEQVR42u2aIVTbYBDHL3u8RyWOuk4yRaaKnKOoMbVNtY7hNsXm6sbUcIArirkxRecqQS1TVHYuuEpQmUgupZdc7/vSluS+x/89Xvp9ue96/Hq53MsXL4oieKjTs2/TEyVrr33gPRw/KzsgW3lIGMkGwTDX8OjwZGr88fOH3PN0XvLD+UP5/gYATEirI7yCHySyRYlyMvWXxtWOD3oJSyQogaJk55V7hFEc6aKSqg4n9whzubvoKmEqvYTDMAQAgHq9nkvCNOds72SSMC6UOsIe7dbevN+pVLf28/xSd7eWqRJHZUckSC/hf0nujsLulMFW389deNUKcuepPbXD86bzkMTVSHJZL2FKlkoiYkuOJUqEcTWSsV7C84ojLRG0lbuEpaufzks5Su1M5S5hKRe53DWtBqbSS3g82AIAgLVXV4UccTkpkZVyGeMCiJtIdYQz/fAvz6tUP/w6ihzrh1snh2XHNFN6Cd+fxs+Hw8FgyqDeu8hdGHZ257Iznk/Kw+qe9ufDlGxRUvMSzXxvEldj7wAANBOWRHNUIrMsuUvYNje5dXSeqy6c1BFeeMBhZ3ep+a2O8GSf7kcfAAD8d61cQ9sqQXO0aC5jXI3zeKyO8FM/vGxl++Fgo+yYZkov4fu/LyIAgPFweld/bfcud+H4opY7T+2pnbU/iONa3bxR3g9TshIBJIXzdMzZmfqjca1vxmN1hJ8CXraM+2Hp6ufs5vVH5S5hUwK2ddf0F0HpJRwE8dH3HzcAqY5jXNtv46M6wpl++PeXavXD21+V98MZwi+vrytF+E+zqZtwWiWQbICXZaK7Tmemg1qvN9MOz9v6S+NKng8jab2EKVnpPze1Q6I4z/nhyKdxNZsAoJlwWaK/gCR3CdMcM81Fyc6ULMpdwrZVgrvqi5JFKSa84IaYkja942XIk/uDOsKZbs3b369UtxYdHzvSraFG41HZMc2UXsL4/jDu2qBad7OfG/RrtSk7HNP11E7SxI/y94fTKsHtHnHkODtKSFpv6h93k9QRfgp42TLu1rgcpbKtBrZyl7B0FT+W1BFOAx4kf4tSv1ZbyK9C41JHONMPf6rY+xLftb8vkRK+PbutFFmq9fa6zl7CC3th/N7wcA0AAJ538w1HXTOHKFs/1J7a1TfGAKCQ8AqSlUggAZyXxkX9cHYYpz7C3AkppxYljjT3fe4QNiXK5SA9L/mVchrlDmFTmVYJri5zucv500cY98H85LlwWdVAynWMUx3htFs726nWLj5V+1LpXvN/mJMbXSlyXfoAAAAldEVYdGRhdGU6Y3JlYXRlADIwMjAtMDktMDJUMTg6MTU6NDIrMDA6MDCmAecAAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDE5LTAzLTA4VDIzOjA0OjMxKzAwOjAwCL24GwAAAABJRU5ErkJggg==);
   background-size:100% 700%;image-rendering:pixelated;border-radius:2px;
   filter:drop-shadow(1px 1px 0 rgba(0,0,0,0.7));}
-.opp-status-stack{position:absolute;right:-5px;bottom:-6px;background:#0a0a18;color:#fff;
-  font-size:8px;font-weight:bold;border-radius:50%;width:13px;height:13px;display:flex;
-  align-items:center;justify-content:center;border:1.5px solid #fff;
-  font-family:'PokemonClassic',monospace;line-height:1;}
+/* (.opp-status-stack circle badge removed - values now render as plain text
+   below each icon via .opp-status-val) */
 /* ── Pokeball throw/release sequence ──
    #pkmn-sendout-ball's left/top are set frame-by-frame in JS (a real
    parabolic arc, not a CSS easing curve pretending to be one) - only
@@ -13918,6 +13993,7 @@ updateActionBar = function(){
   const playBtn = document.getElementById('play-btn');
   const discardBtn = document.getElementById('discard-btn');
   const nameEl = document.getElementById('rp-hand-name');
+  const movesEl = document.getElementById('rp-hand-moves');
   const inPlay = G._rummyPhase === 'play' && !G.animating;
   if(inPlay && sel){
     const cards = rSelCards();
@@ -13942,10 +14018,22 @@ updateActionBar = function(){
         nameEl.className='';
       } else { nameEl.textContent = '—'; nameEl.className='no-hand'; }
     }
+    // Each selected Pokémon's move name (type-colored) + full description.
+    if(movesEl && typeof getCardMoves === 'function'){
+      const esc = s => String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+      movesEl.innerHTML = cards.flatMap(c => getCardMoves(c)).map(m => {
+        const col = (typeof TYPE_COLORS!=='undefined' && TYPE_COLORS[m.move.type]) || '#ffdd66';
+        return `<div class="rphm-item">`
+          + `<div class="rphm-name" style="color:${col}">${esc(m.move.name)}</div>`
+          + `<div class="rphm-desc">${esc(m.move.desc)}</div>`
+          + `</div>`;
+      }).join('');
+    }
   } else {
     if(playBtn){ playBtn.disabled=true; playBtn.textContent='PLAY HAND'; }
     if(discardBtn){ discardBtn.disabled=true; discardBtn.textContent='DISCARD'; }
     if(nameEl){ nameEl.textContent='—'; nameEl.className='no-hand'; }
+    if(movesEl){ movesEl.innerHTML=''; }
   }
 
   // ── Hero ability button — prerequisites differ per ability ──
