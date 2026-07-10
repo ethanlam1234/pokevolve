@@ -1433,11 +1433,9 @@ html { overflow: hidden; }
   transition:transform 0.15s ease;
 }
 .deck-pile:hover { transform:translateY(-4px) scale(1.04); }
-/* Deck sits in the very bottom-right corner (money counter removed). */
-#deck-ours  { right:clamp(14px,1.5vw,24px); bottom:clamp(16px,2.6vh,34px); }
+/* Bottom-right: money counter in the very corner, deck pile just above it. */
+#deck-ours  { right:clamp(14px,1.5vw,24px); bottom:clamp(72px,10vh,110px); }
 #deck-theirs{ display:none !important; }
-/* Money is no longer used or shown anywhere. */
-#gold-display { display:none !important; }
 .deck-card {
   position:absolute; inset:0; border-radius:6px; overflow:hidden;
   background:repeating-linear-gradient(135deg,#1a1060 0,#1a1060 6px,#110a44 6px,#110a44 12px);
@@ -1814,8 +1812,9 @@ html { overflow: hidden; }
   .rp-hd-val  { font-size:20px !important; }
   .rp-hd-label { font-size:7px !important; }
 
-  /* ── Deck (money removed) ── */
-  #deck-ours { width:clamp(60px,9.5vw,88px) !important; bottom:clamp(16px,3.4vh,44px) !important; right:6px !important; }
+  /* ── Bottom-right: money in the corner, deck just above it ── */
+  #gold-display { font-size:12px !important; padding:3px 9px !important; border-width:2px !important; right:6px !important; bottom:clamp(8px,2vh,20px) !important; }
+  #deck-ours { width:clamp(58px,9vw,84px) !important; bottom:clamp(44px,7vh,78px) !important; right:6px !important; }
 
   /* ── Owned items ── */
   #owned-items-panel { gap:3px !important; max-width:clamp(130px,20vw,180px) !important; right:6px !important; top:6px !important; }
@@ -1829,7 +1828,7 @@ html { overflow: hidden; }
   #hud-toggle-row { display:none !important; }
   .hud-toggle-btn { font-size:8px !important; padding:6px 10px !important; }
   #hands-panel { top:40px !important; max-width:96vw !important; max-height:50vh !important; padding:8px 10px !important; gap:4px !important; }
-  #rp-hand-preview { top:40px !important; width:clamp(120px,32vw,170px) !important; padding:6px 8px !important; }
+  #rp-hand-preview { top:6px !important; width:clamp(120px,32vw,170px) !important; padding:6px 8px !important; }
   /* ── Abilities viewer / hands viewer / release screen mobile ── */
   #av-header, #hv-header, #release-header { padding:16px 14px 12px !important; }
   #av-title, #hv-title, #release-title { font-size:14px !important; }
@@ -3063,7 +3062,7 @@ document.addEventListener('keydown',e=>{
 <!-- sits to the right of hd-row at same bottom position, managed by show/hideRotomRadio --></div><!-- /hd-row -->
 
 <!-- ── MUSIC TOGGLE BUTTON ── -->
-<div id="rotom-widget" style="display:none;position:fixed;z-index:200;font-family:'PokemonClassic',monospace;" data-desktop-only="1">
+<div id="rotom-widget" style="display:none;position:fixed;z-index:200;font-family:'PokemonClassic',monospace;">
   <div id="rotom-box" onclick="rotomToggle()" title="Toggle Music"
     style="border-radius:8px;padding:8px 14px;cursor:pointer;
            background:#0a1a33;border:2px solid #1a3366;
@@ -3104,7 +3103,6 @@ document.addEventListener('keydown',e=>{
   <button id="hud-abilities-btn" class="hud-toggle-btn" onclick="openDeckViewer('moves')">MOVES</button>
 </div>
 <div id="rp-hand-preview">
-  <div id="rp-hand-preview-label">Selected Meld</div>
   <div id="rp-hand-name" class="no-hand">—</div>
   <div id="rp-hand-moves"></div>
 </div>
@@ -5017,12 +5015,10 @@ function rotomVolDown() { rotomSetVol(_rotomVol-0.12); }
 function toggleRotomPanel() { rotomToggle(); }
 function showRotomRadio() {
   const el=document.getElementById('rotom-widget');
-  const isMobile = Math.min(window.screen.width, window.screen.height) < 600;
-  if(isMobile){ if(el) el.style.display='none'; return; }  // music toggle is desktop-only
   if(el) {
     el.style.display='block';
     {
-      // Desktop: above the hd-row (bottom-left)
+      // Bottom-left, just above the hd-row (Health/Discards) - both desktop AND mobile.
       const hdRow = document.getElementById('hd-row');
       if(hdRow) {
         const r = hdRow.getBoundingClientRect();
@@ -10313,11 +10309,13 @@ function renderOpponentPokemon(){
   }
   renderOpponentPokemonHpBar();
   renderOpponentStatusIcons();
+  positionOppHpBar();
   // Re-pin the intent badge above the (variable-size) sprite. The sprite loads
   // its atlas asynchronously, so also nudge it a few times as layout settles.
   positionIntentBadge();
   setTimeout(positionIntentBadge, 120);
   setTimeout(positionIntentBadge, 500);
+  setTimeout(positionOppHpBar, 120);
 }
 
 // Pins the intent badge a CONSTANT gap above the opponent sprite's actual
@@ -10326,6 +10324,40 @@ function renderOpponentPokemon(){
 // badge is moved out to <body> so position:fixed uses real viewport coords
 // (its normal parent #opp-pokemon-area is transformed, which would otherwise
 // make "fixed" relative to that box).
+// Matches the mobile-layout CSS media query exactly, so JS-positioned elements
+// line up with the CSS-styled ones (the game's "mobile" is a small landscape
+// phone, not portrait).
+function isMobileLayout(){
+  return typeof window.matchMedia === 'function'
+    && window.matchMedia('(max-height:520px), (max-width:960px) and (orientation:landscape)').matches;
+}
+// On mobile, the opponent HP bar is reparented out of the (centred) battle area
+// to sit fixed just below the trainer UI in the top-left; on desktop it stays
+// stacked under the sprite.
+function positionOppHpBar(){
+  const wrap = document.getElementById('opp-pkmn-hp-wrap');
+  if(!wrap) return;
+  if(isMobileLayout()){
+    if(wrap.parentElement !== document.body) document.body.appendChild(wrap);
+    const rp = document.getElementById('run-panel');
+    const r = rp && rp.getBoundingClientRect ? rp.getBoundingClientRect() : null;
+    wrap.style.position = 'fixed';
+    wrap.style.left = (r ? Math.round(r.left) : 6) + 'px';
+    wrap.style.top  = (r ? Math.round(r.bottom) + 6 : 92) + 'px';
+    wrap.style.width = (r ? Math.round(r.width) : 150) + 'px';
+    wrap.style.margin = '0';
+    wrap.style.zIndex = '106';
+  } else if(wrap.parentElement === document.body){
+    // Restore it into the opponent area (before the status row), clear inline.
+    const area = document.getElementById('opp-pokemon-area');
+    const statusRow = document.getElementById('opp-pkmn-status-row');
+    if(area){
+      if(statusRow && statusRow.parentElement === area) area.insertBefore(wrap, statusRow);
+      else area.appendChild(wrap);
+    }
+    ['position','left','top','width','margin','zIndex'].forEach(p => wrap.style[p] = '');
+  }
+}
 function positionIntentBadge(){
   const badge = document.getElementById('opp-pkmn-intent-badge');
   if(!badge) return;
@@ -10333,6 +10365,13 @@ function positionIntentBadge(){
   // Frozen while the sprite is lunging (see _oppSpriteLocked) so the badge
   // doesn't chase it and end up stranded.
   if(_oppSpriteLocked) return;
+  if(isMobileLayout()){
+    // On mobile the intent always sits pinned at the top-centre of the screen,
+    // not tracking the sprite.
+    badge.style.position = 'fixed'; badge.style.margin = '0'; badge.style.zIndex = '106';
+    badge.style.left = '50%'; badge.style.top = '6px'; badge.style.transform = 'translateX(-50%)';
+    return;
+  }
   const sprite = document.getElementById('opp-pkmn-sprite');
   if(!sprite || !sprite.getBoundingClientRect) return;
   // Anchor to the sprite ELEMENT box, NOT a pixel-scan of the canvas: the
@@ -10350,8 +10389,8 @@ function positionIntentBadge(){
   // Anchor its bottom-center at that point.
   badge.style.transform = 'translate(-50%,-100%)';
 }
-// Keep it pinned across viewport changes.
-window.addEventListener('resize', () => { try { positionIntentBadge(); } catch(e){} });
+// Keep the opponent HP bar + intent pinned across viewport/orientation changes.
+window.addEventListener('resize', () => { try { positionOppHpBar(); positionIntentBadge(); } catch(e){} });
 
 // The intent badge lives in <body> (reparented so its position:fixed anchor
 // isn't relative to the transformed battle box). That means it does NOT get
@@ -10361,6 +10400,11 @@ window.addEventListener('resize', () => { try { positionIntentBadge(); } catch(e
 function hideIntentBadge(){
   const b = document.getElementById('opp-pkmn-intent-badge');
   if(b){ b.style.transition='none'; b.style.opacity='0'; b.style.visibility='hidden'; }
+  // On mobile the HP bar is reparented to <body> (top-left), so like the intent
+  // badge it must be hidden explicitly when leaving battle or it floats over
+  // shop/route/cinnabar. Opacity only - the next send-out's reveal restores it.
+  const hpw = document.getElementById('opp-pkmn-hp-wrap');
+  if(hpw && hpw.parentElement === document.body){ hpw.style.transition='none'; hpw.style.opacity='0'; }
 }
 
 // Sleep/Paralyze/Freeze come from the shared CC counter (ccLabel says
