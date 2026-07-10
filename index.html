@@ -6302,6 +6302,10 @@ function impactBurstBottomCenter(intensity){
     ], { duration: 320 + Math.random()*200, easing:'cubic-bezier(0.2,0.7,0.3,1)' }).onfinish = () => s.remove();
   }
 }
+// True while the enemy sprite is being transform-animated (the attack lunge),
+// so positionIntentBadge freezes the intent badge instead of chasing the
+// moving sprite and leaving it displaced.
+let _oppSpriteLocked = false;
 // The opponent's attack - ONE shared animation for every Pokémon: it charges
 // up (pulls back), then lunges down at the bottom-centre of the screen (our
 // "face", like Hearthstone), impacting with a shake + burst. Everything scales
@@ -6321,6 +6325,10 @@ function playOpponentAttackAnimation(damage){
     { transform:`${base} translateY(${lungeY}px) scale(${(1+0.15*intensity).toFixed(3)})`,  offset:0.48, easing:'cubic-bezier(0.25,0.6,0.3,1)' },   // slam
     { transform:`${base} translateY(0) scale(1)`,                              offset:1 },                                                          // recoil back
   ], { duration: dur, fill:'none' });
+  // Freeze the intent badge while the sprite is flying around, then re-pin it
+  // to the settled sprite once the lunge is done.
+  _oppSpriteLocked = true;
+  setTimeout(() => { _oppSpriteLocked = false; if(typeof positionIntentBadge === 'function') positionIntentBadge(); }, dur + 30);
   // Fire the impact right as the lunge bottoms out (~48% of the timeline).
   setTimeout(() => {
     screenShake(intensity);
@@ -6338,7 +6346,7 @@ function playOpponentBlockAnimation(){
   if(!oppSprite || !oppArea) return;
   playMoveAnimation('barrier', {
     attackerEl: oppSprite, targetEl: oppArea, variantIndex: 1,
-    scale: 1.4, sizeToBody: true, dropFactor: 0, dropBody: 0.56, speedFps: PKMN_ANIM_FPS,
+    scale: 1.85, sizeToBody: true, dropFactor: 0, dropBody: 0.74, speedFps: PKMN_ANIM_FPS,
   }).catch(()=>{});
 }
 
@@ -10322,19 +10330,24 @@ function positionIntentBadge(){
   const badge = document.getElementById('opp-pkmn-intent-badge');
   if(!badge) return;
   if(badge.parentElement !== document.body) document.body.appendChild(badge);
+  // Frozen while the sprite is lunging (see _oppSpriteLocked) so the badge
+  // doesn't chase it and end up stranded.
+  if(_oppSpriteLocked) return;
   const sprite = document.getElementById('opp-pkmn-sprite');
-  const wrap = document.getElementById('opp-pokemon-img-wrap');
-  const m = (typeof measureSpriteBody === 'function') ? measureSpriteBody(sprite, wrap) : null;
-  if(!m) return;
-  const visibleTop = m.cy - m.bodyH / 2;
-  const GAP = 16;   // px between the badge and the sprite's visible top
+  if(!sprite || !sprite.getBoundingClientRect) return;
+  // Anchor to the sprite ELEMENT box, NOT a pixel-scan of the canvas: the
+  // canvas element's size is fixed per species, so its box is rock-steady,
+  // whereas the opaque-pixel bbox jitters frame-to-frame as the Pokémon
+  // animates (which is what made the badge drift after every attack).
+  const r = sprite.getBoundingClientRect();
+  if(!r || r.width < 2 || r.height < 2) return;
+  const GAP = 22;   // px above the sprite box top - comfortable, not cramped
   badge.style.position = 'fixed';
   badge.style.margin = '0';
   badge.style.zIndex = '106';
-  badge.style.left = Math.round(m.cx) + 'px';
-  badge.style.top = Math.round(visibleTop - GAP) + 'px';
-  // Anchor its bottom-center at that point. (Reveal animates opacity only, so
-  // this transform is never fought over.)
+  badge.style.left = Math.round(r.left + r.width/2) + 'px';
+  badge.style.top = Math.round(r.top - GAP) + 'px';
+  // Anchor its bottom-center at that point.
   badge.style.transform = 'translate(-50%,-100%)';
 }
 // Keep it pinned across viewport changes.
@@ -13834,7 +13847,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
    about the wrap's nominal box, not that overflow, which is what was
    pulling the HP bar up into the art. This margin-top clears it (bumped
    up alongside the wrap getting bigger, since the overflow is a % of it). */
-#opp-pkmn-hp-wrap{width:clamp(168px,19.5vw,245px);margin-top:clamp(39px,5.5vw,60px);}
+#opp-pkmn-hp-wrap{width:clamp(168px,19.5vw,245px);margin-top:clamp(14px,2.2vw,26px);}
 #opp-pkmn-hp-track{position:relative;width:100%;height:19px;
   background:rgba(20,20,30,0.9);border:2px solid rgba(60,80,120,0.7);border-radius:6px;overflow:hidden;
   box-shadow:inset 0 2px 3px rgba(0,0,0,0.6),0 2px 5px rgba(0,0,0,0.5);}
