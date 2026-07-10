@@ -9619,6 +9619,7 @@ async function playSendOutAnimation(){
     // Area isn't laid out/visible yet (e.g. very first battle, before
     // display:flex has taken effect) - skip the flourish, just reveal.
     if(spriteImg){ spriteImg.style.transition='opacity 0.3s ease'; spriteImg.style.opacity='1'; spriteImg.style.transform='translateX(-50%) scale(1)'; }
+    playOpponentCry();
     revealOppUI();
     return;
   }
@@ -9690,6 +9691,8 @@ async function playSendOutAnimation(){
     spriteImg.style.opacity = '1';
     spriteImg.style.transform = 'translateX(-50%) scale(1)';
   }
+  // Play the Pokémon's cry as it appears (PokéRogue's own per-species cry).
+  playOpponentCry();
   // HP bar + intent slide in just after the Pokémon appears.
   revealOppUI();
   if(flash) flash.classList.add('fade');
@@ -9699,6 +9702,37 @@ async function playSendOutAnimation(){
 
   ball.style.display = 'none';
   if(flash){ flash.style.display = 'none'; flash.classList.remove('burst','fade'); }
+}
+
+// ── Cries, hit sound, and the damage flash (all from PokéRogue) ──
+const CRY_BASE = 'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/cries/';
+const HIT_SFX_URL = 'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/battle-anims/sfx/hit.wav';
+// Plays the current opponent Pokémon's cry (PokéRogue ships one .m4a per dex).
+function playOpponentCry(){
+  const dex = G.theirPokemon && G.theirPokemon.dex;
+  if(dex && typeof SFX !== 'undefined' && SFX.playSample){
+    SFX.playSample(CRY_BASE + dex + '.m4a', { volume: 75 });
+  }
+}
+// PokéRogue's damage hit sound (se/hit).
+function playHitSound(){
+  if(typeof SFX !== 'undefined' && SFX.playSample) SFX.playSample(HIT_SFX_URL, { volume: 90 });
+}
+// PokéRogue's damage flash: the sprite blinks in/out ~6 times over ~0.6s, the
+// classic "took a hit" flicker from the mainline games (DamageAnimPhase toggles
+// the sprite's visibility on a repeating timer).
+let _oppFlashTimer = null;
+function flashOpponentSprite(){
+  const sprite = document.getElementById('opp-pkmn-sprite');
+  if(!sprite) return;
+  if(_oppFlashTimer){ clearInterval(_oppFlashTimer); }
+  let n = 0;
+  const TOGGLES = 6;
+  _oppFlashTimer = setInterval(() => {
+    sprite.style.visibility = (n % 2 === 0) ? 'hidden' : 'visible';
+    n++;
+    if(n >= TOGGLES){ clearInterval(_oppFlashTimer); _oppFlashTimer = null; sprite.style.visibility = 'visible'; }
+  }, 100);
 }
 
 // A trainer fields a whole team: 1 (normal), 3 (elite), 6 (gym/boss).
@@ -13877,6 +13911,8 @@ playSelectedHand = async function(){
   // Pierce ignores shield - land it up front on the opponent.
   if(moveFx.pierceDmg > 0){
     G.trainerHp = Math.max(0, G.trainerHp - moveFx.pierceDmg);
+    playHitSound();
+    flashOpponentSprite();
     _floatOppDmg(moveFx.pierceDmg);
     renderOpponentPokemonHpBar();
   }
@@ -13929,7 +13965,10 @@ playSelectedHand = async function(){
       if(d > 0){
         G.trainerHp = Math.max(0, G.trainerHp - d);
         dmg += d;
-        if(typeof SFX!=='undefined' && SFX.damageHit) SFX.damageHit(d);
+        // PokéRogue's real hit sound + the mainline damage flash (blink),
+        // replacing the old synth "damageHit" blip.
+        playHitSound();
+        flashOpponentSprite();
         _floatOppDmg(d);
       }
       renderOpponentPokemonHpBar();
@@ -13955,6 +13994,8 @@ playSelectedHand = async function(){
     announceText('🀄 GIN! '+fmtNum(gin)+' BONUS DMG  +$'+RBAL.ginGold+'!', 2400);
     G.trainerHp = Math.max(0, G.trainerHp - gin);
     dmg += gin;
+    playHitSound();
+    flashOpponentSprite();
     _floatOppDmg(gin);
     renderOpponentPokemonHpBar();
     updatePortraits();
