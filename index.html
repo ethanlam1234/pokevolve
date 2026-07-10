@@ -2145,7 +2145,15 @@ function playMoveAnimation(kebab, opts){
     canvas.style.cssText =
       'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;' +
       'z-index:2147483600;';
-    (container || document.body).appendChild(canvas);
+    // Append to document.body, NOT `container`: the battle's #gameWrap is
+    // position:fixed and so establishes its own stacking context, which would
+    // trap the canvas's z-index below body-level siblings like
+    // #opp-pokemon-area (z-index:55) - i.e. the whole effect rendered BEHIND
+    // the opponent sprite. As a body-level sibling the 2147483600 z-index
+    // wins. The canvas is position:fixed inset:0, so its parent doesn't affect
+    // where it draws. (container is still accepted for API compatibility.)
+    void container;
+    document.body.appendChild(canvas);
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
 
@@ -9686,11 +9694,10 @@ function renderOpponentPokemon(){
   const area = document.getElementById('opp-pokemon-area');
   if(!area || !G.theirPokemon) return;
   const p = G.theirPokemon;
-  const baseImg = document.getElementById('opp-pkmn-base-img');
   const spriteImg = document.getElementById('opp-pkmn-sprite');
-  // #opp-pkmn-bg-img is display:none (background scene removed per request)
-  // - no longer set its src, so the image isn't even fetched.
-  if(baseImg) baseImg.src = BATTLEBACK_BASE + p.theme + '_base1.png';
+  // #opp-pkmn-bg-img and #opp-pkmn-base-img are both display:none now (the
+  // background scene AND the platform/pedestal were removed per request) - no
+  // longer set their src, so those images aren't even fetched.
   // Animated front sprite from the PokéRogue atlas (replaces the old still
   // PNG). Only (re)start the loop when the species actually changes, so
   // per-turn re-renders (intent/HP updates) don't restart the animation.
@@ -12258,7 +12265,9 @@ const RBAL = {
 
 function RUMMY_HAND_START(){ return RBAL.handStart + sumEffectAmount('hand_size') + (G._tempHandSizeBonus||0); }
 getHandSize = function(){ return RUMMY_HAND_START() + 2; };
-getMaxPlay  = function(){ return (G.hand ? G.hand.length : 8) || 8; };
+// Cap each meld/turn at 5 cards. (This overrides the earlier 6422 definition;
+// it previously returned the whole hand size, which let you play up to 8.)
+getMaxPlay  = function(){ return 5; };
 
 // Player HP pool for the move-integration battle layer - a per-battle
 // resource (like handsLeft), not a run-persistent one: there's no rest/
@@ -13121,7 +13130,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 #opp-pokemon-img-wrap{position:relative;width:clamp(195px,21vw,285px);aspect-ratio:4/3;}
 #opp-pkmn-bg-img,#opp-pkmn-base-img{position:absolute;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;}
 #opp-pkmn-bg-img{display:none;}   /* battleback scene removed - was reading as an unwanted "background" behind the sprite */
-#opp-pkmn-base-img{bottom:-24%;width:86%;left:7%;object-fit:contain;height:auto;}
+#opp-pkmn-base-img{display:none;} /* platform/pedestal removed per request - the Pokémon now floats free, no dirt oval behind it */
 #opp-pkmn-sprite{position:absolute;left:50%;bottom:-14%;transform:translateX(-50%);
   width:88%;height:88%;object-fit:contain;image-rendering:pixelated;z-index:3;
   filter:drop-shadow(0 4px 10px rgba(0,0,0,0.6));}
