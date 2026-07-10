@@ -2042,6 +2042,17 @@ function loadImageWithFallback(bases, path){
 const BATTLE_ANIM_FPS = 20;   // PokéRogue's native playback rate
 const TILE = 96;              // sheet tile size (loadSpritesheet(..., 96))
 const ANIM_COLS = 5;          // sheets are 5 tiles wide
+// Move-effect placement tuning. Effects are a CONSTANT size (scaled to the
+// opponent AREA, which never changes, not the Pokémon's body) so a move looks
+// identical whether it hits a tiny Weedle or a huge Onix. MOVE_ANIM_REF: bigger
+// = smaller effects. MOVE_ANIM_DROP: fraction of the area height to push the
+// impact DOWN from the Pokémon's centre (positive = lower on screen).
+const MOVE_ANIM_REF = 88;
+const MOVE_ANIM_DROP = 0.22;
+// Moves whose animation should play ON THE OPPONENT rather than launching from
+// the played card (self-target/status moves like Metronome and Kadabra's
+// Disable). For these the "user" anchor is the opponent too.
+const MOVE_ON_OPPONENT = new Set(['metronome','disable']);
 // PokéRogue's own field anchors (src/data/battle-anims.ts). Cels are placed
 // in this native space: base offset is always (x+106, y+116); a USER-focused
 // cel is then shifted so native (106,116) lands on the user, and a TARGET-
@@ -2164,15 +2175,19 @@ function playMoveAnimation(kebab, opts){
     let impact, S;
     const spriteMetrics = measureSpriteBody(spriteEl, targetEl);
     if(!spriteMetrics) return;   // nothing laid out to aim at
-    impact = { x: spriteMetrics.cx, y: spriteMetrics.cy };
-    // Map the native battler height (~72 units) onto the real body height.
-    S = (spriteMetrics.bodyH / 72) * scale;
+    // CONSTANT size: scale to the opponent area (a fixed-size box), not the
+    // Pokémon's body, so every move is the same size regardless of species.
+    // Aim at the Pokémon's horizontal centre, pushed DOWN by MOVE_ANIM_DROP.
+    const _areaH = (targetEl && targetEl.getBoundingClientRect)
+      ? targetEl.getBoundingClientRect().height : spriteMetrics.bodyH;
+    S = (_areaH / MOVE_ANIM_REF) * scale;
+    impact = { x: spriteMetrics.cx, y: spriteMetrics.cy + _areaH * MOVE_ANIM_DROP };
 
-    // Launch point: the ATTACKING CARD's center. USER-focused cels (launch
-    // flares, muzzle effects) originate here, so each played card's move
-    // visibly starts from that card rather than from a shared spot under the
-    // enemy. Falls back to just-below-the-impact when no attacker is given.
+    // Launch point: normally the ATTACKING CARD's center, so USER-focused cels
+    // (launch flares) start from the played card. But self-target/status moves
+    // (Metronome, Disable) play ON the opponent, so their launch = the impact.
     function attackerCenter(){
+      if(MOVE_ON_OPPONENT.has(kebab)) return { x: impact.x, y: impact.y };
       const r = attackerEl && attackerEl.getBoundingClientRect
         ? attackerEl.getBoundingClientRect() : null;
       return (r && r.width >= 2 && r.height >= 2)
@@ -2279,9 +2294,14 @@ function playMoveAnimation(kebab, opts){
             canvas.width = Math.round(vw * d);
             canvas.height = Math.round(vh * d);
             ctx.setTransform(d, 0, 0, d, 0, 0);
-            // Re-measure the sprite body (its size/position may have reflowed).
+            // Re-measure after a reflow (keep the constant-size + drop model).
             const m = measureSpriteBody(spriteEl, targetEl);
-            if(m){ impact.x = m.cx; impact.y = m.cy; S = (m.bodyH / 72) * scale; }
+            if(m){
+              const aH = (targetEl && targetEl.getBoundingClientRect)
+                ? targetEl.getBoundingClientRect().height : m.bodyH;
+              impact.x = m.cx; impact.y = m.cy + aH * MOVE_ANIM_DROP;
+              S = (aH / MOVE_ANIM_REF) * scale;
+            }
             // The card moved too (reflow) - re-derive the launch point.
             const l2 = attackerCenter();
             launch.x = l2.x; launch.y = l2.y;
@@ -5022,13 +5042,7 @@ const SFX = (() => {
       const rate = (opts.pitch == null ? 100 : opts.pitch) * 0.01;
       try {
         const c = ac();
-        if(!_sampleCache[url]){
-          _sampleCache[url] = fetch(url)
-            .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
-            .then(ab => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)));
-          _sampleCache[url].catch(() => { delete _sampleCache[url]; });
-        }
-        _sampleCache[url].then(buf => {
+        this.preloadSample(url).then(buf => {
           const src = c.createBufferSource();
           src.buffer = buf;
           src.playbackRate.value = rate || 1;
@@ -5038,6 +5052,23 @@ const SFX = (() => {
           src.start(c.currentTime);
         }).catch(() => {});
       } catch(e){}
+    },
+
+    // Fetch + decode a sample into the cache WITHOUT playing it. decodeAudioData
+    // works on a suspended AudioContext (no user gesture needed), so this can
+    // run on the loading screen to eliminate the first-play fetch/decode delay.
+    // Returns the cached Promise<AudioBuffer>.
+    preloadSample(url) {
+      if(!_sampleCache[url]){
+        try {
+          const c = ac();
+          _sampleCache[url] = fetch(url)
+            .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
+            .then(ab => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)));
+          _sampleCache[url].catch(() => { delete _sampleCache[url]; });
+        } catch(e){ return Promise.reject(e); }
+      }
+      return _sampleCache[url];
     },
 
     // ── Card flip: whisper-soft paper rustle ──────────────
@@ -7159,7 +7190,7 @@ function renderOwnedItemsPanel() {
 // ══ BETWEEN-BATTLE INTERLUDE SYSTEM ══════════════════════════════
 
 // Which interlude after each gym (0=route, 1=shop, 2=daycare)
-const INTERLUDE_SEQUENCE = ['cinnabar', 'route', 'cinnabar', 'shop', 'cinnabar', 'route', 'cinnabar', 'shop', 'daycare', 'cinnabar', 'route', 'shop'];
+const INTERLUDE_SEQUENCE = ['cinnabar', 'route', 'cinnabar', 'shop', 'cinnabar', 'route', 'cinnabar', 'shop', 'cinnabar', 'route', 'shop'];
 
 // Kanto routes with actual Pokémon and locations
 const KANTO_ROUTES = [
@@ -7231,7 +7262,8 @@ function getInterludeType() {
   // Random every time — fusion mansion most common, shop guaranteed every 3rd stop
   G._sinceShop = (G._sinceShop === undefined) ? 1 : G._sinceShop;
   if(G._sinceShop >= 3){ G._sinceShop = 0; G._lastInterlude = 'shop'; return 'shop'; }
-  const pool = ['cinnabar','cinnabar','cinnabar','shop','shop','route','route','daycare'];
+  // (daycare/"duplicate" and release screens removed per request.)
+  const pool = ['cinnabar','cinnabar','cinnabar','shop','shop','route','route','route'];
   let pick = pool[Math.floor(Math.random()*pool.length)];
   if(pick === G._lastInterlude) pick = pool[Math.floor(Math.random()*pool.length)];
   if(pick === 'shop') G._sinceShop = 0; else G._sinceShop++;
@@ -7273,24 +7305,22 @@ const ACT_PAD_TOP = 80, ACT_PAD_BOTTOM = 220;
 // Weighted node type pick — fusion (Cinnabar) is deliberately more common
 // than Shop or Daycare; Battle stays the most common overall.
 function pickWeightedNodeType(){
+  // daycare/"duplicate" and release removed - their weight folds into the
+  // remaining non-battle stops (cinnabar/route/shop).
   const roll = Math.random();
   if(roll < 0.42) return 'battle';
-  if(roll < 0.58) return 'cinnabar';   // fusion — clearly the most common non-battle stop
-  if(roll < 0.70) return 'route';
-  if(roll < 0.86) return 'shop';
-  if(roll < 0.94) return 'daycare';
-  return 'release';
+  if(roll < 0.62) return 'cinnabar';   // fusion — clearly the most common non-battle stop
+  if(roll < 0.78) return 'route';
+  return 'shop';
 }
 // Same distribution as pickWeightedNodeType, minus battle - used by
 // diversifyRow to replace a node that would otherwise leave a whole row
 // as battle-only.
 function pickWeightedNonBattleNodeType(){
   const roll = Math.random();
-  if(roll < 0.28) return 'cinnabar';
-  if(roll < 0.48) return 'route';
-  if(roll < 0.76) return 'shop';
-  if(roll < 0.90) return 'daycare';
-  return 'release';
+  if(roll < 0.36) return 'cinnabar';
+  if(roll < 0.64) return 'route';
+  return 'shop';
 }
 
 function generateFullRunMap(){
@@ -11484,6 +11514,10 @@ function preloadTrainerPortraitAssets(){
 <div id="starter-particles"></div>
 
 <script>
+// Move sound-effect filenames (PokéRogue PRSFX). Listed here so the loading
+// screen can warm the audio cache without first parsing every move JSON.
+const MOVE_SFX_FILES = ["PRSFX- Absorb1.wav","PRSFX- Absorb2.wav","PRSFX- Acid Armor1.wav","PRSFX- Acid Armor2.wav","PRSFX- Acid.wav","PRSFX- Ancient Power1.wav","PRSFX- Ancient Power2.wav","PRSFX- Brick Break1.wav","PRSFX- Brick Break2.wav","PRSFX- Bubble.wav","PRSFX- Bulk Up1.wav","PRSFX- Bulk Up2.wav","PRSFX- Bullet Punch.wav","PRSFX- Bullet Seed.wav","PRSFX- Charge.wav","PRSFX- Charm.wav","PRSFX- Crunch.wav","PRSFX- Crush Claw.wav","PRSFX- Curse.wav","PRSFX- Detect.wav","PRSFX- Disable.wav","PRSFX- Dizzy Punch1.wav","PRSFX- Dizzy Punch2.wav","PRSFX- Double Kick.wav","PRSFX- Double Slap.wav","PRSFX- Dragon Breath.wav","PRSFX- Dragon Claw.wav","PRSFX- Dragon Dance.wav","PRSFX- Dragon Rage.wav","PRSFX- Dynamic Punch1.wav","PRSFX- Dynamic Punch2.wav","PRSFX- Ember.wav","PRSFX- Encore.wav","PRSFX- Fake Out1.wav","PRSFX- Fake Out2.wav","PRSFX- Fake Tears.wav","PRSFX- Final Gambit1.wav","PRSFX- Final Gambit2.wav","PRSFX- Fire Blast.wav","PRSFX- Fire Fang1.wav","PRSFX- Fire Fang2.wav","PRSFX- Fire Punch1.wav","PRSFX- Fire Punch2.wav","PRSFX- Fire Punch3.wav","PRSFX- Fire Spin.wav","PRSFX- Flail.wav","PRSFX- Follow Me.wav","PRSFX- Foresight1.wav","PRSFX- Foresight2.wav","PRSFX- Frenzy Plant1.wav","PRSFX- Frenzy Plant2.wav","PRSFX- Future Sight2.wav","PRSFX- Giga Drain1.wav","PRSFX- Giga Drain2.wav","PRSFX- Glare.wav","PRSFX- Grass Whistle.wav","PRSFX- Gust.wav","PRSFX- Hydro Pump.wav","PRSFX- Hyper Fang.wav","PRSFX- Ice Ball1.wav","PRSFX- Ice Ball2.wav","PRSFX- Iron Head.wav","PRSFX- Karate Chop1.wav","PRSFX- Karate Chop2.wav","PRSFX- Kinesis.wav","PRSFX- Leech Life1.wav","PRSFX- Leech Life2.wav","PRSFX- Lovely Kiss.wav","PRSFX- Mach Punch.wav","PRSFX- Mean Look.wav","PRSFX- Mega Drain1.wav","PRSFX- Mega Drain2.wav","PRSFX- Mega Punch1.wav","PRSFX- Megahorn1.wav","PRSFX- Megahorn2.wav","PRSFX- Metal Claw1.wav","PRSFX- Metal Claw2.wav","PRSFX- Meteor Mash1.wav","PRSFX- Meteor Mash2.wav","PRSFX- Metronome.wav","PRSFX- Nightmare.wav","PRSFX- Overheat1.wav","PRSFX- Overheat2.wav","PRSFX- Petal Dance.wav","PRSFX- Pin Missile.wav","PRSFX- Poison Fang1.wav","PRSFX- Poison Fang2.wav","PRSFX- Poison Gas.wav","PRSFX- Poison Tail1.wav","PRSFX- Poison Tail2.wav","PRSFX- Pound.wav","PRSFX- Psychic.wav","PRSFX- Psycho Cut.wav","PRSFX- Razor Leaf1.wav","PRSFX- Razor Leaf2.wav","PRSFX- Rock Smash.wav","PRSFX- Rock Throw1.wav","PRSFX- Rock Throw2.wav","PRSFX- Rolling Kick.wav","PRSFX- Sand Attack.wav","PRSFX- Scary Face.wav","PRSFX- Scratch.wav","PRSFX- Shadow Ball1.wav","PRSFX- Shadow Ball2.wav","PRSFX- Sing.wav","PRSFX- Sludge Bomb1.wav","PRSFX- Sludge Bomb2.wav","PRSFX- Smog.wav","PRSFX- Splash.wav","PRSFX- Stealth Rocks.wav","PRSFX- String Shot1.wav","PRSFX- String Shot2.wav","PRSFX- Struggle.wav","PRSFX- Supersonic.wav","PRSFX- Swagger1.wav","PRSFX- Swagger2.wav","PRSFX- Sweet Kiss1.wav","PRSFX- Sweet Kiss2.wav","PRSFX- Thunder Fang.wav","PRSFX- Thunder Punch1.wav","PRSFX- Thunder Punch2.wav","PRSFX- Thunder Wave.wav","PRSFX- Thundershock.wav","PRSFX- Twineedle1.wav","PRSFX- Twister.wav","PRSFX- Vine Whip.wav","PRSFX- Whirlwind.wav","PRSFX- Wrap.wav","PRSFX- Wring Out1.wav","PRSFX- Wring Out2.wav"];
+
 // ── ASSET PRELOADER — wait for every base sprite before the game begins ──
 function loadAllAssetsThenStart() {
   const bar = document.getElementById('asset-loading-bar');
@@ -11494,13 +11528,25 @@ function loadAllAssetsThenStart() {
     const p = KANTO_BY_DEX[d];
     if(p) urls.push(`https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/sprites/${d}.png`);
   }
-  const total = urls.length || 1;
+  // Audio to warm so the FIRST play of any sound has no fetch/decode delay:
+  // move SFX + hit + every Kanto cry. Decoded into SFX's cache here (works on
+  // a suspended AudioContext, before any user gesture).
+  const sfxBase = (typeof BATTLE_ANIM_BASES !== 'undefined' ? BATTLE_ANIM_BASES[0]
+    : 'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/battle-anims/') + 'sfx/';
+  const cryBase = (typeof CRY_BASE !== 'undefined' ? CRY_BASE
+    : 'https://cdn.jsdelivr.net/gh/ethanlam1234/pokevolve@main/assets/cries/');
+  const audioUrls = [];
+  MOVE_SFX_FILES.forEach(n => audioUrls.push(sfxBase + encodeURIComponent(n)));
+  audioUrls.push(sfxBase + 'hit.wav');
+  for(let d=1; d<=151; d++) audioUrls.push(cryBase + d + '.m4a');
+
+  const total = (urls.length + audioUrls.length) || 1;
   let done = 0;
   const bump = () => {
     done++;
     const pct = Math.round((done/total)*100);
     if(bar) bar.style.width = pct + '%';
-    if(label) label.textContent = 'LOADING SPRITES... ' + pct + '%';
+    if(label) label.textContent = 'LOADING ASSETS... ' + pct + '%';
   };
   const loadOne = (url) => new Promise(res => {
     const img = new Image();
@@ -11508,8 +11554,14 @@ function loadAllAssetsThenStart() {
     img.onerror = () => { bump(); res(); };   // a broken URL can't hang the loading screen
     img.src = url;
   });
-  const allLoaded = Promise.all(urls.map(loadOne));
-  const maxWait = new Promise(res => setTimeout(res, 2000));   // never block the player long — this is just a cache warm-up, not a requirement
+  const loadAudio = (url) => Promise.resolve(
+    (typeof SFX !== 'undefined' && SFX.preloadSample) ? SFX.preloadSample(url) : null
+  ).then(() => bump(), () => bump());
+  const allLoaded = Promise.all([...urls.map(loadOne), ...audioUrls.map(loadAudio)]);
+  // Never block the player long - decoding ~280 clips can take a few seconds,
+  // but the starter-select screen buys more time and any not-yet-cached clip
+  // keeps decoding in the background, so raise the cap modestly.
+  const maxWait = new Promise(res => setTimeout(res, 4500));
   Promise.race([allLoaded, maxWait]).then(() => {
     if(screen){
       screen.style.transition = 'opacity 0.35s ease';
