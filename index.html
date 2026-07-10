@@ -1433,8 +1433,11 @@ html { overflow: hidden; }
   transition:transform 0.15s ease;
 }
 .deck-pile:hover { transform:translateY(-4px) scale(1.04); }
-#deck-ours  { right:clamp(14px,1.5vw,24px); bottom:clamp(80px,9vh,130px); }
+/* Deck sits in the very bottom-right corner (money counter removed). */
+#deck-ours  { right:clamp(14px,1.5vw,24px); bottom:clamp(16px,2.6vh,34px); }
 #deck-theirs{ display:none !important; }
+/* Money is no longer used or shown anywhere. */
+#gold-display { display:none !important; }
 .deck-card {
   position:absolute; inset:0; border-radius:6px; overflow:hidden;
   background:repeating-linear-gradient(135deg,#1a1060 0,#1a1060 6px,#110a44 6px,#110a44 12px);
@@ -1747,7 +1750,7 @@ html { overflow: hidden; }
   /* ── Cards ── */
   .hc { width:clamp(68px,10.5vw,100px) !important; margin:0 -7px !important; }
   .hc.selected-hand { transform:rotate(var(--tilt,0deg)) translateY(-20px) scale(1.05) !important; }
-  #hand-container { bottom:clamp(90px,13vh,130px) !important; }
+  #hand-container { bottom:clamp(66px,10vh,104px) !important; }
 
   /* ── Bottom bar ── */
   .action-btn { font-size:9px !important; padding:6px 16px !important; min-width:0 !important; }
@@ -1811,9 +1814,8 @@ html { overflow: hidden; }
   .rp-hd-val  { font-size:20px !important; }
   .rp-hd-label { font-size:7px !important; }
 
-  /* ── Gold + deck ── */
-  #gold-display { font-size:12px !important; padding:3px 9px !important; border-width:2px !important; }
-  #deck-ours { width:clamp(68px,10.5vw,100px) !important; bottom:clamp(52px,8vh,90px) !important; right:8px !important; }
+  /* ── Deck (money removed) ── */
+  #deck-ours { width:clamp(60px,9.5vw,88px) !important; bottom:clamp(16px,3.4vh,44px) !important; right:6px !important; }
 
   /* ── Owned items ── */
   #owned-items-panel { gap:3px !important; max-width:clamp(130px,20vw,180px) !important; right:6px !important; top:6px !important; }
@@ -1823,7 +1825,8 @@ html { overflow: hidden; }
   /* ── Score overlay mobile ── */
   #hand-score-overlay { top:clamp(40px,6vh,80px) !important; transform:translateX(-50%) scale(0.72) !important; transform-origin:top center !important; }
   /* ── Available hands panel ── */
-  #hud-toggle-row { top:4px !important; }
+  /* MOVES/BONUSES buttons hidden on mobile - they're now tabs in View Deck. */
+  #hud-toggle-row { display:none !important; }
   .hud-toggle-btn { font-size:8px !important; padding:6px 10px !important; }
   #hands-panel { top:40px !important; max-width:96vw !important; max-height:50vh !important; padding:8px 10px !important; gap:4px !important; }
   #rp-hand-preview { top:40px !important; width:clamp(120px,32vw,170px) !important; padding:6px 8px !important; }
@@ -1886,10 +1889,10 @@ html { overflow: hidden; }
   #route-view-deck-btn { font-size:9px !important; padding:5px 12px !important; }
   .between-skip { font-size:9px !important; }
 
-  /* ── Opponent Pokémon sits too high on mobile — bring it down closer to the fan ── */
-  #opp-pokemon-area { bottom:44vh !important; }
+  /* ── Opponent Pokémon: keep it UP so its HP bar doesn't overlap the card fan ── */
+  #opp-pokemon-area { bottom:53vh !important; }
   #opp-pokemon-img-wrap { width:clamp(142px,38vw,195px) !important; }
-  #opp-pkmn-hp-wrap { width:clamp(123px,34vw,182px) !important; margin-top:34px !important; }
+  #opp-pkmn-hp-wrap { width:clamp(123px,34vw,182px) !important; margin-top:18px !important; }
   #opp-pkmn-intent-badge { padding:0 !important; }
   #opp-pkmn-intent-icon { height:13px !important; }
   #opp-pkmn-intent-num { font-size:10px !important; }
@@ -3095,8 +3098,8 @@ document.addEventListener('keydown',e=>{
 
 <div id="hand-container" style="display:none"></div>
 <div id="hud-toggle-row">
-  <button id="hud-hands-btn" class="hud-toggle-btn" onclick="openHandsViewer()">BONUSES</button>
-  <button id="hud-abilities-btn" class="hud-toggle-btn" onclick="openAbilitiesViewer()">MOVES</button>
+  <button id="hud-hands-btn" class="hud-toggle-btn" onclick="openDeckViewer('bonuses')">BONUSES</button>
+  <button id="hud-abilities-btn" class="hud-toggle-btn" onclick="openDeckViewer('moves')">MOVES</button>
 </div>
 <div id="rp-hand-preview">
   <div id="rp-hand-preview-label">Selected Meld</div>
@@ -8587,7 +8590,7 @@ const DV_HIDE_IDS = [
   'rummy-board','rummy-contract','rummy-boss','trainer-dialogue'
 ];
 
-function openDeckViewer() {
+function openDeckViewer(tab) {
   // Allow from interlude screens regardless of G.animating
   const routeVisible   = document.getElementById('route-screen')?.classList.contains('visible');
   const daycareVisible = document.getElementById('daycare-screen')?.classList.contains('visible');
@@ -8621,7 +8624,7 @@ function openDeckViewer() {
   // Force the viewer visible with explicit display style (belt + suspenders)
   viewer.style.display = 'flex';
   viewer.classList.add('open');
-  renderDeckViewer();
+  dvSetTab(tab || 'deck');
 }
 
 let _deckViewerFromRoute = false;
@@ -8799,9 +8802,7 @@ function renderDeckViewer() {
   } else if(_dvSort === 'type') {
     sorted.sort((a,b)=>(a.type1||'').localeCompare(b.type1||''));
   }
-  // Set sort buttons
-  document.querySelectorAll('.dv-sort-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('dv-sort-'+_dvSort)?.classList.add('active');
+  // (Tab active state is managed by dvSetTab, not here.)
 
   sorted.forEach((card, i) => {
     const slot = document.createElement('div');
@@ -8818,6 +8819,32 @@ function renderDeckViewer() {
 function dvSetSort(mode) {
   _dvSort = mode;
   renderDeckViewer();
+}
+
+// The deck viewer has three tabs: DECK (your cards), MOVES (all 151 moves),
+// BONUSES (the meld guide). The Moves/Bonuses panels were relocated INTO the
+// deck viewer so they share this one toggle instead of separate overlays.
+let _dvTab = 'deck';
+function dvSetTab(tab){
+  _dvTab = tab;
+  const wraps = { deck:'dv-grid-wrap', moves:'av-grid-wrap', bonuses:'hv-grid-wrap' };
+  Object.entries(wraps).forEach(([t,id]) => { const el = document.getElementById(id); if(el) el.style.display = (t===tab) ? '' : 'none'; });
+  document.querySelectorAll('#dv-sort-row .dv-sort-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('dv-tab-'+tab)?.classList.add('active');
+  const title = document.getElementById('dv-title');
+  const count = document.getElementById('dv-count');
+  if(tab === 'moves'){
+    if(title) title.textContent = 'MOVES';
+    if(count) count.textContent = '151 Pokémon';
+    if(typeof renderAbilitiesViewer === 'function') renderAbilitiesViewer();
+  } else if(tab === 'bonuses'){
+    if(title) title.textContent = 'BONUSES';
+    if(count) count.textContent = (typeof getMeldTypeGuide === 'function' ? getMeldTypeGuide().length : '') + ' meld types';
+    if(typeof renderHandsViewer === 'function') renderHandsViewer();
+  } else {
+    if(title) title.textContent = 'YOUR DECK';
+    renderDeckViewer();   // sets its own card count
+  }
 }
 
 
@@ -9050,11 +9077,7 @@ function getMeldTypeGuide(){
   ];
 }
 
-function openHandsViewer(){
-  if(typeof SFX!=='undefined') SFX.uiClick();
-  renderHandsViewer();
-  document.getElementById('hands-viewer')?.classList.add('open');
-}
+function openHandsViewer(){ openDeckViewer('bonuses'); }
 function closeHandsViewer(){
   document.getElementById('hands-viewer')?.classList.remove('open');
 }
@@ -9095,11 +9118,7 @@ function renderHandsViewer(){
   });
 }
 
-function openAbilitiesViewer(){
-  if(typeof SFX!=='undefined') SFX.uiClick();
-  renderAbilitiesViewer();
-  document.getElementById('abilities-viewer')?.classList.add('open');
-}
+function openAbilitiesViewer(){ openDeckViewer('moves'); }
 function closeAbilitiesViewer(){
   document.getElementById('abilities-viewer')?.classList.remove('open');
 }
@@ -9155,8 +9174,12 @@ function renderAbilitiesViewer(){
 // ── ITEM POPOVER ──────────────────────────────────────────────────
 let _popoverTimer = null;
 let _popoverEnabled = false; // only show during battle
+// Popovers are a hover affordance - suppress them entirely on touch devices.
+// A tap fires SYNTHESIZED mouseenter/mousemove after touchend, which would
+// otherwise pop the move tooltip over the card the user is trying to select.
+const _canHoverPopover = !(typeof window.matchMedia === 'function' && window.matchMedia('(hover: none), (pointer: coarse)').matches);
 function showItemPopover(text, x, y) {
-  if(!_popoverEnabled) return;
+  if(!_popoverEnabled || !_canHoverPopover) return;
   const pop = document.getElementById('item-popover');
   if(!pop) return;
   pop.textContent = text;
@@ -9172,19 +9195,12 @@ function hideItemPopover() {
   document.getElementById('item-popover')?.classList.remove('visible');
 }
 function attachPopover(el, text) {
+  // Hover popover (desktop only). We deliberately DON'T attach a touch handler:
+  // on mobile the popover both isn't wanted and was overlapping the card, eating
+  // the very tap meant to select it. Touch devices get no popover at all.
   el.addEventListener('mouseenter', e => showItemPopover(text, e.clientX, e.clientY));
   el.addEventListener('mousemove',  e => showItemPopover(text, e.clientX, e.clientY));
   el.addEventListener('mouseleave', hideItemPopover);
-  // NO preventDefault here: calling it on touchstart suppresses the browser's
-  // synthesized click for that tap, which silently killed card selection (and
-  // every other tap handler) on mobile. Passive listener shows the popover AND
-  // lets the tap click through normally.
-  el.addEventListener('touchstart', e => {
-    const t = e.touches[0];
-    showItemPopover(text, t.clientX, t.clientY);
-    clearTimeout(_popoverTimer);
-    _popoverTimer = setTimeout(hideItemPopover, 2500);
-  }, {passive:true});
 }
 
 function renderOppHand(animateLast) { return; }
@@ -11648,7 +11664,6 @@ function openDeckDetail(deckId, pileEl) {
   const starterScr = document.getElementById('starter-screen');
   if(starterScr) starterScr.style.visibility = 'hidden';
   document.getElementById('dds-deck-name').textContent = deck.name;
-  document.getElementById('dds-bonus').textContent = deck.ability;
   document.getElementById('dds-risk').textContent  = deck.weakness;
   // Render deck cards
   const cardsWrap = document.getElementById('dds-cards');
@@ -11694,7 +11709,7 @@ function confirmStarterDeck(){
 function beginBattleWithDeck(deckId){
   const deckDef=STARTER_DECKS.find(d=>d.id===deckId);
   if(!deckDef) return;
-  G._heroAbilityId = deckDef.heroAbility || null;
+  G._heroAbilityId = null;   // starter hero abilities removed
   G._heroStarterDex = deckDef.starterDex || null;
   G.bonusCards=[];
   G._starterDeckCards=deckDef.buildDeck();
@@ -12736,41 +12751,29 @@ function startNextBattle() {
   <div id="release-cards-grid"></div>
 </div>
 
-<!-- ── ABILITIES VIEWER — every Pokémon in hand and its move(s) ── -->
-<div id="abilities-viewer">
-  <div id="av-header">
-    <div id="av-title">MOVES</div>
-    <div id="av-count">0 Pokémon</div>
-    <button id="av-close" onclick="if(typeof SFX!=='undefined') SFX.back(); closeAbilitiesViewer();">✕ CLOSE</button>
-  </div>
-  <div id="av-grid-wrap"><table id="av-table"><thead><tr>
-    <th class="av-col-num">#</th><th class="av-col-sprite"></th><th class="av-col-name">Pokémon</th>
-    <th class="av-col-move">Move</th><th class="av-col-desc">Description</th>
-  </tr></thead><tbody id="av-tbody"></tbody></table></div>
-</div>
+<!-- Moves & Bonuses now live as tabs inside the DECK VIEWER below. -->
 
-<div id="hands-viewer">
-  <div id="hv-header">
-    <div id="hv-title">BONUSES</div>
-    <div id="hv-count">4 meld types</div>
-    <button id="hv-close" onclick="if(typeof SFX!=='undefined') SFX.back(); closeHandsViewer();">✕ CLOSE</button>
-  </div>
-  <div id="hv-grid-wrap"><div id="hv-list"></div></div>
-</div>
-
-
-<!-- ── DECK VIEWER OVERLAY ── -->
+<!-- ── DECK VIEWER OVERLAY — DECK / MOVES / BONUSES tabs ── -->
 <div id="deck-viewer">
   <div id="dv-header">
     <div id="dv-title">YOUR DECK</div>
     <div id="dv-count">0 cards</div>
     <div id="dv-sort-row">
-      <button class="dv-sort-btn active" id="dv-sort-species" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); dvSetSort('species');">SPECIES</button>
-      <button class="dv-sort-btn" id="dv-sort-type" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); dvSetSort('type');">TYPE</button>
+      <button class="dv-sort-btn active" id="dv-tab-deck" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); dvSetTab('deck');">DECK</button>
+      <button class="dv-sort-btn" id="dv-tab-moves" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); dvSetTab('moves');">MOVES</button>
+      <button class="dv-sort-btn" id="dv-tab-bonuses" onclick="if(typeof SFX!=='undefined') SFX.sortToggle(); dvSetTab('bonuses');">BONUSES</button>
     </div>
     <button id="dv-close" onclick="if(typeof SFX!=='undefined') SFX.back(); closeDeckViewer();">✕ CLOSE</button>
   </div>
+  <!-- DECK tab -->
   <div id="dv-grid-wrap"><div id="dv-grid"></div></div>
+  <!-- MOVES tab (all 151 moves) -->
+  <div id="av-grid-wrap" style="display:none"><table id="av-table"><thead><tr>
+    <th class="av-col-num">#</th><th class="av-col-sprite"></th><th class="av-col-name">Pokémon</th>
+    <th class="av-col-move">Move</th><th class="av-col-desc">Description</th>
+  </tr></thead><tbody id="av-tbody"></tbody></table></div>
+  <!-- BONUSES tab (meld guide) -->
+  <div id="hv-grid-wrap" style="display:none"><div id="hv-list"></div></div>
 </div>
 
 <!-- ── POKÉDEX — visually identical to the deck viewer above ── -->
@@ -12797,10 +12800,6 @@ function startNextBattle() {
   </div>
   <div id="dds-body">
     <div id="dds-info">
-      <div class="dds-info-stat">
-        <span class="dds-info-label">Bonus</span>
-        <span class="dds-info-val green" id="dds-bonus"></span>
-      </div>
       <div class="dds-info-stat">
         <span class="dds-info-label">Risk</span>
         <span class="dds-info-val red" id="dds-risk"></span>
@@ -12866,7 +12865,7 @@ function startNextBattle() {
 
 const RBAL = {
   cardValue: 20,
-  handStart: 8,
+  handStart: 5,   // draw a 5-card hand each turn
   playsNormal: 2, playsElite: 3, playsBoss: 3,
   discards: 3,
   speciesMult: 2, speciesPerExtra: 1,
@@ -12884,10 +12883,10 @@ const RBAL = {
 };
 
 function RUMMY_HAND_START(){ return RBAL.handStart + sumEffectAmount('hand_size') + (G._tempHandSizeBonus||0); }
-getHandSize = function(){ return RUMMY_HAND_START() + 2; };
-// Cap each meld/turn at 5 cards. (This overrides the earlier 6422 definition;
-// it previously returned the whole hand size, which let you play up to 8.)
-getMaxPlay  = function(){ return 5; };
+// Hand is exactly the draw count (5) - no +2 cap above it, so you hold 5.
+getHandSize = function(){ return RUMMY_HAND_START(); };
+// Cap each play at 3 cards.
+getMaxPlay  = function(){ return 3; };
 
 // Player HP pool for the move-integration battle layer - a per-battle
 // resource (like handsLeft), not a run-persistent one: there's no rest/
