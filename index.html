@@ -723,13 +723,26 @@ html { overflow: hidden; }
 }
 @media (max-height:520px), (max-width:960px) and (orientation:landscape) {
   #trainer-dialogue {
-    left:calc(6px + clamp(110px,20vw,150px) + 8px);
-    max-width:clamp(140px,30vw,220px);
-    top:6px;
+    /* left/top are set in JS (showTrainerDialogue) to sit BELOW the trainer
+       panel; width tracks the panel so it reads as one stacked column. */
+    max-width:clamp(140px,26vw,190px);
+    width:clamp(140px,26vw,190px);
   }
   #trainer-dialogue-inner {
     font-size:clamp(6px,1.1vw,8px);
     padding:7px 10px 9px;
+  }
+  /* The bubble is now under the portrait, so swap the arrow from pointing
+     left to pointing up toward the trainer panel. */
+  #trainer-dialogue.td-below #trainer-dialogue-inner::before {
+    left:18px; top:-9px;
+    border-left:7px solid transparent; border-right:7px solid transparent;
+    border-bottom:9px solid rgba(80,120,220,0.6); border-top:0;
+  }
+  #trainer-dialogue.td-below #trainer-dialogue-inner::after {
+    left:19px; top:-6px;
+    border-left:6px solid transparent; border-right:6px solid transparent;
+    border-bottom:7px solid rgba(8,12,28,0.97); border-top:0;
   }
 }
 @keyframes dialoguePop { from{opacity:0;transform:translateX(-6px) scale(0.97)} to{opacity:1;transform:translateX(0) scale(1)} }
@@ -5040,16 +5053,19 @@ function showRotomRadio() {
         el.style.top = 'auto';
       }
     } else {
-      // Desktop: top-right, just above the selected-meld panel.
+      // Desktop: top-right, just above the selected-meld panel. Guard against a
+      // degenerate rect - the panel can measure {0,0,0,0} if it hasn't been laid
+      // out yet when this runs, which previously flung the widget off-screen
+      // (right:innerWidth, top:negative). Fall back to a fixed top-right corner.
       const preview = document.getElementById('rp-hand-preview');
-      if(preview) {
-        const r = preview.getBoundingClientRect();
+      const r = preview ? preview.getBoundingClientRect() : null;
+      if(r && r.width > 0 && r.right > 0 && r.top > 0) {
         el.style.right = (window.innerWidth - r.right) + 'px'; el.style.left = 'auto';
         el.style.bottom = (window.innerHeight - r.top + 8) + 'px';
         el.style.top = 'auto';
       } else {
         el.style.right = '12px'; el.style.left = 'auto';
-        el.style.top = '12px'; el.style.bottom = 'auto';
+        el.style.top = '10px'; el.style.bottom = 'auto';
       }
     }
   }
@@ -5649,6 +5665,19 @@ function showTrainerDialogue(trainerName) {
   console.log('[DIALOGUE] Showing:', trainerName, '|', line.slice(0,40));
   // Show + reset opacity first, then animate in
   bubble.style.display = 'block';
+  // Mobile: render the bubble BELOW the trainer panel (top-left) instead of to
+  // its right - the landscape screen is too narrow for a side bubble. Measure
+  // the run-panel's actual bottom so it clears the (variable-height) portrait.
+  if(typeof isMobileLayout==='function' && isMobileLayout()){
+    const rp = document.getElementById('run-panel');
+    const r = rp ? rp.getBoundingClientRect() : null;
+    bubble.style.left = (r ? Math.round(r.left) : 6) + 'px';
+    bubble.style.top  = (r ? Math.round(r.bottom + 6) : 6) + 'px';
+    bubble.classList.add('td-below');
+  } else {
+    bubble.style.left = ''; bubble.style.top = '';
+    bubble.classList.remove('td-below');
+  }
   bubble.style.opacity = '1';
   bubble.style.transition = 'none';
   inner.style.animation = 'none';
@@ -8406,8 +8435,7 @@ async function openRouteScreen(forcedRouteData) {
   G._routeData = routeData;
   document.getElementById('route-name-display').textContent = routeData.name;
   document.getElementById('route-sub-display').textContent  = routeData.subtitle;
-  document.getElementById('route-pick-label').textContent   = 'Pick 1 Pokémon to add to your deck';
-  const rcbReset=document.getElementById('route-confirm-btn');if(rcbReset){rcbReset.style.opacity='0.35';rcbReset.style.pointerEvents='none';rcbReset.style.filter='saturate(0)';}
+  document.getElementById('route-pick-label').textContent   = 'Click a Pokémon to add it to your deck';
   _routePicked = null;
   _routeOffer = null;
   document.getElementById('route-screen').classList.add('visible');
@@ -8420,12 +8448,13 @@ function _drawRouteCard(row, card, i) {
   const wrap = makeCardVisual(card, 'width:clamp(110px,11vw,155px);aspect-ratio:2/3;animation:shopItemIn 0.4s '+(i*0.08)+'s cubic-bezier(0.15,1.1,0.35,1) both;');
   wrap.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
   wrap.addEventListener('click', () => {
-    row.querySelectorAll('.card-visual').forEach(c=>c.classList.remove('cv-selected'));
-    wrap.classList.add('cv-selected');
+    // No selection step, no ADD TO DECK button - clicking a card adds it
+    // straight to the deck. Guard so a second click (or a click landing while
+    // we're already leaving) can't add twice.
+    if(_routePicked) return;
     _routePicked = card;
-    const rcb=document.getElementById('route-confirm-btn');if(rcb){rcb.style.opacity='1';rcb.style.pointerEvents='all';rcb.style.filter='none';}
+    confirmRoutePick();
   });
-  if (_routePicked && _routePicked === card) wrap.classList.add('cv-selected');
   return wrap;
 }
 
@@ -8454,11 +8483,6 @@ async function renderRouteRow() {
     if (myGen !== _routeRenderGen) return;
     row.innerHTML = '';
     _routeOffer.forEach((card, i) => row.appendChild(_drawRouteCard(row, card, i)));
-    if (!_routePicked) {
-      const cards = row.querySelectorAll('.card-visual');
-      const midIdx = Math.floor(cards.length / 2);
-      if(cards[midIdx]) setTimeout(() => cards[midIdx].click(), 50);
-    }
 
     pickedDex.forEach((dex, i) => {
       if (Math.random() >= 0.4) return;   // this slot stays a basic card
@@ -8496,11 +8520,6 @@ async function renderRouteRow() {
   if (myGen !== _routeRenderGen) return;
   row.innerHTML = '';
   _routeOffer.forEach((card, i) => row.appendChild(_drawRouteCard(row, card, i)));
-  if (!_routePicked) {
-    const cards = row.querySelectorAll('.card-visual');
-    const midIdx = Math.floor(cards.length / 2);
-    if(cards[midIdx]) setTimeout(() => cards[midIdx].click(), 50);
-  }
 }
 
 
@@ -12916,7 +12935,6 @@ function startNextBattle() {
       <button id="route-view-deck-btn" onclick="if(typeof SFX!=='undefined') SFX.uiClick(); _deckViewerFromRoute=true; openDeckViewer();">VIEW DECK</button>
       <button class="between-skip" onclick="if(typeof SFX!=='undefined') SFX.skip(); skipRoute();">SKIP →</button>
     </div>
-    <button id="route-confirm-btn" onclick="if(typeof SFX!=='undefined') SFX.confirm(); confirmRoutePick();">ADD TO DECK</button>
   </div>
 </div>
 
