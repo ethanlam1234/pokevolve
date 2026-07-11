@@ -6380,10 +6380,11 @@ function rResolveOpponentTurn() {
     if (typeof playOpponentAttackAnimation === 'function') playOpponentAttackAnimation(amt);
     const absorbed = Math.min(G.playerBlock || 0, amt);
     G.playerBlock = Math.max(0, (G.playerBlock || 0) - absorbed);
-    const toHp = amt - absorbed;
-    if (toHp > 0) {
-      G.playerHp = Math.max(0, G.playerHp - toHp);
-      if (typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('rp-health'), '-' + fmtNum(toHp), '#ff4444');
+    // All-or-nothing: if the attack wasn't FULLY negated (Weaken + Block), the
+    // player takes exactly 1 HP - no matter how big the leftover is.
+    if (amt - absorbed > 0) {
+      G.playerHp = Math.max(0, G.playerHp - 1);
+      if (typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('rp-health'), '-1', '#ff4444');
     }
   } else if (p.intent === 'block') {
     if (!G._oppShieldDisabled && !G._cancelNextShieldGain) {
@@ -13022,9 +13023,10 @@ getMaxPlay  = function(){ return 3; };
 // make runs unwinnable over time. Scales gently with progress, same
 // growth shape as getTrainerTarget below.
 function rPlayerMaxHp(){
-  // Block is the main defense again, so HP is a real pool (an unblocked enemy
-  // attack of 20-60 vs 3 HP would be instant death).
-  return Math.round(80 + (G.trainerIdx||0)*4);
+  // 3 HP. Each enemy attack is all-or-nothing: FULLY negate it (Weaken reducing
+  // its value to 0, and/or Block matching the value) to take 0, else take
+  // exactly 1 - see rResolveOpponentTurn.
+  return 3;
 }
 
 getTrainerTarget = function(idx){
