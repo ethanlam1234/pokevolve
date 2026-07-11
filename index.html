@@ -358,7 +358,9 @@ html { overflow: hidden; }
 .rp-hp-desc  { font-size:clamp(10px,1.0vw,14px); color:#667788; line-height:1.6; }
 /* Hand name preview in panel */
 #rp-hand-preview {
-  position:fixed; z-index:108; right:12px; top:clamp(52px,7vh,68px);
+  /* On desktop the BONUSES/MOVES row that used to sit above this is gone, so
+     pull the panel up into that freed space (the music widget rides just above). */
+  position:fixed; z-index:108; right:12px; top:clamp(46px,6vh,54px);
   width:clamp(160px,18vw,240px);
   font-family:'PokemonClassic',monospace;
   background:rgba(8,10,26,0.94); border:2px solid rgba(50,70,140,0.5);
@@ -3443,7 +3445,7 @@ function moveBadge(dex, className) {
   const el = document.createElement('span');
   el.className = className;
   el.textContent = move ? move.name : '???';
-  el.style.background = move ? moveRoleColor(move.role) : '#555';
+  el.style.background = move ? moveCategoryColor(move) : '#555';
   return el;
 }
 
@@ -3875,7 +3877,7 @@ function updateActionBar() {
       if(movesEl && typeof getCardMoves === 'function'){
         const esc = s => String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
         movesEl.innerHTML = selectedCards.flatMap(c => getCardMoves(c)).map(m => {
-          const col = (typeof TYPE_COLORS!=='undefined' && TYPE_COLORS[m.move.type]) || '#ffdd66';
+          const col = (typeof moveCategoryColor==='function' ? moveCategoryColor(m.move) : '#ffdd66');
           return `<div class="rphm-item">`
             + `<div class="rphm-name" style="color:${col}">${esc(m.move.name)}</div>`
             + `<div class="rphm-desc">${esc(m.move.desc)}</div>`
@@ -5725,6 +5727,47 @@ const MOVE_ROLE_COLORS = {
   wildcard:'#D6489C', adapt:'#D6489C', reusable:'#D6489C', cleanse:'#D6489C', information:'#D6489C', support:'#D6489C',
 };
 function moveRoleColor(role){ return MOVE_ROLE_COLORS[role] || '#888'; }
+
+// ── MOVE CATEGORIES ──────────────────────────────────────────────
+// Every move collapses into one of six gameplay categories. This is what the
+// card badge / meld panel color and label by - NOT the raw Pokémon type (which
+// gave ~18 different colors) nor the fine-grained design "role" (~30 strings).
+//   Discards  - cares about / triggers on discarding
+//   Damage    - deals damage
+//   Block     - grants Block
+//   Weaken    - lowers the enemy's attack (weaken / sleep / paralyze / freeze / confuse)
+//   DOT       - applies Poison or Burn (damage over time)
+//   Utility   - everything else (Mult, draw, setup, economy, support…)
+const MOVE_CATEGORIES = {
+  Discards:{ color:'#3FAE4E' },
+  Damage:  { color:'#E4483E' },
+  Block:   { color:'#3B82C4' },
+  Weaken:  { color:'#9C4FC4' },
+  DOT:     { color:'#C4772E' },
+  Utility: { color:'#B0B4C0' },
+};
+// Roles whose intent is unambiguous regardless of the move's text.
+const ROLE_CATEGORY = {
+  block:'Block', counter:'Block',
+  discard:'Discards', discard_payoff:'Discards',
+};
+function moveCategory(move){
+  if(!move) return 'Utility';
+  if(move._cat) return move._cat;               // cached
+  let cat = ROLE_CATEGORY[move.role];
+  if(!cat){
+    const d = (move.desc || '') + ' ' + (move.name || '');
+    if(/poison|burn/i.test(d))                              cat = 'DOT';
+    else if(/block/i.test(d))                               cat = 'Block';
+    else if(/discard/i.test(d))                             cat = 'Discards';
+    else if(/asleep|sleep|paraly|frozen|freeze|confus|weaken|reduce.*attack|lower.*attack|halv/i.test(d)) cat = 'Weaken';
+    else if(/deal\s+\d|damage/i.test(d))                    cat = 'Damage';
+    else                                                    cat = 'Utility';
+  }
+  try { move._cat = cat; } catch(e){}
+  return cat;
+}
+function moveCategoryColor(move){ return (MOVE_CATEGORIES[moveCategory(move)]||{}).color || '#888'; }
 
 const POKEMON_MOVES = {
   1:{name:'Photosynthesis',type:'Grass',role:'investment',desc:'Gain 30 Damage per turn held. Deal it all when played.'},
@@ -9255,7 +9298,7 @@ function buildAbilityTableRow(tbody, dex){
   const tdDesc = document.createElement('td');
   if(move){
     const pill = document.createElement('span'); pill.className = 'av-move-name-pill'; pill.textContent = move.name;
-    pill.style.background = moveRoleColor(move.role);
+    pill.style.background = moveCategoryColor(move);
     tdMove.appendChild(pill);
     const desc = document.createElement('span'); desc.className = 'av-move-desc'; desc.textContent = move.desc;
     tdDesc.appendChild(desc);
@@ -13908,7 +13951,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
 /* z-index above the hand (#hand-container is 100) so the opponent's HP bar and
    status icons are never hidden behind the card fan. The sprite sits well above
    the cards, so raising the whole cluster doesn't cover the hand. */
-#opp-pokemon-area{position:fixed;left:50%;transform:translateX(-50%);bottom:58vh;z-index:105;
+#opp-pokemon-area{position:fixed;left:50%;transform:translateX(-50%);bottom:59vh;z-index:105;
   display:none;flex-direction:column;align-items:center;gap:6px;pointer-events:none;
   font-family:'PokemonClassic',monospace;}
 #opp-pokemon-img-wrap{position:relative;width:clamp(195px,21vw,285px);aspect-ratio:4/3;}
@@ -13928,7 +13971,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>
    about the wrap's nominal box, not that overflow, which is what was
    pulling the HP bar up into the art. This margin-top clears it (bumped
    up alongside the wrap getting bigger, since the overflow is a % of it). */
-#opp-pkmn-hp-wrap{width:clamp(168px,19.5vw,245px);margin-top:clamp(14px,2.2vw,26px);}
+#opp-pkmn-hp-wrap{width:clamp(168px,19.5vw,245px);margin-top:clamp(24px,3.2vw,38px);}
 #opp-pkmn-hp-track{position:relative;width:100%;height:19px;
   background:rgba(20,20,30,0.9);border:2px solid rgba(60,80,120,0.7);border-radius:6px;overflow:hidden;
   box-shadow:inset 0 2px 3px rgba(0,0,0,0.6),0 2px 5px rgba(0,0,0,0.5);}
