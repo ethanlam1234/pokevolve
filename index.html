@@ -6356,50 +6356,51 @@ function playOpponentBlockAnimation(){
   }).catch(()=>{});
 }
 
-// Resolves the opponent's currently-shown intent, ticks poison/burn (plus
-// Leech Seed's separate growing drain) against trainerHp, then rolls the
-// next intent - unless it's locked/force-repeated (Wrap/Vine Trap/Encore).
-function rResolveOpponentTurn() {
+// The opponent's turn is SPLIT around our damage:
+//  - a BLOCK resolves BEFORE our damage (rResolveOpponentBlock), so its shield
+//    reduces what our cards deal this turn;
+//  - an ATTACK resolves AFTER our damage (rResolveOpponentAttack), so if we KILL
+//    the Pokémon first, it never gets to hit us (killing negates the damage).
+// rollOpponentIntent runs in the attack phase, once the turn is fully over.
+
+// PRE-damage phase: only a BLOCK intent acts here.
+function rResolveOpponentBlock() {
   const p = G.theirPokemon;
   if (!p) return;
-  // (No skip on switch-in: a freshly-sent Pokémon acts on the next play as
-  // soon as its intent is shown, so its block/attack is never delayed a turn.)
-  G._skipEnemyTurnOnce = false;
-  if (G._regenPerTurn) G.playerHp = Math.min(G.playerMaxHp, G.playerHp + G._regenPerTurn);
+  G._skipEnemyTurnOnce = false;   // no switch-in skip
+  if (p.intent !== 'block') return;
+  if (Math.random() * 100 < (G._enemyFailPct || 0)) return;   // fizzled
+  if (!G._oppShieldDisabled && !G._cancelNextShieldGain) {
+    let amt = p.intentAmt || 0;
+    if (G._oppShieldGainCut) { amt = Math.max(0, amt - G._oppShieldGainCut); G._oppShieldGainCut = 0; }
+    G.oppShield += amt;
+    if (typeof playOpponentBlockAnimation === 'function') playOpponentBlockAnimation();
+  }
+  G._cancelNextShieldGain = false;
+  if (typeof renderOpponentPokemon === 'function') renderOpponentPokemon();
+}
 
-  // (Poison/Burn DOT no longer ticks here - it's at the END of the turn, after
-  // our damage, in rTickEndOfTurn.)
-  // Resolve whatever intent was showing.
-  if (Math.random() * 100 < (G._enemyFailPct || 0)) {
-    // chance to fail its intent - resolves to nothing.
-  } else if (p.intent === 'attack') {
-    // WEAKEN (sleep/paralyze/freeze/confuse) reduces the attack value; our
-    // BLOCK soaks the rest, then leftover hits HP.
+// POST-damage phase: an ATTACK intent hits here (only if the Pokémon survived
+// our damage). Also handles regen, defeat, and rolling the NEXT intent.
+function rResolveOpponentAttack() {
+  const p = G.theirPokemon;
+  if (!p) return;
+  if (G._regenPerTurn) G.playerHp = Math.min(G.playerMaxHp, G.playerHp + G._regenPerTurn);
+  if (p.intent === 'attack' && !(Math.random() * 100 < (G._enemyFailPct || 0))) {
+    // WEAKEN reduces the attack value; BLOCK soaks the rest. All-or-nothing:
+    // any leftover chips exactly 1 HP.
     let amt = Math.max(0, (p.intentAmt || 0) - (G.oppStatus.weaken || 0));
     if (G._nextAttackHalved) { amt = Math.round(amt * 0.5); G._nextAttackHalved = false; }
     if (typeof playOpponentAttackAnimation === 'function') playOpponentAttackAnimation(amt);
     const absorbed = Math.min(G.playerBlock || 0, amt);
     G.playerBlock = Math.max(0, (G.playerBlock || 0) - absorbed);
-    // All-or-nothing: if the attack wasn't FULLY negated (Weaken + Block), the
-    // player takes exactly 1 HP - no matter how big the leftover is.
     if (amt - absorbed > 0) {
       G.playerHp = Math.max(0, G.playerHp - 1);
       if (typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('rp-health'), '-1', '#ff4444');
     }
-  } else if (p.intent === 'block') {
-    if (!G._oppShieldDisabled && !G._cancelNextShieldGain) {
-      let amt = p.intentAmt || 0;
-      if (G._oppShieldGainCut) { amt = Math.max(0, amt - G._oppShieldGainCut); G._oppShieldGainCut = 0; }
-      G.oppShield += amt;
-      // A Barrier dome flares up over the whole enemy sprite as it shields.
-      if (typeof playOpponentBlockAnimation === 'function') playOpponentBlockAnimation();
-    }
-    G._cancelNextShieldGain = false;
   }
-
   if (typeof renderPlayerHpBar === 'function') renderPlayerHpBar();
   if (typeof renderOpponentPokemon === 'function') renderOpponentPokemon();
-
   if (G.playerHp <= 0) {
     setTimeout(() => { if (typeof showDefeatScreen === 'function') showDefeatScreen(); }, 500);
     return;
@@ -14389,24 +14390,18 @@ playSelectedHand = async function(){
   });
   G._runStats.totalDmg += (moveFx.bonusDmg||0);
 
-  // ── Phase 2: THE OPPONENT'S TURN, BEFORE our damage. It attacks (absorbed by
-  //    the block we just gained) or blocks (its shield then reduces the damage
-  //    our cards deal below). Turn resolution: our status/blocks -> opponent ->
-  //    our damaging moves. ──
+  // ── Phase 2a: the opponent BLOCKS here (before our damage), so its shield
+  //    reduces the damage our cards deal below. An ATTACK is deferred to AFTER
+  //    our damage (phase 2b), so killing the Pokémon first negates it. ──
   if(blockGained > 0){
     if(typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('rp-health'), '🛡 +'+fmtNum(blockGained), '#66ccff');
     if(typeof renderPlayerHpBar === 'function') renderPlayerHpBar();
   }
   await delay(300);
-  if(typeof rResolveOpponentTurn === 'function') rResolveOpponentTurn();
-  if(typeof renderPlayerHpBar === 'function') renderPlayerHpBar();
+  const _oppWillBlock = G.theirPokemon && G.theirPokemon.intent === 'block';
+  if(typeof rResolveOpponentBlock === 'function') rResolveOpponentBlock();
   renderOpponentPokemonHpBar();
-  await delay(650);
-  if(G.playerHp <= 0){   // the enemy's attack KO'd us - defeat already scheduled
-    ghosts.forEach(({g}) => g.remove());
-    G.animating = false;
-    return;
-  }
+  if(_oppWillBlock) await delay(600);   // let the barrier read before we hit
 
   // Pierce ignores shield - land it now, at the start of our damage phase.
   if(moveFx.pierceDmg > 0 && G.trainerHp > 0){
@@ -14498,6 +14493,21 @@ playSelectedHand = async function(){
     _floatOppDmg(gin);
     renderOpponentPokemonHpBar();
     updatePortraits();
+  }
+
+  // ── Phase 2b: the opponent ATTACKS now (AFTER our damage) - but ONLY if it's
+  //    still alive. Kill it with our damage above and it never gets to hit us.
+  if(G.trainerHp > 0 && typeof rResolveOpponentAttack === 'function'){
+    await delay(200);
+    const _oppWillAttack = G.theirPokemon && G.theirPokemon.intent === 'attack';
+    rResolveOpponentAttack();
+    if(typeof renderPlayerHpBar === 'function') renderPlayerHpBar();
+    if(_oppWillAttack) await delay(650);
+    if(G.playerHp <= 0){   // the enemy's attack KO'd us - defeat already scheduled
+      ghosts.forEach(({g}) => g.remove());
+      G.animating = false;
+      return;
+    }
   }
 
   // ── Phase 4: END OF TURN — now that all our cards AND the opponent have
