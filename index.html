@@ -1708,7 +1708,8 @@ html { overflow: hidden; }
 #item-assign-overlay {
   position:fixed; inset:0; z-index:3600; display:none;
   flex-direction:column; align-items:center; justify-content:center;
-  background:rgba(4,6,16,0.95); font-family:'PokemonClassic',monospace;
+  /* Its OWN screen - fully opaque so the store isn't visible behind it. */
+  background:linear-gradient(160deg,#0a0d1c,#05060e); font-family:'PokemonClassic',monospace;
   overflow-y:auto; padding:clamp(20px,4vh,44px) clamp(12px,3vw,32px) clamp(30px,5vh,60px);
   opacity:0; transition:opacity 0.3s ease;
 }
@@ -1828,7 +1829,7 @@ html { overflow: hidden; }
   #hud-toggle-row { display:none !important; }
   .hud-toggle-btn { font-size:8px !important; padding:6px 10px !important; }
   #hands-panel { top:40px !important; max-width:96vw !important; max-height:50vh !important; padding:8px 10px !important; gap:4px !important; }
-  #rp-hand-preview { top:6px !important; width:clamp(120px,32vw,170px) !important; padding:6px 8px !important; }
+  #rp-hand-preview { top:6px !important; width:clamp(120px,32vw,170px) !important; padding:6px 8px !important; max-height:clamp(140px,42vh,240px) !important; overflow-y:auto !important; pointer-events:auto !important; -webkit-overflow-scrolling:touch !important; }
   /* ── Abilities viewer / hands viewer / release screen mobile ── */
   #av-header, #hv-header, #release-header { padding:16px 14px 12px !important; }
   #av-title, #hv-title, #release-title { font-size:14px !important; }
@@ -1869,7 +1870,7 @@ html { overflow: hidden; }
   #shop-screen { padding:8px 0 !important; }
   #shop-title    { font-size:16px !important; margin-bottom:2px !important; }
   #shop-subtitle { font-size:8px !important; margin-bottom:8px !important; }
-  #shop-items-grid { max-width:min(60vw,440px) !important; gap:5px !important; }
+  #shop-items-grid { max-width:min(46vw,360px) !important; gap:5px !important; }
   .shop-item       { width:100% !important; padding:6px 10px !important; gap:10px !important; }
   .shop-item-frame { width:40px !important; }
   .shop-item-icon  { width:34px !important; height:34px !important; }
@@ -2459,6 +2460,15 @@ function moveForCard(card) {
   const pool = ANIM_BY_TYPE[card.type1] || ANIM_BY_TYPE[card.type2] || ANIM_BY_TYPE.Normal || [];
   if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
   return null;
+}
+// A FUSION card plays BOTH parents' animations at once (and applies both their
+// moves - that already happens via getCardMoves). Returns the anim name(s).
+function moveAnimsForCard(card){
+  const out = [];
+  const dexes = (typeof cardDexNums === 'function') ? cardDexNums(card) : [];
+  dexes.forEach(d => { if (DEX_TO_ANIM[d] && out.indexOf(DEX_TO_ANIM[d]) < 0) out.push(DEX_TO_ANIM[d]); });
+  if (!out.length) { const m = moveForCard(card); if (m) out.push(m); }
+  return out;
 }
 
 // ── Gym battle transition (HGSS-style "VS" screen) ─────────────────
@@ -3054,8 +3064,8 @@ document.addEventListener('keydown',e=>{
     <span class="rp-hd-val" id="rp-health">80</span>
   </div>
   <div class="rp-hd-box discards">
-    <span class="rp-hd-label">Discards</span>
-    <span class="rp-hd-val" id="rp-discards">3</span>
+    <span class="rp-hd-label">Block</span>
+    <span class="rp-hd-val" id="rp-discards">0</span>
   </div>
 
 <!-- ── ROTOM RADIO WIDGET ── -->
@@ -3360,7 +3370,7 @@ let G = {
   playerHp:80, playerMaxHp:80,   // opponent Pokémon attacks damage this, not trainerHp
   playerBlock:0,                 // absorbs opponent attack dmg; resets every turn (every play)
   oppShield:0,                   // opponent's accumulated block; reduces OUR outgoing trainerHp dmg
-  oppStatus:{poison:0, burn:0, ccTurns:0, ccLabel:''},
+  oppStatus:{poison:0, burn:0, weaken:0, ccTurns:0, ccLabel:''},
 };
 
 function removeWhiteBg(src, cb) { cb(src); }
@@ -3847,8 +3857,8 @@ function updateActionBar() {
   const sel = G_selected.size;
   const playBtn = document.getElementById('play-btn');
   const discardBtn = document.getElementById('discard-btn');
-  if(playBtn)   { playBtn.disabled = sel === 0;    playBtn.textContent   = sel > 0 ? `PLAY HAND (${sel})` : 'PLAY HAND'; }
-  if(discardBtn){ discardBtn.disabled = sel === 0; discardBtn.textContent = sel > 0 ? `DISCARD (${sel})` : 'DISCARD'; }
+  if(playBtn)   { playBtn.disabled = sel === 0;    playBtn.textContent   = 'PLAY HAND'; }
+  if(discardBtn){ discardBtn.disabled = sel === 0; discardBtn.textContent = 'DISCARD ('+(G.discardsLeft||0)+')'; }
   // Live hand name preview in left panel
   const movesEl = document.getElementById('rp-hand-moves');
   const nameEl = document.getElementById('rp-hand-name');
@@ -3929,7 +3939,7 @@ async function discardSelected() {
   G.discardsLeft--;
   // Update discard display IMMEDIATELY — don't wait for animation
   const discEl = document.getElementById('rp-discards');
-  if(discEl) discEl.textContent = G.discardsLeft;
+  if(discEl) discEl.textContent = fmtNum(G.playerBlock||0);   // box now shows BLOCK
   // Safety watchdog: if animation gets stuck, reset after 4s
   const _discardWatchdog = setTimeout(()=>{
     if(G.animating){ G.animating=false; window._reflowAnimating=false; renderHand(); renderHandsPanel(); updateRunPanel(); }
@@ -5710,11 +5720,11 @@ const POKEMON_MOVES = {
   4:{name:'Burning Spirit',type:'Fire',role:'discard_payoff',desc:'Gain 40 Damage whenever you discard a Pokémon.'},
   5:{name:'Blaze',type:'Fire',role:'combo',desc:'Deal double Damage if Charmander was played this battle.'},
   6:{name:'Fly',type:'Fire',role:'tempo',desc:'Leave the battle. Return next turn and deal 300 Damage.'},
-  7:{name:'Withdraw',type:'Water',role:'status',desc:'Freeze the enemy for 1 turn (cannot attack).'},
+  7:{name:'Withdraw',type:'Water',role:'block',desc:'Gain 25 Block.'},
   8:{name:'Shell Bash',type:'Water',role:'investment',desc:'Deal double Damage if held since last turn.'},
   9:{name:'Hydro Cannon',type:'Water',role:'draw',desc:'Draw 1 extra Pokémon next turn.'},
   10:{name:'Metamorphosis',type:'Bug',role:'investment',desc:'Evolves into Metapod after 2 turns in hand.'},
-  11:{name:'Detect',type:'Bug',role:'status',desc:'Paralyze the enemy for 1 turn.'},
+  11:{name:'Detect',type:'Bug',role:'block',desc:'Gain 40 Block.'},
   12:{name:'Sleep Powder',type:'Bug',role:'status',desc:'Apply 60 Sleep to the enemy.'},
   13:{name:'Poison Sting',type:'Bug',role:'discard_payoff',desc:'Apply 30 Poison. If discarded, apply 20 more.'},
   14:{name:'Shed Skin',type:'Bug',role:'survival',desc:'If discarded, return to hand next turn with 80 Damage.'},
@@ -5793,16 +5803,16 @@ const POKEMON_MOVES = {
   87:{name:'Ice Beam',type:'Water',role:'status',desc:'Apply 40 Freeze. Frozen enemies can\'t gain Damage next turn.'},
   88:{name:'Sludge',type:'Poison',role:'discard_payoff',desc:'Apply 40 Poison. If discarded, apply 30 more.'},
   89:{name:'Toxic Armor',type:'Poison',role:'status',desc:'Apply 30 Poison (45 if the enemy is already Poisoned).'},
-  90:{name:'Withdraw',type:'Water',role:'status',desc:'Freeze the enemy for 1 turn.'},
+  90:{name:'Withdraw',type:'Water',role:'block',desc:'Gain 30 Block.'},
   91:{name:'Spike Cannon',type:'Water',role:'payoff',desc:'Gain 40 Damage for each enemy Shield you\'ve broken this battle.'},
   92:{name:'Lick',type:'Ghost',role:'status',desc:'Apply 40 Paralysis. Deal 120 extra Damage if the enemy is already Paralyzed.'},
   93:{name:'Curse',type:'Ghost',role:'status',desc:'Apply 30 Poison. Apply 20 Paralysis too if the enemy is already Poisoned.'},
   94:{name:'Shadow Tag',type:'Ghost',role:'finisher',desc:'Deal 90 Damage. Deal x2 if the enemy has any status effect.'},
-  95:{name:'Iron Defense',type:'Rock',role:'status',desc:'Paralyze the enemy for 2 turns.'},
+  95:{name:'Iron Defense',type:'Rock',role:'block',desc:'Gain 60 Block. Gain 20 more if this is your only Pokémon played this turn.'},
   96:{name:'Hypnosis',type:'Psychic',role:'status',desc:'Apply 45 Sleep.'},
   97:{name:'Nightmare',type:'Psychic',role:'status',desc:'Deal 70 Damage. Double Damage if the enemy is Asleep.'},
-  98:{name:'Vice Grip',type:'Water',role:'status',desc:'Deal 30 Damage and Freeze the enemy for 1 turn.'},
-  99:{name:'Crabhammer',type:'Water',role:'reactive',desc:'Deal 90 Damage, or 135 if the enemy is Poisoned or Burned.'},
+  98:{name:'Vice Grip',type:'Water',role:'block',desc:'Deal 30 Damage. Gain 20 Block.'},
+  99:{name:'Crabhammer',type:'Water',role:'reactive',desc:'Deal 90 Damage. Deal x1.5 if you have Block remaining.'},
   100:{name:'Charge',type:'Electric',role:'investment',desc:'Gain 25 Damage each turn held.'},
   101:{name:'Self-Destruct',type:'Electric',role:'sacrifice',desc:'Sacrifice Electrode. Deal 220 Damage and gain all Damage stored by Voltorb this battle.'},
   102:{name:'Egg Bomb',type:'Grass',role:'status',desc:'Deal 35 Damage. Apply 25 Sleep.'},
@@ -5814,18 +5824,18 @@ const POKEMON_MOVES = {
   108:{name:'Supersize',type:'Normal',role:'scaling',desc:'Deal 70 Damage. Gain 30 Mult if this is the only Pokémon you play this turn.'},
   109:{name:'Smokescreen',type:'Poison',role:'status',desc:'Apply 35 Poison. The enemy\'s next Attack deals 20% less.'},
   110:{name:'Toxic Gas',type:'Poison',role:'payoff',desc:'Apply 70 Poison. Deal 100 extra Damage if the enemy already has Poison or Burn.'},
-  111:{name:'Stomp',type:'Ground',role:'status',desc:'Deal 40 Damage and Paralyze the enemy for 1 turn.'},
-  112:{name:'Rock Wrecker',type:'Ground',role:'reactive',desc:'Deal 140 Damage, or 210 if the enemy is Poisoned or Burned.'},
-  113:{name:'Softboiled',type:'Normal',role:'support',desc:'Gain 80 Mult and put the enemy to Sleep for 1 turn.'},
+  111:{name:'Stomp',type:'Ground',role:'block',desc:'Deal 40 Damage. Gain 25 Block.'},
+  112:{name:'Rock Wrecker',type:'Ground',role:'reactive',desc:'Deal 140 Damage. Deal x1.5 if you have Block remaining.'},
+  113:{name:'Softboiled',type:'Normal',role:'support',desc:'Gain 80 Mult. Gain 40 Block.'},
   114:{name:'Bind',type:'Grass',role:'control',desc:'Apply 30 Poison. Lock the enemy\'s intent for 1 turn.'},
   115:{name:'Mega Punch',type:'Normal',role:'finisher',desc:'Deal 60 Damage, twice.'},
-  116:{name:'Bubble',type:'Water',role:'status',desc:'Deal 25 Damage and Freeze the enemy for 1 turn.'},
-  117:{name:'Agility',type:'Water',role:'status',desc:'Paralyze the enemy for 2 turns.'},
+  116:{name:'Bubble',type:'Water',role:'block',desc:'Deal 25 Damage. Gain 20 Block.'},
+  117:{name:'Agility',type:'Water',role:'block',desc:'Gain 70 Block. Your Block does not reset next turn.'},
   118:{name:'Peck',type:'Water',role:'opener',desc:'Deal 30 Damage. Deal double if played first this turn.'},
   119:{name:'Horn Drill',type:'Water',role:'finisher',desc:'Deal 100 Damage. Deal x2 instead if the enemy is below 25% HP.'},
-  120:{name:'Rapid Spin',type:'Water',role:'counter',desc:'Remove 30 Shield and Paralyze the enemy for 1 turn.'},
+  120:{name:'Rapid Spin',type:'Water',role:'counter',desc:'Gain 30 Block. Remove 15 Shield from the enemy.'},
   121:{name:'Psywave',type:'Water',role:'status',desc:'Deal 90 Damage. Apply 40 Confusion.'},
-  122:{name:'Barrier',type:'Psychic',role:'status',desc:'Put the enemy to Sleep for 2 turns.'},
+  122:{name:'Barrier',type:'Psychic',role:'block',desc:'Gain 80 Block. The enemy\'s next Attack is halved.'},
   123:{name:'Slash',type:'Bug',role:'closer',desc:'Deal 130 Damage. Deal double if played last this turn.'},
   124:{name:'Lovely Kiss',type:'Ice',role:'status',desc:'Apply 60 Sleep.'},
   125:{name:'Thunder Punch',type:'Electric',role:'finisher',desc:'Deal 110 Damage. Deal x2 if the enemy is Paralyzed.'},
@@ -5837,16 +5847,16 @@ const POKEMON_MOVES = {
   131:{name:'Perish Song',type:'Water',role:'delayed_payoff',desc:'Deal no Damage this turn. Deal 300 Damage next turn instead.'},
   132:{name:'Transform',type:'Normal',role:'wildcard',desc:'Copy the Role and effect of the last enemy Pokémon you defeated.'},
   133:{name:'Adapt',type:'Normal',role:'consistency',desc:'Draw the next Pokémon from your deck that shares a type with your hand.'},
-  134:{name:'Aqua Ring',type:'Water',role:'status',desc:'Freeze the enemy for 1 turn (2 turns if 2+ Water Pokémon played).'},
+  134:{name:'Aqua Ring',type:'Water',role:'block',desc:'Gain 50 Block. Gain 15 more for each Water Pokémon played this turn.'},
   135:{name:'Volt Switch',type:'Electric',role:'draw',desc:'Deal 60 Damage. Draw 1 Pokémon.'},
   136:{name:'Flame Wheel',type:'Fire',role:'discard_payoff',desc:'Deal 60 Damage. Gain 30 Damage whenever you discard a Fire Pokémon.'},
   137:{name:'Tri Attack',type:'Normal',role:'status',desc:'Deal 60 Damage. Apply 30 of a random status to the enemy.'},
   138:{name:'Withdraw',type:'Rock',role:'investment',desc:'Gain 30 Damage each turn held.'},
   139:{name:'Spike Cannon',type:'Rock',role:'payoff',desc:'Gain all Damage stored by Omanyte this battle, then deal x1.5.'},
-  140:{name:'Harden',type:'Rock',role:'status',desc:'Put the enemy to Sleep for 1 turn.'},
-  141:{name:'Slash',type:'Rock',role:'reactive',desc:'Deal 100 Damage, or 150 if the enemy is Poisoned or Burned.'},
+  140:{name:'Harden',type:'Rock',role:'block',desc:'Gain 35 Block.'},
+  141:{name:'Slash',type:'Rock',role:'reactive',desc:'Deal 100 Damage. Deal x1.5 if you have Block remaining.'},
   142:{name:'Rock Slide',type:'Rock',role:'finisher',desc:'Deal 150 Damage. Deal 60 extra for each other Pokémon played this turn.'},
-  143:{name:'Rest',type:'Normal',role:'status',desc:'Put the enemy into a deep Sleep for 3 turns.'},
+  143:{name:'Rest',type:'Normal',role:'block',desc:'Gain 120 Block.'},
   144:{name:'Blizzard',type:'Ice',role:'status',desc:'Deal 120 Damage. Apply 50 Freeze.'},
   145:{name:'Thunder',type:'Electric',role:'status',desc:'Deal 120 Damage. Apply 50 Paralysis.'},
   146:{name:'Sky Attack',type:'Fire',role:'opener',desc:'Deal 150 Damage. Deal double if played first this turn.'},
@@ -5878,12 +5888,11 @@ function getMove(card) {
   const dex = parseInt(card.dexA || card.dexNum) || 0;
   return POKEMON_MOVES[dex] || null;
 }
+// Sleep / Paralyze / Freeze / Confuse all WEAKEN the enemy now: they add to a
+// weaken value that reduces its attack. The old "chance %" scales the amount.
 function rCcRoll(pct, label) {
-  const chance = Math.min(95, pct + (G._playAccuracyBonus || 0));
-  if (Math.random() * 100 < chance) {
-    G.oppStatus.ccTurns = Math.max(G.oppStatus.ccTurns || 0, 1);
-    G.oppStatus.ccLabel = label;
-  }
+  G.oppStatus.weaken = (G.oppStatus.weaken || 0) + Math.max(5, Math.round(pct / 4));
+  G.oppStatus.ccLabel = label;
 }
 // Weakest card in a set of pairs, by base move value (for Redistribution).
 function rWeakestOther(pairs, excludeDex) {
@@ -5920,12 +5929,9 @@ const fx = {
   dmgParalyze: (n, pct) => (ctx) => { rCcRoll(pct, 'PARALYZED'); return { dmg: n }; },
   freeze: (pct) => (ctx) => { rCcRoll(pct, 'FROZEN'); return { dmg: 0 }; },
   dmgFreeze: (n, pct) => (ctx) => { rCcRoll(pct, 'FROZEN'); return { dmg: n }; },
-  confuse: (pct) => (ctx) => { G._enemyConfusePct = Math.max(G._enemyConfusePct || 0, pct); return { dmg: 0 }; },
-  dmgConfuse: (n, pct) => (ctx) => { G._enemyConfusePct = Math.max(G._enemyConfusePct || 0, pct); return { dmg: n }; },
-  // Block is gone - former defensive moves now STUN the enemy (guaranteed CC for
-  // N turns) so it can't attack. This is the player's only defense (3 HP, no block).
-  stun: (turns, label) => (ctx) => { G.oppStatus.ccTurns = Math.max(G.oppStatus.ccTurns || 0, turns); G.oppStatus.ccLabel = label; return { dmg: 0 }; },
-  dmgStun: (n, turns, label) => (ctx) => { G.oppStatus.ccTurns = Math.max(G.oppStatus.ccTurns || 0, turns); G.oppStatus.ccLabel = label; return { dmg: n }; },
+  confuse: (pct) => (ctx) => { rCcRoll(pct, 'CONFUSED'); return { dmg: 0 }; },
+  dmgConfuse: (n, pct) => (ctx) => { rCcRoll(pct, 'CONFUSED'); return { dmg: n }; },
+  weaken: (amt) => (ctx) => { G.oppStatus.weaken = (G.oppStatus.weaken || 0) + amt; G.oppStatus.ccLabel = 'WEAK'; return { dmg: 0 }; },
   first: (n) => (ctx) => ({ dmg: ctx.isFirst ? n * 2 : n }),
   last: (n) => (ctx) => ({ dmg: ctx.isLast ? n * 2 : n }),
 };
@@ -5948,11 +5954,11 @@ MOVE_FX[3] = (ctx) => { // Solar Bloom: consumption itself happens in a resolver
 MOVE_FX[4] = (ctx) => { G._onDiscardBonus = (G._onDiscardBonus || 0) + 40; return { dmg: 0 }; }; // Burning Spirit
 MOVE_FX[5] = (ctx) => ({ dmg: G._battlePlayedNames.has('Charmander') ? 60 : 30 }); // Blaze (base 30, doubled)
 MOVE_FX[6] = (ctx) => { G._setupQueue.push(300); return { dmg: 0 }; }; // Fly - lands next play
-MOVE_FX[7] = fx.stun(1, 'FROZEN'); // Withdraw
+MOVE_FX[7] = fx.block(25); // Withdraw
 MOVE_FX[8] = (ctx) => ({ dmg: (ctx.card._turnsInHand || 0) >= 1 ? 80 : 40 }); // Shell Bash
 MOVE_FX[9] = (ctx) => { G._tempHandSizeBonus = (G._tempHandSizeBonus || 0) + 1; return { dmg: 0 }; }; // Hydro Cannon
 MOVE_FX[10] = (ctx) => ({ dmg: 0 }); // Metamorphosis - the evolution itself is handled by tickTurnThresholdAbility (existing ability system), not here
-MOVE_FX[11] = fx.stun(1, 'PARALYZED'); // Detect
+MOVE_FX[11] = fx.block(40); // Detect
 MOVE_FX[12] = fx.sleep(60); // Sleep Powder
 MOVE_FX[13] = fx.poison(30); // Poison Sting (discard bonus handled via _discardBonusPoison)
 MOVE_FX[14] = (ctx) => ({ dmg: 0 }); // Shed Skin - handled entirely at discard time
@@ -5967,7 +5973,7 @@ MOVE_FX[21] = fx.first(25); // Peck
 MOVE_FX[22] = fx.last(25); // Drill Peck
 MOVE_FX[23] = (ctx) => { ctx.card._invest = (ctx.card._invest || 0) + 35; return { dmg: ctx.card._invest }; }; // Coil (grows AND deals - investment-attack hybrid)
 MOVE_FX[24] = fx.burn(50); // Intimidate
-MOVE_FX[25] = (ctx) => { rCcRoll(G.oppStatus.poison || G.oppStatus.burn || G.oppStatus.ccTurns ? 60 : 40, 'PARALYZED'); return { dmg: 0 }; }; // Thunder Wave
+MOVE_FX[25] = (ctx) => { rCcRoll((G.oppStatus.poison || G.oppStatus.burn || G.oppStatus.weaken) ? 60 : 40, 'PARALYZED'); return { dmg: 0 }; }; // Thunder Wave
 MOVE_FX[26] = (ctx) => { G._typeBonusMultX = G._typeBonusMultX || {}; G._typeBonusMultX.Electric = 2; return { dmg: 40 }; }; // Thunderbolt - Electric cards from THIS point onward (incl. itself) get x2
 MOVE_FX[27] = (ctx) => { G._oppShieldDisabled = true; return { dmg: 0 }; }; // Dig (Sandshrew)
 MOVE_FX[28] = (ctx) => ({ dmg: 20 + 30 * ctx.idx }); // Fury Swipes - scales with cards played before it this turn
@@ -5975,7 +5981,7 @@ MOVE_FX[29] = (ctx) => ({ dmg: 0 }); // Poison Point - discard-triggered, see di
 MOVE_FX[30] = (ctx) => { const n = ctx.pairs.filter(p => p.move.type === 'Poison').length; G.oppStatus.poison += 20 + 15 * n; return { dmg: 0 }; }; // Protective Instinct
 MOVE_FX[31] = (ctx) => { G.oppStatus.poison += (G.oppStatus.poison > 0 ? 75 : 50); return { dmg: 0 }; }; // Poison Horn
 MOVE_FX[32] = (ctx) => ({ dmg: G.oppStatus.poison > 0 ? 180 : 90 }); // Horn Drill (generated - Nidoking real dex 34, see mapping note)
-MOVE_FX[33] = (ctx) => { const total = (G.oppStatus.poison || 0) + (G.oppStatus.burn || 0) + (G.oppStatus.ccTurns ? 25 : 0); const dmg = Math.floor(total / 25) * 100; G.oppStatus.poison = 0; G.oppStatus.burn = 0; return { dmg }; }; // Toxic King
+MOVE_FX[33] = (ctx) => { const total = (G.oppStatus.poison || 0) + (G.oppStatus.burn || 0) + ((G.oppStatus.weaken||0) ? 25 : 0); const dmg = Math.floor(total / 25) * 100; G.oppStatus.poison = 0; G.oppStatus.burn = 0; return { dmg }; }; // Toxic King
 MOVE_FX[34] = (ctx) => { G._statusDurationBonus = (G._statusDurationBonus || 0) + 1; return { dmg: 0 }; }; // Queen's Command
 MOVE_FX[35] = (ctx) => { // Metronome - copy a random OTHER card in hand
   const others = (G.hand || []).filter(c => c !== ctx.card);
@@ -5993,15 +5999,15 @@ MOVE_FX[37] = (ctx) => { const p = G.theirPokemon; G.oppStatus.burn += (p && p.i
 MOVE_FX[38] = (ctx) => { G._keepHalfArmed = true; return { dmg: 0 }; }; // Nine Lives
 MOVE_FX[39] = (ctx) => { rCcRoll((ctx.card._turnsInHand || 0) >= 1 ? 70 : 45, 'ASLEEP'); return { dmg: 0 }; }; // Sing
 MOVE_FX[40] = (ctx) => { G._enemyIntentLockTurns = Math.max(G._enemyIntentLockTurns || 0, 1); G._enemyIntentForceRepeat = true; if (G.theirPokemon) G.theirPokemon._lockedIntent = { intent: G.theirPokemon.intent, intentAmt: G.theirPokemon.intentAmt }; return { dmg: 0 }; }; // Encore
-MOVE_FX[41] = (ctx) => { G._enemyFailPct = Math.max(G._enemyFailPct || 0, 30); G._enemyConfusePct = Math.max(G._enemyConfusePct || 0, 40); return { dmg: 0 }; }; // Supersonic (confusion = % chance opp intent fails)
+MOVE_FX[41] = (ctx) => { rCcRoll(40, 'CONFUSED'); return { dmg: 0 }; }; // Supersonic (weaken)
 MOVE_FX[42] = (ctx) => { if ((G.oppStatus.poison || 0) > 0) G.discardsLeft = (G.discardsLeft || 0) + 1; return { dmg: 50 }; }; // Leech Life
 MOVE_FX[43] = (ctx) => { const otherGrass = ctx.pairs.some((p, i) => i !== ctx.idx && p.move.type === 'Grass'); rCcRoll(otherGrass ? 50 : 30, 'ASLEEP'); return { dmg: 0 }; }; // Sleep Powder (Oddish)
 MOVE_FX[44] = (ctx) => { rCcRoll(50, 'PARALYZED'); G._enemyIntentDelay = (G._enemyIntentDelay || 0) + 1; return { dmg: 0 }; }; // Stun Spore
 MOVE_FX[45] = (ctx) => { G._statusAmpPct = Math.max(G._statusAmpPct || 0, 25); return { dmg: 0 }; }; // Aroma Veil
 MOVE_FX[46] = (ctx) => { ctx.card._invest = (ctx.card._invest || 0) + 1; G._leechSeedStacks = ctx.card._invest; return { dmg: 0 }; }; // Leech Seed (DOT scaling handled in opponent-turn tick)
-MOVE_FX[47] = (ctx) => { const roll = Math.random(); if (roll < 0.34) rCcRoll(50, 'ASLEEP'); else if (roll < 0.67) G.oppStatus.poison += 50; else G._enemyConfusePct = Math.max(G._enemyConfusePct || 0, 50); return { dmg: 0 }; }; // Spore Cloud
+MOVE_FX[47] = (ctx) => { const roll = Math.random(); if (roll < 0.34) rCcRoll(50, 'ASLEEP'); else if (roll < 0.67) G.oppStatus.poison += 50; else rCcRoll(50, 'CONFUSED'); return { dmg: 0 }; }; // Spore Cloud
 MOVE_FX[48] = (ctx) => { G._statusAmpPct = Math.max(G._statusAmpPct || 0, 100); return { dmg: 0 }; }; // Compound Eyes (next status doubled == +100% for this play)
-MOVE_FX[49] = (ctx) => { const n = (G.oppStatus.poison > 0 ? 1 : 0) + (G.oppStatus.burn > 0 ? 1 : 0) + (G.oppStatus.ccTurns > 0 ? 1 : 0); return { dmg: 0, multX: Math.pow(1.5, n) }; }; // Quiver Dance
+MOVE_FX[49] = (ctx) => { const n = (G.oppStatus.poison > 0 ? 1 : 0) + (G.oppStatus.burn > 0 ? 1 : 0) + ((G.oppStatus.weaken||0) > 0 ? 1 : 0); return { dmg: 0, multX: Math.pow(1.5, n) }; }; // Quiver Dance
 MOVE_FX[50] = (ctx) => { G.oppShield = Math.max(0, G.oppShield - 20); return { dmg: 0 }; }; // Dig (Diglett)
 MOVE_FX[51] = (ctx) => { const had = G.oppShield > 0; if (had) G._shieldsBrokenThisBattle = (G._shieldsBrokenThisBattle || 0) + 1; G.oppShield = 0; return { dmg: had ? 150 : 0 }; }; // Earthquake
 MOVE_FX[52] = (ctx) => { G._rewardBonusPct = Math.max(G._rewardBonusPct || 0, 25); return { dmg: 0 }; }; // Pay Day
@@ -6012,16 +6018,16 @@ MOVE_FX[56] = (ctx) => { G._onDiscardBonus = (G._onDiscardBonus || 0) + 50; retu
 MOVE_FX[57] = (ctx) => ({ dmg: 0, multX: G.trainerHp > G.trainerMaxHp * 0.5 ? 2 : 1 }); // Anger Point
 MOVE_FX[58] = (ctx) => ({ dmg: (G.theirPokemon && G.theirPokemon.intent === 'attack') ? 80 : 40 }); // Guard Dog
 MOVE_FX[59] = (ctx) => { G.handsLeft++; return { dmg: 0 }; }; // Extreme Speed (rule breaker -> bonus hand)
-MOVE_FX[60] = (ctx) => { const already = (G._enemyConfusePct || 0) > 0; G._enemyConfusePct = Math.max(G._enemyConfusePct || 0, 40); return { dmg: already ? 150 : 0 }; }; // Water Pulse
+MOVE_FX[60] = (ctx) => { const already = (G.oppStatus.weaken||0) > 0; rCcRoll(40, 'CONFUSED'); return { dmg: already ? 150 : 0 }; }; // Water Pulse
 MOVE_FX[61] = (ctx) => { const banked = Math.round((G.theirPokemon && G.theirPokemon.intent === 'attack' ? (G.theirPokemon.intentAmt || 0) : 0) / 2); if (banked > 0) G._setupQueue.push(banked); return { dmg: 0 }; }; // Counter (Poliwhirl)
-MOVE_FX[62] = (ctx) => ({ dmg: (G._enemyConfusePct || 0) > 0 ? 120 : 40 }); // Focus Punch (generated - Poliwrath)
+MOVE_FX[62] = (ctx) => ({ dmg: (G.oppStatus.weaken||0) > 0 ? 120 : 40 }); // Focus Punch (generated - Poliwrath)
 MOVE_FX[63] = (ctx) => { // Teleport (Abra) - return to hand, +150 next time
   ctx.card._returnToHand = true;
   ctx.card._moveBonus = ctx.card._moveBonus || {};
   ctx.card._moveBonus[63] = (ctx.card._moveBonus[63] || 0) + 150;
   return { dmg: ctx.card._moveBonus[63] - 150 };
 };
-MOVE_FX[64] = (ctx) => { G.oppStatus.ccTurns = Math.max(G.oppStatus.ccTurns || 0, 1); G.oppStatus.ccLabel = G.oppStatus.ccLabel || 'DISABLED'; return { dmg: 0 }; }; // Disable
+MOVE_FX[64] = (ctx) => { G.oppStatus.weaken = (G.oppStatus.weaken || 0) + 15; G.oppStatus.ccLabel = 'DISABLED'; return { dmg: 0 }; }; // Disable
 MOVE_FX[65] = (ctx) => { G._revealIntentCount = 3; const reacted = ctx.pairs.some((p, i) => i !== ctx.idx && (p.move.role === 'status' || p.move.role === 'block' || p.move.role === 'control')); return { dmg: 0, multX: reacted ? 2 : 1 }; }; // Future Sight - x2 if this play also reacts (status/block/control) to what was revealed
 MOVE_FX[66] = (ctx) => { ctx.card._invest = (ctx.card._invest || 0) + 40; return { dmg: 0 }; }; // Focus Energy
 MOVE_FX[67] = (ctx) => { const weakest = rWeakestOther(ctx.pairs, ctx.dex); let bonus = 0; if (weakest) { bonus = weakest.card._invest || 0; weakest.card._invest = 0; weakest._redistributed = true; } return { dmg: bonus }; }; // Vital Throw
@@ -6037,7 +6043,7 @@ MOVE_FX[76] = (ctx) => { if (G.oppShield > 0) G._shieldsBrokenThisBattle = (G._s
 MOVE_FX[77] = (ctx) => ({ dmg: G.oppStatus.burn > 0 ? 100 : 50 }); // Flame Charge
 MOVE_FX[78] = (ctx) => { G._cancelNextShieldGain = true; return { dmg: 0 }; }; // Agility (Rapidash)
 MOVE_FX[79] = (ctx) => ({ dmg: 0 }); // Daydream - passive-while-held mult, see pre-pass
-MOVE_FX[80] = (ctx) => { G.oppStatus.ccTurns = Math.max(G.oppStatus.ccTurns || 0, 1); return { dmg: 0 }; }; // Amnesia
+MOVE_FX[80] = (ctx) => { G.oppStatus.weaken = (G.oppStatus.weaken || 0) + 15; G.oppStatus.ccLabel = 'WEAK'; return { dmg: 0 }; }; // Amnesia
 MOVE_FX[81] = (ctx) => { G._tutorType = 'Electric'; return { dmg: 0 }; }; // Magnet Pull
 MOVE_FX[82] = (ctx) => { const r = Math.floor(Math.random() * 4); [() => G.oppStatus.poison += 60, () => G.oppStatus.burn += 60, () => rCcRoll(60, 'PARALYZED'), () => rCcRoll(60, 'FROZEN')][r](); return { dmg: 0 }; }; // Tri Attack (Magneton)
 MOVE_FX[83] = (ctx) => { G._nextCardX2 = true; return { dmg: 0 }; }; // Leek Strike
@@ -6047,22 +6053,22 @@ MOVE_FX[86] = (ctx) => { G._setupQueue.push(250); return { dmg: 0 }; }; // Rest 
 MOVE_FX[87] = (ctx) => { rCcRoll(40, 'FROZEN'); return { dmg: 0 }; }; // Ice Beam
 MOVE_FX[88] = fx.poison(40); // Sludge (discard bonus at discard hook)
 MOVE_FX[89] = (ctx) => { G.oppStatus.poison += G.oppStatus.poison > 0 ? 45 : 30; return { dmg: 0 }; }; // Toxic Armor
-MOVE_FX[90] = fx.stun(1, 'FROZEN'); // Withdraw (Shellder)
+MOVE_FX[90] = fx.block(30); // Withdraw (Shellder)
 MOVE_FX[91] = (ctx) => ({ dmg: 40 * (G._shieldsBrokenThisBattle || 0) }); // Spike Cannon (Cloyster)
-MOVE_FX[92] = (ctx) => { const wasParalyzed = G.oppStatus.ccTurns > 0 && G.oppStatus.ccLabel === 'PARALYZED'; rCcRoll(100, 'PARALYZED'); return { dmg: wasParalyzed ? 120 : 0 }; }; // Lick
+MOVE_FX[92] = (ctx) => { const wasWeak = (G.oppStatus.weaken||0) > 0; rCcRoll(100, 'PARALYZED'); return { dmg: wasWeak ? 120 : 0 }; }; // Lick
 
 // ══ 93-151 + gap fills (32 filled above, 62 filled above) ═══════
 MOVE_FX[93] = (ctx) => { const already = (G.oppStatus.poison || 0) > 0; G.oppStatus.poison += 30; if (already) rCcRoll(100, 'PARALYZED'); return { dmg: 0 }; }; // Curse
-MOVE_FX[94] = (ctx) => { const hasStatus = (G.oppStatus.poison > 0 || G.oppStatus.burn > 0 || G.oppStatus.ccTurns > 0); return { dmg: hasStatus ? 160 : 80 }; }; // Shadow Tag
-MOVE_FX[95] = fx.stun(2, 'PARALYZED'); // Iron Defense
+MOVE_FX[94] = (ctx) => { const hasStatus = (G.oppStatus.poison > 0 || G.oppStatus.burn > 0 || (G.oppStatus.weaken||0) > 0); return { dmg: hasStatus ? 160 : 80 }; }; // Shadow Tag
+MOVE_FX[95] = (ctx) => { G.playerBlock += (ctx.pairs.length === 1) ? 80 : 60; return { dmg: 0 }; }; // Iron Defense
 MOVE_FX[96] = fx.sleep(45); // Hypnosis
-MOVE_FX[97] = (ctx) => ({ dmg: G.oppStatus.ccLabel === 'ASLEEP' && G.oppStatus.ccTurns > 0 ? 140 : 70 }); // Nightmare
-MOVE_FX[98] = fx.dmgStun(30, 1, 'FROZEN'); // Vice Grip
-MOVE_FX[99] = (ctx) => ({ dmg: (G.oppStatus.poison > 0 || G.oppStatus.burn > 0) ? 135 : 90 }); // Crabhammer
+MOVE_FX[97] = (ctx) => ({ dmg: (G.oppStatus.weaken||0) > 0 ? 140 : 70 }); // Nightmare
+MOVE_FX[98] = fx.dmgBlock(30, 20); // Vice Grip
+MOVE_FX[99] = (ctx) => ({ dmg: G.playerBlock > 0 ? 135 : 90 }); // Crabhammer
 MOVE_FX[100] = (ctx) => { ctx.card._invest = (ctx.card._invest || 0) + 25; return { dmg: 0 }; }; // Charge (Voltorb)
 MOVE_FX[101] = (ctx) => { const stash = (G._investStash && G._investStash[100]) || 0; if (G._investStash) G._investStash[100] = 0; ctx._sacrificed = true; return { dmg: 220 + stash }; }; // Self-Destruct (Electrode)
 MOVE_FX[102] = (ctx) => { rCcRoll(25, 'ASLEEP'); return { dmg: 35 }; }; // Egg Bomb
-MOVE_FX[103] = (ctx) => ({ dmg: G.oppStatus.ccLabel === 'ASLEEP' && G.oppStatus.ccTurns > 0 ? 200 : 100 }); // Stomp (Exeggutor)
+MOVE_FX[103] = (ctx) => ({ dmg: (G.oppStatus.weaken||0) > 0 ? 200 : 100 }); // Stomp (Exeggutor)
 MOVE_FX[104] = (ctx) => ({ dmg: ctx.pairs.length === 1 ? 50 : 30 }); // Bone Club (Cubone)
 MOVE_FX[105] = (ctx) => ({ dmg: 130 }); // Bonemerang (65 twice)
 MOVE_FX[106] = fx.last(45); // High Jump Kick
@@ -6070,21 +6076,21 @@ MOVE_FX[107] = fx.first(45); // Mach Punch
 MOVE_FX[108] = (ctx) => ({ dmg: 70, multAdd: ctx.pairs.length === 1 ? 30 : 0 }); // Supersize
 MOVE_FX[109] = (ctx) => { G.oppStatus.poison += 35; G._oppDebuffPct = Math.max(G._oppDebuffPct || 0, 20); return { dmg: 0 }; }; // Smokescreen (Koffing)
 MOVE_FX[110] = (ctx) => { const already = G.oppStatus.poison > 0 || G.oppStatus.burn > 0; G.oppStatus.poison += 70; return { dmg: already ? 100 : 0 }; }; // Toxic Gas (Weezing)
-MOVE_FX[111] = fx.dmgStun(40, 1, 'PARALYZED'); // Stomp (Rhyhorn)
-MOVE_FX[112] = (ctx) => ({ dmg: (G.oppStatus.poison > 0 || G.oppStatus.burn > 0) ? 210 : 140 }); // Rock Wrecker (Rhydon)
-MOVE_FX[113] = (ctx) => { G.oppStatus.ccTurns = Math.max(G.oppStatus.ccTurns || 0, 1); G.oppStatus.ccLabel = 'ASLEEP'; return { dmg: 0, multAdd: 80 }; }; // Softboiled (Chansey)
+MOVE_FX[111] = fx.dmgBlock(40, 25); // Stomp (Rhyhorn)
+MOVE_FX[112] = (ctx) => ({ dmg: G.playerBlock > 0 ? 210 : 140 }); // Rock Wrecker (Rhydon)
+MOVE_FX[113] = (ctx) => { G.playerBlock += 40; return { dmg: 0, multAdd: 80 }; }; // Softboiled (Chansey)
 MOVE_FX[114] = (ctx) => { G.oppStatus.poison += 30; G._enemyIntentLockTurns = Math.max(G._enemyIntentLockTurns || 0, 1); if (G.theirPokemon) G.theirPokemon._lockedIntent = { intent: G.theirPokemon.intent, intentAmt: G.theirPokemon.intentAmt }; return { dmg: 0 }; }; // Bind (Tangela)
 MOVE_FX[115] = (ctx) => ({ dmg: 120 }); // Mega Punch (60 twice)
-MOVE_FX[116] = fx.dmgStun(25, 1, 'FROZEN'); // Bubble (Horsea)
-MOVE_FX[117] = fx.stun(2, 'PARALYZED'); // Agility (Seadra)
+MOVE_FX[116] = fx.dmgBlock(25, 20); // Bubble (Horsea)
+MOVE_FX[117] = (ctx) => { G.playerBlock += 70; G._blockPersist = true; return { dmg: 0 }; }; // Agility (Seadra)
 MOVE_FX[118] = fx.first(30); // Peck (Goldeen)
 MOVE_FX[119] = (ctx) => ({ dmg: G.trainerHp < G.trainerMaxHp * 0.25 ? 200 : 100 }); // Horn Drill (Seaking)
-MOVE_FX[120] = (ctx) => { G.oppShield = Math.max(0, G.oppShield - 30); G.oppStatus.ccTurns = Math.max(G.oppStatus.ccTurns || 0, 1); G.oppStatus.ccLabel = 'PARALYZED'; return { dmg: 0 }; }; // Rapid Spin (Staryu)
-MOVE_FX[121] = (ctx) => { G._enemyConfusePct = Math.max(G._enemyConfusePct || 0, 40); return { dmg: 90 }; }; // Psywave (Starmie)
-MOVE_FX[122] = fx.stun(2, 'ASLEEP'); // Barrier (Mr. Mime)
+MOVE_FX[120] = (ctx) => { G.playerBlock += 30; G.oppShield = Math.max(0, G.oppShield - 15); return { dmg: 0 }; }; // Rapid Spin (Staryu)
+MOVE_FX[121] = (ctx) => { rCcRoll(40, 'CONFUSED'); return { dmg: 90 }; }; // Psywave (Starmie)
+MOVE_FX[122] = (ctx) => { G.playerBlock += 80; G._nextAttackHalved = true; return { dmg: 0 }; }; // Barrier (Mr. Mime)
 MOVE_FX[123] = fx.last(65); // Slash (Scyther)
 MOVE_FX[124] = fx.sleep(60); // Lovely Kiss (Jynx)
-MOVE_FX[125] = (ctx) => ({ dmg: (G.oppStatus.ccLabel === 'PARALYZED' && G.oppStatus.ccTurns > 0) ? 220 : 110 }); // Thunder Punch
+MOVE_FX[125] = (ctx) => ({ dmg: ((G.oppStatus.weaken||0) > 0) ? 220 : 110 }); // Thunder Punch
 MOVE_FX[126] = (ctx) => ({ dmg: G.oppStatus.burn > 0 ? 220 : 110 }); // Fire Punch
 MOVE_FX[127] = (ctx) => ({ dmg: Math.round(G.trainerHp * 0.3) }); // Guillotine
 MOVE_FX[128] = (ctx) => ({ dmg: 50 + 40 * ctx.idx }); // Rampage (Tauros)
@@ -6095,16 +6101,16 @@ MOVE_FX[132] = (ctx) => { // Transform (Ditto) - copy last enemy-defeated traine
   return { dmg: 60 };
 };
 MOVE_FX[133] = (ctx) => { G._tutorType = 'any'; return { dmg: 0 }; }; // Adapt (Eevee)
-MOVE_FX[134] = (ctx) => { const n = ctx.pairs.filter(p => p.move.type === 'Water').length; G.oppStatus.ccTurns = Math.max(G.oppStatus.ccTurns || 0, n >= 2 ? 2 : 1); G.oppStatus.ccLabel = 'FROZEN'; return { dmg: 0 }; }; // Aqua Ring (Vaporeon)
+MOVE_FX[134] = (ctx) => { const n = ctx.pairs.filter(p => p.move.type === 'Water').length; G.playerBlock += 50 + 15 * n; return { dmg: 0 }; }; // Aqua Ring (Vaporeon)
 MOVE_FX[135] = (ctx) => { G._tempHandSizeBonus = (G._tempHandSizeBonus || 0) + 1; return { dmg: 60 }; }; // Volt Switch (Jolteon)
 MOVE_FX[136] = (ctx) => { G._onDiscardFireBonus = (G._onDiscardFireBonus || 0) + 30; return { dmg: 60 }; }; // Flame Wheel (Flareon)
 MOVE_FX[137] = (ctx) => { const r = Math.floor(Math.random() * 3); [() => G.oppStatus.poison += 30, () => G.oppStatus.burn += 30, () => rCcRoll(30, 'PARALYZED')][r](); return { dmg: 60 }; }; // Tri Attack (Porygon)
 MOVE_FX[138] = (ctx) => { ctx.card._invest = (ctx.card._invest || 0) + 30; return { dmg: 0 }; }; // Withdraw (Omanyte)
 MOVE_FX[139] = (ctx) => { const stash = (G._investStash && G._investStash[138]) || 0; if (G._investStash) G._investStash[138] = 0; return { dmg: Math.round(stash * 1.5) }; }; // Spike Cannon (Omastar)
-MOVE_FX[140] = fx.stun(1, 'ASLEEP'); // Harden (Kabuto)
-MOVE_FX[141] = (ctx) => ({ dmg: (G.oppStatus.poison > 0 || G.oppStatus.burn > 0) ? 150 : 100 }); // Slash (Kabutops)
+MOVE_FX[140] = fx.block(35); // Harden (Kabuto)
+MOVE_FX[141] = (ctx) => ({ dmg: G.playerBlock > 0 ? 150 : 100 }); // Slash (Kabutops)
 MOVE_FX[142] = (ctx) => ({ dmg: 150 + 60 * (ctx.pairs.length - 1) }); // Rock Slide (Aerodactyl)
-MOVE_FX[143] = fx.stun(3, 'ASLEEP'); // Rest (Snorlax)
+MOVE_FX[143] = (ctx) => { G.playerBlock += 120; return { dmg: 0 }; }; // Rest (Snorlax)
 MOVE_FX[144] = (ctx) => { rCcRoll(50, 'FROZEN'); return { dmg: 120 }; }; // Blizzard (Articuno)
 MOVE_FX[145] = (ctx) => { rCcRoll(50, 'PARALYZED'); return { dmg: 120 }; }; // Thunder (Zapdos)
 MOVE_FX[146] = fx.first(150); // Sky Attack (Moltres)
@@ -6359,33 +6365,26 @@ function rResolveOpponentTurn() {
   // (No skip on switch-in: a freshly-sent Pokémon acts on the next play as
   // soon as its intent is shown, so its block/attack is never delayed a turn.)
   G._skipEnemyTurnOnce = false;
-
-  let dot = 0;
-  if (G.oppStatus.poison > 0) { dot += G.oppStatus.poison; if (!G._skipNextStatusDecay) G.oppStatus.poison = Math.max(0, G.oppStatus.poison - 1); }
-  if (G.oppStatus.burn > 0) { dot += G.oppStatus.burn; if (!G._skipNextStatusDecay) G.oppStatus.burn = Math.max(0, G.oppStatus.burn - 1); }
-  if (G._leechSeedStacks) { dot += Math.min(40 + (G._leechSeedStacks - 1) * 10, 200); }
-  G._skipNextStatusDecay = false;
-  if (dot > 0 && G.trainerHp > 0) {
-    const before = G.trainerHp;
-    G.trainerHp = Math.max(0, G.trainerHp - dot);
-    if (G.trainerHp <= 0 && before > 0) {} // defeat handled by caller (playSelectedHand) same as v1
-    if (typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('opp-pkmn-hp-wrap'), '-' + fmtNum(dot), '#cc66ff');
-  }
   if (G._regenPerTurn) G.playerHp = Math.min(G.playerMaxHp, G.playerHp + G._regenPerTurn);
 
+  // (Poison/Burn DOT no longer ticks here - it's at the END of the turn, after
+  // our damage, in rTickEndOfTurn.)
   // Resolve whatever intent was showing.
-  if (G.oppStatus.ccTurns > 0) {
-    // STUNNED (asleep / paralyzed / frozen) - the enemy can't act at all. This
-    // is the ONLY way to negate its attack: the player has no block, just 3 HP,
-    // so keeping the enemy crowd-controlled is the whole defense.
-    G.oppStatus.ccTurns--;
-  } else if (Math.random() * 100 < (G._enemyFailPct || 0)) {
+  if (Math.random() * 100 < (G._enemyFailPct || 0)) {
     // chance to fail its intent - resolves to nothing.
   } else if (p.intent === 'attack') {
-    // The enemy ALWAYS hits for exactly 1 (no attack value, no block to soak it).
-    if (typeof playOpponentAttackAnimation === 'function') playOpponentAttackAnimation(1);
-    G.playerHp = Math.max(0, G.playerHp - 1);
-    if (typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('rp-health'), '-1', '#ff4444');
+    // WEAKEN (sleep/paralyze/freeze/confuse) reduces the attack value; our
+    // BLOCK soaks the rest, then leftover hits HP.
+    let amt = Math.max(0, (p.intentAmt || 0) - (G.oppStatus.weaken || 0));
+    if (G._nextAttackHalved) { amt = Math.round(amt * 0.5); G._nextAttackHalved = false; }
+    if (typeof playOpponentAttackAnimation === 'function') playOpponentAttackAnimation(amt);
+    const absorbed = Math.min(G.playerBlock || 0, amt);
+    G.playerBlock = Math.max(0, (G.playerBlock || 0) - absorbed);
+    const toHp = amt - absorbed;
+    if (toHp > 0) {
+      G.playerHp = Math.max(0, G.playerHp - toHp);
+      if (typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('rp-health'), '-' + fmtNum(toHp), '#ff4444');
+    }
   } else if (p.intent === 'block') {
     if (!G._oppShieldDisabled && !G._cancelNextShieldGain) {
       let amt = p.intentAmt || 0;
@@ -6405,6 +6404,25 @@ function rResolveOpponentTurn() {
     return;
   }
   rollOpponentIntent();
+}
+
+// End of turn (after our status/block, the opponent's turn, AND our damage):
+// Poison + Burn each deal damage equal to their stack count, then lose 1 stack
+// (Slay-the-Spire style). Weaken fades by 1 too. Poison/Burn PERSIST across the
+// opponent's whole party (never reset on switch-in); Weaken does not.
+function rTickEndOfTurn(){
+  if(!G.theirPokemon) return;
+  let dot = (G.oppStatus.poison || 0) + (G.oppStatus.burn || 0);
+  if (G._leechSeedStacks) dot += Math.min(40 + (G._leechSeedStacks - 1) * 10, 200);
+  if (dot > 0 && G.trainerHp > 0) {
+    G.trainerHp = Math.max(0, G.trainerHp - dot);
+    if (typeof rSpawnFloatText === 'function') rSpawnFloatText(document.getElementById('opp-pkmn-hp-wrap'), '-' + fmtNum(dot), '#cc66ff');
+  }
+  if (G.oppStatus.poison > 0) G.oppStatus.poison = Math.max(0, G.oppStatus.poison - 1);
+  if (G.oppStatus.burn > 0)   G.oppStatus.burn   = Math.max(0, G.oppStatus.burn - 1);
+  if (G.oppStatus.weaken > 0) G.oppStatus.weaken = Math.max(0, G.oppStatus.weaken - 1);
+  if (typeof renderOpponentPokemonHpBar === 'function') renderOpponentPokemonHpBar();
+  if (typeof renderOpponentStatusIcons === 'function') renderOpponentStatusIcons();
 }
 
 function rSpawnFloatText(anchorEl, text, color) {
@@ -10119,12 +10137,13 @@ async function sendOutNextOpponentPokemon(){
   if(typeof SFX !== 'undefined' && SFX.faint) SFX.faint();
   renderTrainerPokeballs(trainer);
   await delay(480);
-  // Next Pokémon: fresh HP, cleared status/shield, a rolled intent that only
-  // resolves on the player's NEXT play (it just switched in).
+  // Next Pokémon: fresh HP + shield, but POISON/BURN stacks PERSIST across the
+  // whole party (Slay-the-Spire style - they carry onto the next Pokémon).
+  // Weaken is a per-Pokémon debuff, so it resets.
   assignOpponentPokemon(trainer);
   G.trainerHp = G.trainerMaxHp;
   G.oppShield = 0;
-  G.oppStatus = { poison:0, burn:0, ccTurns:0, ccLabel:'' };
+  G.oppStatus = { poison: G.oppStatus.poison||0, burn: G.oppStatus.burn||0, weaken:0, ccTurns:0, ccLabel:'' };
   if(_oppSpriteAnim) _oppSpriteAnim.dex = null;   // force the new atlas to load
   G._skipEnemyTurnOnce = true;
   rollOpponentIntent();                            // renders the new sprite (hidden below)
@@ -10149,10 +10168,7 @@ function rollOpponentIntent() {
   const tier = trainer.tier || 'normal';
   const tierMult = tier === 'boss' ? 1.5 : tier === 'elite' ? 1.25 : 1.05;
   const idx = G.trainerIdx || 0;
-  if ((G.oppStatus && G.oppStatus.ccTurns) > 0) {
-    G.theirPokemon.intent = 'stunned';
-    G.theirPokemon.intentAmt = 0;
-  } else if (G._enemyIntentLockTurns > 0 && G.theirPokemon._lockedIntent) {
+  if (G._enemyIntentLockTurns > 0 && G.theirPokemon._lockedIntent) {
     // Wrap/Vine Trap/Encore - keep the same intent+amount, don't reroll.
     G._enemyIntentLockTurns--;
     G.theirPokemon.intent = G.theirPokemon._lockedIntent.intent;
@@ -10287,10 +10303,11 @@ function renderOpponentPokemon(){
     badge.classList.remove('intent-attack','intent-block','intent-cc');
     if(iconEl){ iconEl.textContent = ''; iconEl.classList.remove('ii-attack','ii-block','ii-status'); }
     if(p.intent === 'attack'){
-      // The enemy always hits for 1 - just the attack icon, no number.
+      // Show the EFFECTIVE attack (base minus Weaken), so applying CC visibly
+      // drops the number.
       badge.classList.add('intent-attack');
       if(iconEl) iconEl.classList.add('ii-attack');
-      if(numEl) numEl.textContent = '';
+      if(numEl) numEl.textContent = fmtNum(Math.max(0, (p.intentAmt||0) - (G.oppStatus.weaken||0)));
     } else if(p.intent === 'block'){
       badge.classList.add('intent-block');
       if(iconEl) iconEl.classList.add('ii-block');
@@ -10400,10 +10417,11 @@ function renderOpponentStatusIcons(){
   const active = [];
   if(st.poison>0) active.push({key:'PSN', stack: st.poison});
   if(st.burn>0) active.push({key:'BRN', stack: st.burn});
-  if(st.ccTurns>0){
-    if(st.ccLabel==='ASLEEP') active.push({key:'SLP'});
-    else if(st.ccLabel==='PARALYZED') active.push({key:'PAR'});
-    else if(st.ccLabel==='FROZEN') active.push({key:'FRZ'});
+  // Weaken (from sleep/paralyze/freeze/confuse) shows an icon flavored by the
+  // last CC applied, with the current weaken amount (how much attack is cut).
+  if((st.weaken||0)>0){
+    const k = st.ccLabel==='ASLEEP' ? 'SLP' : st.ccLabel==='FROZEN' ? 'FRZ' : 'PAR';
+    active.push({key:k, stack: st.weaken});
   }
   row.innerHTML = active.map(a => {
     const val = a.stack ? `<span class="opp-status-val">${fmtNum(a.stack)}</span>` : '';
@@ -10461,8 +10479,10 @@ function renderPlayerHpBar(){
   fill.style.width = pct+'%';
   fill.classList.remove('hp-mid','hp-low');
   const cls = rHpBarClass(pct); if(cls) fill.classList.add(cls);
-  if(blockFill){ blockFill.style.width = '0%'; }   // block removed
+  if(blockFill){ blockFill.style.width = '0%'; }   // block shown in the bottom-left box, not on the bar
   if(txt) txt.textContent = 'HP '+fmtNum(cur)+'/'+fmtNum(max);
+  // Block value lives in the bottom-left box (repurposed "Discards" slot).
+  { const bkEl = document.getElementById('rp-discards'); if(bkEl) bkEl.textContent = fmtNum(G.playerBlock||0); }
 }
 
 function updateTrainerTarget() {
@@ -10700,7 +10720,7 @@ function updateRunPanel() {
   const discardsEl = document.getElementById('rp-discards');
   if(healthEl)   healthEl.textContent   = fmtNum(G.playerHp!=null ? G.playerHp : G.playerMaxHp);
   showRotomRadio();
-  if(discardsEl) discardsEl.textContent = G.discardsLeft;
+  if(discardsEl) discardsEl.textContent = fmtNum(G.playerBlock||0);   // box shows BLOCK now
   // Gold display above deck
   const goldDisp = document.getElementById('gold-display');
   if(goldDisp) { goldDisp.textContent = '$' + (G.gold || 0); goldDisp.style.display='block'; }
@@ -12249,6 +12269,9 @@ function openItemAssignScreen(item) {
   icon.style.opacity = '1';
   nameEl.textContent = item.name.toUpperCase();
   renderItemAssignGrid(item);
+  // It's its own screen now: hide the store behind it.
+  const shop = document.getElementById('shop-screen');
+  if(shop) shop.classList.add('hidden');
   overlay.classList.add('visible');
 }
 
@@ -12999,7 +13022,9 @@ getMaxPlay  = function(){ return 3; };
 // make runs unwinnable over time. Scales gently with progress, same
 // growth shape as getTrainerTarget below.
 function rPlayerMaxHp(){
-  return 3;   // 3 HP, no block - survive by STUNNING the enemy (status effects)
+  // Block is the main defense again, so HP is a real pool (an unblocked enemy
+  // attack of 20-60 vs 3 HP would be instant death).
+  return Math.round(80 + (G.trainerIdx||0)*4);
 }
 
 getTrainerTarget = function(idx){
@@ -14333,6 +14358,10 @@ playSelectedHand = async function(){
   // side effects (block, shield, status, setup queue). We then run the turn in
   // three phases: (1) our block + status, (2) the opponent's turn, (3) our
   // damage - card by card.
+  // Block resets at the start of each play (unless a card set _blockPersist),
+  // then this play's block cards top it back up.
+  if(!G._blockPersist) G.playerBlock = 0;
+  G._blockPersist = false;
   const blockBefore = G.playerBlock || 0;
   const moveFx = rResolvePlayedMoves(cards, emptiedHand);
   // Our block + status (poison/burn) are applied now and STAY applied - the
@@ -14413,14 +14442,15 @@ playSelectedHand = async function(){
     const gh = ghosts[i];
     bounce(gh);
     await delay(150);
-    // this card's move animation, launched from the card, awaited
-    const moveName = moveForCard(cards[i]);
-    if(gh && gh.g && moveName){
-      await playMoveAnimation(moveName, {
+    // This card's move animation(s), launched from the card, awaited. A fusion
+    // card fires BOTH parents' animations simultaneously.
+    const anims = moveAnimsForCard(cards[i]);
+    if(gh && gh.g && anims.length){
+      await Promise.all(anims.map(nm => playMoveAnimation(nm, {
         container: gameWrap, attackerEl: gh.g, targetEl: portraitWrap,
         speedFps: PKMN_ANIM_FPS, scale: _animScale,
         onSoundEffect: () => { if (typeof SFX !== 'undefined' && SFX.hit) SFX.hit(); },
-      }).catch(err => console.warn('[MoveAnim] failed for', moveName, err));
+      }).catch(err => console.warn('[MoveAnim] failed for', nm, err))));
     }
     // land this card's damage: shield first, then HP
     let d = shares[i];
@@ -14466,6 +14496,14 @@ playSelectedHand = async function(){
     _floatOppDmg(gin);
     renderOpponentPokemonHpBar();
     updatePortraits();
+  }
+
+  // ── Phase 4: END OF TURN — now that all our cards AND the opponent have
+  //    resolved, Poison/Burn deal their stack damage and each loses a stack.
+  if(G.trainerHp > 0 && typeof rTickEndOfTurn === 'function'){
+    await delay(200);
+    rTickEndOfTurn();
+    if(G.trainerHp > 0) await delay(350);
   }
 
   // Played cards flash then fly off to the right (same motion as a discard).
@@ -14612,7 +14650,7 @@ function rAfterPlay(){
       G._tailwindUsed = true;
       G.discardsLeft = (G.discardsLeft||0) + 1;
       const discEl = document.getElementById('rp-discards');
-      if(discEl) discEl.textContent = G.discardsLeft;
+      if(discEl) discEl.textContent = fmtNum(G.playerBlock||0);   // box now shows BLOCK
       announceText('🌬️ TAILWIND — DISCARD REFUNDED', 1400);
     }
     G._heroUsedThisTurn = false;   // a new discard resets the ability for next time
@@ -14679,18 +14717,15 @@ updateActionBar = function(){
     const cards = rSelCards();
     const action = rClassifySelection(cards);
     if(playBtn){
-      if(action){
-        playBtn.disabled = false;
-        playBtn.textContent = 'PLAY HAND (' + fmtNum(action.pv) + ')';
-      } else {
-        playBtn.disabled = true;
-        playBtn.textContent = 'PICK CARDS';
-      }
+      // No number on the play button - selecting cards doesn't change it.
+      playBtn.disabled = !action;
+      playBtn.textContent = action ? 'PLAY HAND' : 'PICK CARDS';
     }
     if(discardBtn){
       const discardBlocked = !!(activeGymRule() && activeGymRule().blocksDiscard);
-      discardBtn.disabled = discardBlocked || !(sel >= 1 && sel <= 5 && G.discardsLeft > 0);
-      discardBtn.textContent = discardBlocked ? 'DISCARD LOCKED' : (G.discardsLeft > 0 ? `DISCARD (${sel})` : 'NO DISCARDS');
+      discardBtn.disabled = discardBlocked || !(sel >= 1 && sel <= getMaxPlay() && G.discardsLeft > 0);
+      // The button shows DISCARDS REMAINING, not the selection count.
+      discardBtn.textContent = discardBlocked ? 'DISCARD LOCKED' : (G.discardsLeft > 0 ? `DISCARD (${G.discardsLeft})` : 'NO DISCARDS');
     }
     if(nameEl){
       // Show a label ONLY when an actual bonus pattern is detected (e.g. a
@@ -14715,10 +14750,12 @@ updateActionBar = function(){
     }
   } else {
     if(playBtn){ playBtn.disabled=true; playBtn.textContent='PLAY HAND'; }
-    if(discardBtn){ discardBtn.disabled=true; discardBtn.textContent='DISCARD'; }
+    if(discardBtn){ discardBtn.disabled=true; discardBtn.textContent='DISCARD ('+(G.discardsLeft||0)+')'; }
     if(nameEl){ nameEl.textContent='No cards selected'; nameEl.className='no-hand'; nameEl.style.display=''; }
     if(movesEl){ movesEl.innerHTML=''; }
   }
+  // Keep the bottom-left "Block" box current whenever the action bar updates.
+  { const bkEl = document.getElementById('rp-discards'); if(bkEl) bkEl.textContent = fmtNum(G.playerBlock||0); }
 
   // ── Hero ability button — prerequisites differ per ability ──
   const heroBtn = document.getElementById('hero-btn');
