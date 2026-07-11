@@ -409,9 +409,10 @@ html { overflow: hidden; }
 
 
 /* ── AVAILABLE HANDS PANEL (above cards) ── */
+/* BONUSES / MOVES buttons removed from battle - accessible via View Deck. */
 #hud-toggle-row {
   position:fixed; z-index:110; right:12px; top:clamp(12px,1.5vh,24px);
-  display:flex; gap:6px; pointer-events:all;
+  display:none !important; gap:6px; pointer-events:all;
 }
 .hud-toggle-btn {
   font-family:'PokemonClassic',monospace; font-size:clamp(9px,0.95vw,12px);
@@ -5027,14 +5028,26 @@ function showRotomRadio() {
   const el=document.getElementById('rotom-widget');
   if(el) {
     el.style.display='block';
-    {
-      // Bottom-left, just above the hd-row (Health/Discards) - both desktop AND mobile.
+    if(typeof isMobileLayout==='function' && isMobileLayout()) {
+      // Mobile: bottom-left, just above the hd-row (Health/Block).
       const hdRow = document.getElementById('hd-row');
       if(hdRow) {
         const r = hdRow.getBoundingClientRect();
-        el.style.left = r.left + 'px';
+        el.style.left = r.left + 'px'; el.style.right = 'auto';
         el.style.bottom = (window.innerHeight - r.top + 6) + 'px';
         el.style.top = 'auto';
+      }
+    } else {
+      // Desktop: top-right, just above the selected-meld panel.
+      const preview = document.getElementById('rp-hand-preview');
+      if(preview) {
+        const r = preview.getBoundingClientRect();
+        el.style.right = (window.innerWidth - r.right) + 'px'; el.style.left = 'auto';
+        el.style.bottom = (window.innerHeight - r.top + 8) + 'px';
+        el.style.top = 'auto';
+      } else {
+        el.style.right = '12px'; el.style.left = 'auto';
+        el.style.top = '12px'; el.style.bottom = 'auto';
       }
     }
   }
@@ -8697,6 +8710,13 @@ function openDeckViewer(tab) {
   if(typeof closeHudPanels==='function') closeHudPanels();
   if(typeof closeAbilitiesViewer==='function') closeAbilitiesViewer();
   if(typeof closeHandsViewer==='function') closeHandsViewer();
+  // The intent badge is reparented to <body> (not inside opp-pokemon-area), so
+  // the DV_HIDE_IDS loop above doesn't catch it and it shows through the deck
+  // viewer's translucent backdrop. Hide it here; remember whether it was showing
+  // so closeDeckViewer can bring it back only if we're returning to a battle.
+  const _ib = document.getElementById('opp-pkmn-intent-badge');
+  _deckViewerIntentWasVisible = !!(_ib && getComputedStyle(_ib).visibility !== 'hidden' && parseFloat(getComputedStyle(_ib).opacity) > 0.5);
+  if(typeof hideIntentBadge==='function') hideIntentBadge();
   // Force the viewer visible with explicit display style (belt + suspenders)
   viewer.style.display = 'flex';
   viewer.classList.add('open');
@@ -8704,6 +8724,7 @@ function openDeckViewer(tab) {
 }
 
 let _deckViewerFromRoute = false;
+let _deckViewerIntentWasVisible = false;
 // ── POKÉDEX — every possible FUSION pairing (C(151,2) = 11,325 combos) ──
 let _pdxTab = 'seen';
 
@@ -8847,6 +8868,14 @@ function closeDeckViewer() {
       delete el.dataset.dvHadVisible;
     }
   });
+  // Bring the intent badge back only if it was visible before the viewer opened
+  // (i.e. we were mid-battle, not on an interlude screen where it stays hidden).
+  if(_deckViewerIntentWasVisible){
+    _deckViewerIntentWasVisible = false;
+    const b = document.getElementById('opp-pkmn-intent-badge');
+    if(b){ b.style.transition='none'; b.style.visibility='visible'; b.style.opacity='1'; }
+    if(typeof positionIntentBadge==='function') positionIntentBadge();
+  }
   if(_deckViewerFromRoute){
     _deckViewerFromRoute = false;
     // Fully rebuild the route row from the cached offer — guards against any
