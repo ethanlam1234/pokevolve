@@ -207,7 +207,7 @@ html { overflow: hidden; }
   100%{opacity:0;transform:translateX(-50%) translateY(-55px) scale(1)}
 }
 #hand-container {
-  position:fixed; bottom:clamp(160px,18vh,220px); left:0; right:0;
+  position:fixed; bottom:clamp(100px,12vh,150px); left:0; right:0;
   display:flex; flex-direction:row; justify-content:center; align-items:flex-end;
   padding-bottom:0; pointer-events:none; z-index:100; overflow:visible;
   perspective:900px;
@@ -360,7 +360,7 @@ html { overflow: hidden; }
 #rp-hand-preview {
   /* On desktop the BONUSES/MOVES row that used to sit above this is gone, so
      pull the panel up into that freed space (the music widget rides just above). */
-  position:fixed; z-index:108; right:12px; top:clamp(46px,6vh,54px);
+  position:fixed; z-index:108; right:12px; top:clamp(62px,8vh,74px);
   width:clamp(160px,18vw,240px);
   font-family:'PokemonClassic',monospace;
   background:rgba(8,10,26,0.94); border:2px solid rgba(50,70,140,0.5);
@@ -384,6 +384,7 @@ html { overflow: hidden; }
 #rp-hand-moves:empty { display:none; }
 .rphm-item { border-top:1px solid rgba(80,100,160,0.28); padding-top:5px; }
 .rphm-name { font-size:clamp(8px,0.85vw,10.5px); letter-spacing:0.5px; line-height:1.2; }
+.rphm-pill { display:inline-block; color:#fff; font-weight:700; padding:2px 7px; border-radius:4px; text-shadow:0 1px 2px rgba(0,0,0,0.85); letter-spacing:0.3px; }
 .rphm-desc { font-size:clamp(7px,0.72vw,9px); color:#aab6cc; line-height:1.35; margin-top:2px; }
 /* Hands / Discards — styled like the blue/red Balatro chips×mult boxes */
 #hd-row {
@@ -974,7 +975,7 @@ html { overflow: hidden; }
 #dv-grid-wrap {
   flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain; width:100%; max-width:1100px;
-  padding:clamp(14px,2.5vh,28px) clamp(16px,3vw,40px) calc(clamp(16px,3vh,36px) + 40px);
+  padding:clamp(14px,2.5vh,28px) clamp(16px,3vw,40px) clamp(200px,34vh,400px);
   display:flex; justify-content:flex-start;
   box-sizing:border-box;
 }
@@ -1067,7 +1068,7 @@ html { overflow: hidden; }
   box-sizing:border-box;
 }
 #hv-grid-wrap {
-  padding-bottom:clamp(200px,32vh,380px);
+  padding-bottom:clamp(240px,38vh,460px);
 }
 /* ── Abilities & Moves table ──
    Signature idea: the Move column's colored pill is the same badge
@@ -3523,7 +3524,7 @@ function initGame() {
   document.body.classList.add('game-active');
   // Use starter deck if chosen, otherwise random
   if(G._starterDeckCards && G._starterDeckCards.length) {
-    const bonusCopies = G.bonusCards.map(f=>mkCard(f));
+    const bonusCopies = G.bonusCards.map(f=> f._isBonusCard ? {...f, id:Math.random().toString(36).slice(2)} : mkCard(f));
     G.deck = shuffle([...G._starterDeckCards.map(c=>({...c,id:Math.random().toString(36).slice(2)})),...bonusCopies]);
   } else {
     G.deck = shuffle(FUSIONS.map(mkCard));
@@ -3695,6 +3696,25 @@ function makeHcEl(card, i, isHidden) {
   el.style.zIndex = G_selected.has(i) ? (110 + i) : (2 + i);
   if(G_selected.has(i)) el.classList.add('selected-hand');
   if(isHidden) { el.style.visibility = 'hidden'; el.style.pointerEvents = 'none'; }
+  // ── ITEM SPELL CARDS: render the spell face, cast on click, never meld-select ──
+  if(card._isItemCard){
+    buildItemCardInner(el, card);
+    el.title = card.name;
+    el.dataset.hIdx = i;
+    const _def = (typeof SPELL_BY_ID!=='undefined' && SPELL_BY_ID[card._spellId]) || {};
+    if(typeof attachPopover==='function') attachPopover(el, (card.name||'').toUpperCase() + '\n\n' + (card.desc || _def.desc || '') + '\n\n(click to cast)');
+    el.addEventListener('click', (e) => {
+      if(_handDragSuppressClick){ e.stopPropagation(); return; }
+      castItemCard(i);
+    });
+    el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+    const fDur = 2.8 + (i * 0.22) % 1.0;
+    const fDelay = -((i * 0.55) % fDur);
+    el.style.setProperty('--float-dur',   fDur.toFixed(2) + 's');
+    el.style.setProperty('--float-delay', fDelay.toFixed(2) + 's');
+    el._addFloatAfterFlip = true;
+    return el;
+  }
   const art = document.createElement('img');
   art.className = 'hc-art'; art.draggable = false;
   removeWhiteBg(card.fusionImg || card.img, url => { art.src = url; });
@@ -3824,6 +3844,7 @@ function _applyHandDragRange(a, b) {
     // card first rather than the one the drag anchored on.
     const ordered = (b >= a) ? range : [...range].reverse();
     for(const i of ordered) {
+      if(G.hand[i] && G.hand[i]._isItemCard) continue;   // never meld an item spell card
       if(finalSet.size >= maxN && !finalSet.has(i)) continue;
       finalSet.add(i);
     }
@@ -3892,7 +3913,7 @@ function updateActionBar() {
         movesEl.innerHTML = selectedCards.flatMap(c => getCardMoves(c)).map(m => {
           const col = (typeof moveCategoryColor==='function' ? moveCategoryColor(m.move) : '#ffdd66');
           return `<div class="rphm-item">`
-            + `<div class="rphm-name" style="color:${col}">${esc(m.move.name)}</div>`
+            + `<div class="rphm-name"><span class="rphm-pill" style="background:${col}">${esc(m.move.name)}</span></div>`
             + `<div class="rphm-desc">${esc(m.move.desc)}</div>`
             + `</div>`;
         }).join('');
@@ -3961,7 +3982,7 @@ async function discardSelected() {
     if(G.animating){ G.animating=false; window._reflowAnimating=false; renderHand(); renderHandsPanel(); updateRunPanel(); }
   }, 4000);
 
-  const selectedIndices = Array.from(G_selected).sort((a,b) => a-b);
+  const selectedIndices = Array.from(G_selected).sort((a,b) => a-b).filter(i => G.hand[i] && !G.hand[i]._isItemCard);
   const hcEls = [...document.querySelectorAll('#hand-container .hc')];
   const FLY_DUR = 0.52, STAGGER = 0.07;
 
@@ -6819,7 +6840,7 @@ function hasEffect(t){ return ownedItemsWithEffect(t).length > 0; }
 function sumEffectAmount(t){ return ownedItemsWithEffect(t).reduce((s,it)=>s+((it.effectArgs&&it.effectArgs.amount)||0), 0); }
 function multiplyEffectFactor(t){ return ownedItemsWithEffect(t).reduce((m,it)=>m*((it.effectArgs&&it.effectArgs.factor)||1), 1); }
 
-function getHandSize(){ return 8 + sumEffectAmount('hand_size'); }
+function getHandSize(){ return 8 + sumEffectAmount('hand_size') + (typeof G!=='undefined' ? (G.spellHandSize||0) : 0); }
 function getMaxPlay(){ return (typeof G_modifier!=='undefined' && G_modifier==='max_4_cards') ? 4 : 5; }
 
 // ── Trainer targets: Balatro blind curve ──────────────────────
@@ -6854,6 +6875,8 @@ function applyBattleStartEffects(){
   if(trainer && typeof applyBattleModifier==='function') applyBattleModifier(trainer);
   G.handsLeft = BAL.handsPerBattle;
   G.discardsLeft = BAL.discardsPerBattle + (hasItem('poke_ball')?1:0);
+  // ── reset item-spell battle state (only hand-size persists per battle now) ──
+  G.spellHandSize = 0;
   G._amuletGold = 0;
   G._disabledCardId = null; G._disabledItemId = null;
   if(typeof G_modifier!=='undefined'){
@@ -7244,7 +7267,8 @@ async function playSelectedHand() {
   if(typeof SFX!=='undefined') SFX.playHand();
   if(!G.ourTurn || G.animating || G_selected.size === 0) return;
 
-  const selectedIndices = Array.from(G_selected).sort((a,b)=>a-b);
+  const selectedIndices = Array.from(G_selected).sort((a,b)=>a-b).filter(i => G.hand[i] && !G.hand[i]._isItemCard);
+  if(selectedIndices.length === 0){ return; }
   if(selectedIndices.length > getMaxPlay()){
     announceText('MAX '+getMaxPlay()+' CARDS THIS BATTLE!', 1500);
     return;
@@ -8337,8 +8361,23 @@ function autoAdvanceRun() {
     const others = available.filter(n => !isBattleNode(n));
     if (others.length) pool = others;
   } else if (G._lastNodeWasBattle === false) {
-    const battles = available.filter(isBattleNode);
-    if (battles.length) pool = battles;
+    let battles = available.filter(isBattleNode);
+    if (!battles.length) {
+      // The previous stop was an "other" screen (encounter / Cinnabar / shop)
+      // and the map has no battle reachable next. We must never show two
+      // "other" screens back-to-back, so promote one reachable node into a
+      // real battle. Prefer a node that doesn't itself feed a boss so we don't
+      // create a battle->boss pair.
+      const flat = G._actMap.rows.flat();
+      const feedsBoss = id => G._actMap.edges.some(([a,b]) => a === id && (flat.find(n=>n.id===b)||{}).type === 'boss');
+      const promo = available.find(n => !feedsBoss(n.id)) || available[0];
+      promo.type = 'battle';
+      delete promo.routeData;
+      const _nm = ACT_FILLER_POOL[Math.floor(Math.random()*ACT_FILLER_POOL.length)];
+      promo.trainer = getTrainerByName(_nm) || TRAINERS.find(t=>t.tier==='normal') || TRAINERS[0];
+      battles = [promo];
+    }
+    pool = battles;
   }
   const node = pool[Math.floor(Math.random() * pool.length)];
   selectActNode(node);
@@ -8550,7 +8589,7 @@ function renderDaycareBreedPicker() {
   row.innerHTML = '';
   // Show up to 5 unique fusions in deck
   const seen = new Set();
-  const uniqueCards = [...G.deck, ...G.bonusCards.map(f=>({name:f.name,fusionImg:f.img,img:f.img,type1:getPokeTypes(f.name)[0],type2:getPokeTypes(f.name)[1],...mkCard(f)}))].filter(c=>{if(seen.has(c.name)) return false; seen.add(c.name); return true;}).slice(0,5);
+  const uniqueCards = [...G.deck.filter(c=>!c._isItemCard), ...G.bonusCards.filter(f=>!f._isItemCard).map(f=>({name:f.name,fusionImg:f.img,img:f.img,type1:getPokeTypes(f.name)[0],type2:getPokeTypes(f.name)[1],...mkCard(f)}))].filter(c=>{if(seen.has(c.name)) return false; seen.add(c.name); return true;}).slice(0,5);
   uniqueCards.forEach((card, i) => {
     const el = makeCardVisual(card, 'width:clamp(90px,9vw,130px);aspect-ratio:2/3;');
     el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
@@ -8701,6 +8740,16 @@ function makeCardVisual(card, sizeCss, opts) {
   el.style.setProperty('--float-delay', floatDelay.toFixed(2)+'s');
   el.classList.add('cv-floating');
   if(sizeCss) el.style.cssText += sizeCss;
+
+  // ── ITEM SPELL CARDS render their own face ──
+  if(card._isItemCard){
+    buildItemCardInner(el, card);
+    el.title = card.name;
+    const _def = (typeof SPELL_BY_ID!=='undefined' && SPELL_BY_ID[card._spellId]) || {};
+    if(typeof attachPopover==='function') attachPopover(el, (card.name||'').toUpperCase() + '\n\n' + (card.desc || _def.desc || ''));
+    el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
+    return el;
+  }
 
   const art = document.createElement('img');
   art.className = 'cv-art'; art.draggable = false; art.loading = 'lazy';
@@ -10478,9 +10527,15 @@ function positionIntentBadge(){
   badge.style.margin = '0';
   badge.style.zIndex = '106';
   badge.style.left = Math.round(r.left + r.width/2) + 'px';
-  badge.style.top = Math.round(r.top - GAP) + 'px';
-  // Anchor its bottom-center at that point.
+  // Anchor its bottom-center at the point below, so the badge grows UPWARD.
   badge.style.transform = 'translate(-50%,-100%)';
+  // Clamp so the badge never spills above the top of the screen: its visible
+  // top edge sits at (anchorTop - badgeHeight), so keep anchorTop >= height + margin.
+  const badgeH = badge.offsetHeight || 44;
+  const TOP_MARGIN = 6;
+  let anchorTop = r.top - GAP;
+  if(anchorTop < badgeH + TOP_MARGIN) anchorTop = badgeH + TOP_MARGIN;
+  badge.style.top = Math.round(anchorTop) + 'px';
 }
 // Keep the opponent HP bar + intent pinned across viewport/orientation changes.
 window.addEventListener('resize', () => { try { positionOppHpBar(); positionIntentBadge(); } catch(e){} });
@@ -10510,12 +10565,9 @@ function renderOpponentStatusIcons(){
   const active = [];
   if(st.poison>0) active.push({key:'PSN', stack: st.poison});
   if(st.burn>0) active.push({key:'BRN', stack: st.burn});
-  // Weaken (from sleep/paralyze/freeze/confuse) shows an icon flavored by the
-  // last CC applied, with the current weaken amount (how much attack is cut).
-  if((st.weaken||0)>0){
-    const k = st.ccLabel==='ASLEEP' ? 'SLP' : st.ccLabel==='FROZEN' ? 'FRZ' : 'PAR';
-    active.push({key:k, stack: st.weaken});
-  }
+  // Weaken (sleep/paralyze/freeze/confuse) no longer shows a persistent icon —
+  // it plays a one-shot animation when applied (see flashOppStatus) and simply
+  // stays baked into the reduced attack-intent number on the intent badge.
   row.innerHTML = active.map(a => {
     const val = a.stack ? `<span class="opp-status-val">${fmtNum(a.stack)}</span>` : '';
     return `<span class="opp-status-item">`
@@ -10525,7 +10577,41 @@ function renderOpponentStatusIcons(){
   }).join('');
 }
 
-// Opponent Pokémon HP bar - reuses G.trainerHp/trainerMaxHp (the same
+// One-shot floating status pop over the enemy for weaken effects (frozen /
+// paralyzed / confused / asleep / weakened). These no longer leave a lingering
+// icon — this brief animation is the only visual, while the attack reduction
+// stays baked into the intent badge's number.
+const _CC_FLAVOR = {
+  ASLEEP:   { name:'ASLEEP',    color:'#8fb2ff', icon:'\u{1F4A4}' },
+  FROZEN:   { name:'FROZEN',    color:'#7fe4ff', icon:'\u2744' },
+  PARALYZED:{ name:'PARALYZED', color:'#ffd93c', icon:'\u26A1' },
+  CONFUSED: { name:'CONFUSED',  color:'#c79cff', icon:'\u{1F4AB}' },
+  WEAK:     { name:'WEAKENED',  color:'#ff9a5a', icon:'\u25BC' },
+  DISABLED: { name:'DISABLED',  color:'#ff9a5a', icon:'\u2716' },
+};
+function flashOppStatus(label, amount){
+  const fl = _CC_FLAVOR[label] || { name:(label||'WEAKENED'), color:'#ff9a5a', icon:'\u25BC' };
+  const anchor = document.getElementById('opp-pkmn-sprite')
+              || document.getElementById('opp-pokemon-img-wrap')
+              || document.getElementById('opp-pokemon-area');
+  const r = anchor ? anchor.getBoundingClientRect() : null;
+  const cx = (r && r.width>2) ? (r.left + r.width/2) : window.innerWidth*0.5;
+  const cy = (r && r.height>2) ? (r.top + r.height*0.32) : window.innerHeight*0.26;
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;left:'+cx+'px;top:'+cy+'px;transform:translate(-50%,-50%);'
+    + 'z-index:2147483600;pointer-events:none;text-align:center;'
+    + "font-family:'PokemonClassic',monospace;font-weight:bold;white-space:nowrap;"
+    + 'color:'+fl.color+';text-shadow:2px 2px 0 #000,0 0 14px '+fl.color+';';
+  el.innerHTML = '<div style="font-size:clamp(13px,1.7vw,22px);letter-spacing:1px;">'+fl.icon+' '+fl.name+'</div>'
+    + (amount>0 ? '<div style="font-size:clamp(10px,1.2vw,15px);color:#ff5a4d;text-shadow:2px 2px 0 #000;margin-top:2px;">\u2212'+fmtNum(amount)+' ATK</div>' : '');
+  document.body.appendChild(el);
+  el.animate([
+    { opacity:0, transform:'translate(-50%,-50%) scale(0.5)' },
+    { opacity:1, transform:'translate(-50%,-72%) scale(1.15)', offset:0.25 },
+    { opacity:1, transform:'translate(-50%,-92%) scale(1.0)',  offset:0.7 },
+    { opacity:0, transform:'translate(-50%,-140%) scale(0.95)' },
+  ], { duration:1400, easing:'cubic-bezier(0.2,0.7,0.3,1)' }).onfinish = ()=>el.remove();
+}
 // values the run-panel already tracks damage into) rather than giving the
 // Pokémon its own separate pool: visually it's the trainer's own
 // Pokémon, so its HP bar is just that same number shown where the sprite
@@ -12275,6 +12361,8 @@ function openShop() {
   const gdEl = document.getElementById('gold-display');
   if(gdEl) gdEl.style.display='none';
   G._shopPicked = false;
+  G._shopSpellOffer = null;   // fresh set of 5 spell cards each visit
+  G._shopSpellPicked = false;
   document.getElementById('bf-ours') && (document.getElementById('bf-ours').innerHTML='');
   document.getElementById('bf-theirs') && (document.getElementById('bf-theirs').innerHTML='');
   const screen = document.getElementById('shop-screen');
@@ -12289,30 +12377,12 @@ function openShop() {
 }
 
 function renderShop() {
-  // Free "pick one of 3" - no prices, no gold, no decorative frame box.
-  const grid = document.getElementById('shop-items-grid');
-  if(!grid) return;
-  grid.innerHTML = '';
-  _shopItemPool.forEach((item, i) => {
-    const el = document.createElement('div');
-    el.className = 'shop-item';
-    el.style.setProperty('--sd', (i*0.07)+'s');
-    el.innerHTML = `
-      <div class="shop-item-frame">
-        <img class="shop-item-icon" src="${item.img}" alt="">
-      </div>
-      <div class="shop-item-text">
-        <div class="shop-item-name">${item.name}</div>
-        <div class="shop-item-desc">${item.desc}</div>
-      </div>
-    `;
-    el.addEventListener('click', () => chooseShopItem(item, el));
-    el.addEventListener('mouseenter', () => { if(typeof SFX!=='undefined') SFX.hover(); });
-    el.addEventListener('touchend', (e) => { e.preventDefault(); chooseShopItem(item, el); }, {passive:false});
-    grid.appendChild(el);
-  });
-  // Owned items (in-shop display)
-  renderOwnedItemsInShop();
+  // Celadon Dept. Store is now a "pick one of five SPELL CARDS" reward.
+  // Each picked card joins the deck as a playable Slay-the-Spire-style spell.
+  const oldGrid = document.getElementById('shop-items-grid');
+  if(oldGrid){ oldGrid.innerHTML = ''; oldGrid.style.display = 'none'; }
+  renderShopSpellCards();
+  if(typeof renderOwnedItemsInShop==='function') renderOwnedItemsInShop();
 }
 
 // The player's actual persistent collection - NOT G.deck, which gets
@@ -12328,7 +12398,7 @@ function renderShop() {
 function persistentCardPool(){
   const starter = G._starterDeckCards || [];
   const bonuses = (G.bonusCards || []).filter(f => f._isBonusCard);
-  return [...starter, ...bonuses];
+  return [...starter, ...bonuses].filter(c => !c._isItemCard);
 }
 
 // The store is a free reward node: pick ONE of the three items (no gold),
@@ -12746,6 +12816,306 @@ const SHOP_ITEMS = [
 // G_items declared earlier near G_selected
 let _shopItemPool = []; // current shop items for sale
 
+// ═══════════════════════════════════════════════════════════════════
+// ║  CELADON SPELL CARDS  —  Slay-the-Spire style item cards          ║
+// ║  Items are no longer held by a Pokémon. Each one is its OWN card  ║
+// ║  that lives in your deck, gets drawn into your hand, and CASTS a  ║
+// ║  unique effect when you click it (attacks, powers, charges,       ║
+// ║  skills). Casting is free and does not use a meld / hand play.    ║
+// ═══════════════════════════════════════════════════════════════════
+const SPELL_KIND_META = {
+  attack: { color:'#ff5a4d', glow:'rgba(255,90,77,0.55)',  label:'ATTACK' },
+  skill:  { color:'#4fd08a', glow:'rgba(79,208,138,0.55)',  label:'SKILL'  },
+};
+
+// ── small state mutators used by the cast() effects ──
+function spellGainGold(n){ G.gold = (G.gold||0) + n; if(typeof updateRunPanel==='function') updateRunPanel(); }
+function spellGainDiscards(n){ G.discardsLeft = (G.discardsLeft||0) + n; }
+function spellGainHands(n){ G.handsLeft = (G.handsLeft||0) + n; }
+function spellDrawToHandSize(){
+  if((!G.deck || !G.deck.length) && G._discardPile && G._discardPile.length){
+    G.deck = shuffle(G._discardPile.splice(0));
+  }
+  let guard = 0;
+  while(G.hand.length < getHandSize() && G.deck && G.deck.length && guard++ < 60){
+    G.hand.push({ ...G.deck.shift() });
+  }
+  if(typeof renderHand==='function') renderHand();
+}
+function spellAddHandSize(n){ G.spellHandSize = (G.spellHandSize||0) + n; spellDrawToHandSize(); }
+function spellRedrawHand(){
+  G._discardPile = G._discardPile || [];
+  G.hand.forEach(c => G._discardPile.push(c));   // dump whole hand (incl. the cast spell)
+  G.hand = [];
+  G_selected && G_selected.clear && G_selected.clear();
+  spellDrawToHandSize();
+}
+
+// Each cast(ctx) returns { dmg?, msg?, redraw? }.
+// ctx = { handFull, handOthers, discardsLeft }. Effects are all DIRECT
+// (damage / gold / discards / hand size / redraw) — Slay-the-Spire style.
+// No card modifies meld chips/mult anymore.
+const ITEM_SPELL_CARDS = [
+  // ── ATTACKS (direct damage to the trainer) ──────────────────────
+  { id:'sp_ragecandy', name:'Rage Candy Bar', img:ITEM_IMG_BASE+'RAGECANDYBAR.png', kind:'attack',
+    desc:'Deal 40. 80 if your hand is full.',
+    cast:(c)=>({ dmg:c.handFull?80:40, msg:c.handFull?'80 DAMAGE!':'40 DAMAGE' }) },
+  { id:'sp_comet', name:'Comet Shard', img:ITEM_IMG_BASE+'COMETSHARD.png', kind:'attack',
+    desc:'Deal 18 per other card in hand.',
+    cast:(c)=>{ const d = 18 * Math.max(1, c.handOthers); return { dmg:d, msg:d+' DAMAGE' }; } },
+  { id:'sp_sticky', name:'Sticky Barb', img:ITEM_IMG_BASE+'STICKYBARB.png', kind:'attack',
+    desc:'Deal a huge 90 damage.',
+    cast:()=>({ dmg:90, msg:'90 DAMAGE' }) },
+  { id:'sp_flameorb', name:'Flame Orb', img:ITEM_IMG_BASE+'FLAMEORB.png', kind:'attack',
+    desc:'Deal 55 fire damage.',
+    cast:()=>({ dmg:55, msg:'55 DAMAGE' }) },
+  { id:'sp_metronome', name:'Metronome', img:ITEM_IMG_BASE+'METRONOME.png', kind:'attack',
+    desc:'Deal a random 25 to 130.',
+    cast:()=>{ const d = 25 + Math.floor(Math.random()*106); return { dmg:d, msg:d+' DAMAGE!' }; } },
+  { id:'sp_razorfang', name:'Razor Fang', img:ITEM_IMG_BASE+'RAZORFANG.png', kind:'attack',
+    desc:'Deal 16 per discard you have left.',
+    cast:(c)=>{ const d = 16 * Math.max(1, c.discardsLeft); return { dmg:d, msg:d+' DAMAGE' }; } },
+  { id:'sp_kingsrock', name:"King's Rock", img:ITEM_IMG_BASE+'KINGSROCK.png', kind:'attack',
+    desc:'Deal 50 and gain $4.',
+    cast:()=>{ spellGainGold(4); return { dmg:50, msg:'50 DMG · +$4' }; } },
+  { id:'sp_focusband', name:'Focus Band', img:ITEM_IMG_BASE+'FOCUSBAND.png', kind:'attack',
+    desc:'Deal 35 and gain +1 discard.',
+    cast:()=>{ spellGainDiscards(1); return { dmg:35, msg:'35 DMG · +1 DISCARD' }; } },
+
+  // ── SKILLS (utility — resources, no meld buffs) ─────────────────
+  { id:'sp_gripclaw', name:'Grip Claw', img:ITEM_IMG_BASE+'GRIPCLAW.png', kind:'skill',
+    desc:'+2 hand size this battle.',
+    cast:()=>{ spellAddHandSize(2); return { msg:'+2 HAND SIZE' }; } },
+  { id:'sp_floatstone', name:'Float Stone', img:ITEM_IMG_BASE+'FLOATSTONE.png', kind:'skill',
+    desc:'+1 hand size and +2 discards.',
+    cast:()=>{ spellGainDiscards(2); spellAddHandSize(1); return { msg:'+1 HAND SIZE · +2 DISCARD' }; } },
+  { id:'sp_maxether', name:'Max Ether', img:ITEM_IMG_BASE+'MAXETHER.png', kind:'skill',
+    desc:'Gain +3 discards this battle.',
+    cast:()=>{ spellGainDiscards(3); return { msg:'+3 DISCARDS' }; } },
+  { id:'sp_escaperope', name:'Escape Rope', img:ITEM_IMG_BASE+'ESCAPEROPE.png', kind:'skill',
+    desc:'Shuffle your hand away, draw fresh.',
+    cast:()=>({ redraw:true, msg:'FRESH HAND' }) },
+  { id:'sp_amulet', name:'Amulet Coin', img:ITEM_IMG_BASE+'AMULETCOIN.png', kind:'skill',
+    desc:'Gain $10.',
+    cast:()=>{ spellGainGold(10); return { msg:'+$10' }; } },
+  { id:'sp_bignugget', name:'Big Nugget', img:ITEM_IMG_BASE+'BIGNUGGET.png', kind:'skill',
+    desc:'Gain a hefty $8.',
+    cast:()=>{ spellGainGold(8); return { msg:'+$8' }; } },
+  { id:'sp_luckyegg', name:'Lucky Egg', img:ITEM_IMG_BASE+'LUCKYEGG.png', kind:'skill',
+    desc:'Gain $5 and +2 discards.',
+    cast:()=>{ spellGainGold(5); spellGainDiscards(2); return { msg:'+$5 · +2 DISCARD' }; } },
+];
+const SPELL_BY_ID = {}; ITEM_SPELL_CARDS.forEach(s => SPELL_BY_ID[s.id] = s);
+
+// Build a deck-ready card object from a spell definition.
+function makeItemSpellCard(def){
+  return {
+    _isItemCard:true, _isBonusCard:true, _spellId:def.id,
+    name:def.name, img:def.img, fusionImg:def.img,
+    kind:def.kind, desc:def.desc,
+    dexA:undefined, dexB:undefined, type1:undefined, type2:undefined,
+    cost:0, keywords:[], canAttack:false, exhausted:true, attacksLeft:0,
+    id:Math.random().toString(36).slice(2),
+  };
+}
+
+// Renders an item spell card so it matches a Pokémon card exactly: the
+// item icon sits as the card art (same hc-art/cv-art positioning), the name
+// is a colored pill styled identically to a move badge, and the effect text
+// sits in a card text-box at the bottom. No custom frame/background — it
+// inherits the plain white .hc / .card-visual frame + hover + float.
+function buildItemCardInner(el, card){
+  const def  = SPELL_BY_ID[card._spellId] || {};
+  const kind = card.kind || def.kind || 'skill';
+  const meta = SPELL_KIND_META[kind] || SPELL_KIND_META.skill;
+  el.classList.add('is-itemcard');
+  const isCV = el.classList.contains('card-visual');
+  const artClass = isCV ? 'cv-art' : 'hc-art';
+  // Card art = the item icon, positioned exactly like a Pokémon's art
+  const art = document.createElement('img');
+  art.className = artClass + ' ic-art';
+  art.draggable = false;
+  art.src = card.img;
+  el.appendChild(art);
+  // Name pill — identical styling to a colored move badge (hc-type1)
+  const row = document.createElement('div');
+  row.className = 'hc-type-row-top';
+  const badge = document.createElement('span');
+  badge.className = 'hc-type1 ic-namebadge';
+  badge.textContent = (card.name || '').toUpperCase();
+  badge.style.background = meta.color;
+  row.appendChild(badge);
+  el.appendChild(row);
+  // Effect text in a card text-box at the bottom
+  const desc = document.createElement('div');
+  desc.className = 'ic-desc';
+  desc.textContent = card.desc || def.desc || '';
+  el.appendChild(desc);
+}
+
+// ── CASTING an item card straight from the hand (click to play) ──
+async function castItemCard(handIdx){
+  if(!G.ourTurn || G.animating) return;
+  const card = G.hand[handIdx];
+  if(!card || !card._isItemCard) return;
+  const def = SPELL_BY_ID[card._spellId];
+  if(!def) return;
+  G.animating = true;
+  const meta = SPELL_KIND_META[def.kind] || SPELL_KIND_META.skill;
+  if(typeof SFX!=='undefined' && SFX.playHand) SFX.playHand();
+
+  // Snapshot hand facts BEFORE we remove the card
+  const ctx = { handFull: G.hand.length >= getHandSize(), handOthers: Math.max(0, G.hand.length - 1), discardsLeft: Math.max(0, G.discardsLeft||0) };
+
+  // Lift + glow the clicked card
+  const hcEls = [...document.querySelectorAll('#hand-container .hc')];
+  const el = hcEls[handIdx];
+  let srcX = window.innerWidth/2, srcY = window.innerHeight*0.62;
+  if(el){
+    const r = el.getBoundingClientRect();
+    srcX = r.left + r.width/2; srcY = r.top + r.height/2;
+    el.style.transition = 'transform 0.22s cubic-bezier(0.2,1.3,0.3,1), filter 0.22s ease';
+    el.style.transform  = 'translateY(-34px) scale(1.16)';
+    el.style.filter     = 'brightness(1.25) drop-shadow(0 0 18px ' + meta.glow + ')';
+    el.style.zIndex     = 400;
+  }
+  await delay(240);
+
+  // Resolve
+  let res = {};
+  try { res = def.cast(ctx) || {}; } catch(e){ res = {}; }
+  const dmg = Math.max(0, Math.round(res.dmg || 0));
+  if(res.redraw) spellRedrawHand();
+
+  // Remove the cast card from hand (if a redraw hasn't already cleared it)
+  const idxNow = G.hand.indexOf(card);
+  if(idxNow > -1){ G.hand.splice(idxNow, 1); (G._discardPile = G._discardPile || []).push(card); }
+
+  // Impact — target the opponent's ACTIVE POKÉMON (like every move animation),
+  // not the trainer portrait.
+  const targetWrap = document.getElementById('opp-pokemon-img-wrap')
+                  || document.getElementById('opp-pkmn-sprite')
+                  || document.getElementById('opp-pokemon-area');
+  if(dmg > 0 && targetWrap){
+    const pr = targetWrap.getBoundingClientRect();
+    const tx = pr.left + pr.width/2, ty = pr.top + pr.height*0.42;
+    shootSpellBolt(srcX, srcY, tx, ty, meta.color, ()=>{
+      if(typeof itemImpactBurst==='function') itemImpactBurst(tx, ty);
+      if(typeof SFX!=='undefined' && SFX.damageHit) SFX.damageHit(dmg);
+      G.trainerHp = Math.max(0, G.trainerHp - dmg);
+      if(typeof flashOpponentSprite==='function') flashOpponentSprite();
+      spawnTrainerDamage(dmg);
+      if(typeof renderOpponentPokemonHpBar==='function') renderOpponentPokemonHpBar();
+      if(typeof updatePortraits==='function') updatePortraits();
+    });
+  } else {
+    if(typeof itemImpactBurst==='function') itemImpactBurst(srcX, srcY - 18);
+  }
+
+  if(res.msg) announceText('\u2726 ' + def.name.toUpperCase() + ' \u2014 ' + res.msg, 1500);
+
+  renderHand();
+  await delay(dmg > 0 ? 540 : 340);
+
+  if(G.trainerHp <= 0){
+    G.animating = false;
+    renderHand();
+    setTimeout(advanceTrainer, 400);
+    return;
+  }
+  // Spell replaces itself (StS 0-cost feel): top the hand back up.
+  if(typeof autoFillHand==='function') autoFillHand(()=>renderHand());
+  else renderHand();
+  G.animating = false;
+  if(typeof updateRunPanel==='function') updateRunPanel();
+  if(typeof renderHandsPanel==='function') renderHandsPanel();
+}
+
+// A glowing bolt that arcs from the card to the trainer, then fires onHit.
+function shootSpellBolt(x1,y1,x2,y2,color,onHit){
+  const bolt = document.createElement('div');
+  bolt.style.cssText =
+    'position:fixed;left:0;top:0;width:26px;height:26px;border-radius:50%;z-index:4000;pointer-events:none;'
+    + 'background:radial-gradient(circle at 50% 40%, #fff, ' + color + ' 62%, transparent 74%);'
+    + 'box-shadow:0 0 18px ' + color + ',0 0 40px ' + color + ';';
+  document.body.appendChild(bolt);
+  const midX = (x1+x2)/2 + (Math.random()-0.5)*46, midY = Math.min(y1,y2) - 90;
+  bolt.animate([
+    { transform:'translate('+x1+'px,'+y1+'px) translate(-50%,-50%) scale(0.55)', offset:0,   easing:'cubic-bezier(0.3,0.7,0.4,1)' },
+    { transform:'translate('+midX+'px,'+midY+'px) translate(-50%,-50%) scale(1.2)', offset:0.5, easing:'cubic-bezier(0.45,0,0.55,1)' },
+    { transform:'translate('+x2+'px,'+y2+'px) translate(-50%,-50%) scale(0.9)', offset:1 },
+  ], { duration:440, fill:'forwards' }).onfinish = ()=>{ bolt.remove(); if(onHit) onHit(); };
+}
+
+// Floating red damage number over the opponent's active Pokémon (mirrors _floatOppDmg).
+function spawnTrainerDamage(dmg){
+  const portraitWrap = document.getElementById('opp-pokemon-img-wrap')
+                    || document.getElementById('opp-pkmn-sprite')
+                    || document.getElementById('opp-pokemon-area');
+  const pRect = portraitWrap ? portraitWrap.getBoundingClientRect() : null;
+  const dmgLeft = pRect ? (pRect.left + pRect.width/2) : window.innerWidth*0.5;
+  const dmgTop  = pRect ? (pRect.top  + pRect.height*0.4) : window.innerHeight*0.25;
+  const e = document.createElement('div');
+  e.style.cssText = "position:fixed;left:"+dmgLeft+"px;top:"+dmgTop+"px;font-family:'PokemonClassic',monospace;font-weight:bold;font-size:clamp(24px,3.5vw,52px);color:#ff2222;text-shadow:2px 2px 0 #000,0 0 16px rgba(255,40,0,0.8);z-index:800;pointer-events:none;transform:translateX(-50%);animation:floatDmg 1.4s ease forwards;";
+  e.textContent = '-' + fmtNum(dmg);
+  document.body.appendChild(e);
+  setTimeout(()=>e.remove(), 1500);
+}
+
+// ── SHOP: five spell cards, pick one, it joins your deck ──
+function getShopSpellCards(){
+  return [...ITEM_SPELL_CARDS].sort(()=>Math.random()-0.5).slice(0,5);
+}
+function renderShopSpellCards(){
+  const row = document.getElementById('shop-spell-row');
+  if(!row) return;
+  const grid = document.getElementById('shop-items-grid'); if(grid) grid.style.display = 'none';
+  const sub  = document.getElementById('shop-subtitle');   if(sub)  sub.textContent = 'CHOOSE ONE ITEM CARD FOR YOUR DECK';
+  row.innerHTML = '';
+  if(!G._shopSpellOffer) G._shopSpellOffer = getShopSpellCards();
+  G._shopSpellPicked = false;
+  G._shopSpellOffer.forEach((def, i) => {
+    const card = makeItemSpellCard(def);
+    const cv = makeCardVisual(card, 'width:clamp(110px,11vw,155px);aspect-ratio:2/3;');
+    // Play the entrance once, then clear the inline animation so control hands
+    // back to .cv-floating (the same 3D idle float the Pokémon cards use) and
+    // .card-visual:hover works exactly like every other card.
+    cv.style.animation = 'shopItemIn 0.42s ' + (i*0.08) + 's cubic-bezier(0.15,1.1,0.35,1) both';
+    cv.addEventListener('animationend', function _clrAnim(e){
+      if(e.animationName === 'shopItemIn'){ cv.style.animation = ''; cv.removeEventListener('animationend', _clrAnim); }
+    });
+    const pick = () => {
+      if(G._shopSpellPicked) return;
+      G._shopSpellPicked = true;
+      cv.classList.add('cv-selected');
+      [...row.children].forEach(c => { if(c!==cv){ c.style.transition='opacity 0.25s'; c.style.opacity='0.3'; c.style.pointerEvents='none'; } });
+      if(typeof SFX!=='undefined' && SFX.purchase) SFX.purchase();
+      G.bonusCards.push(makeItemSpellCard(def));   // fresh copy added to the deck
+      G._shopSpellOffer = null;                    // fresh set next visit
+      setTimeout(() => { if(typeof shopSkip==='function') shopSkip(); }, 560);
+    };
+    cv.addEventListener('click', pick);
+    cv.addEventListener('touchend', (e)=>{ e.preventDefault(); pick(); }, {passive:false});
+    row.appendChild(cv);
+  });
+}
+
+// Spell-card styling (injected so we don't disturb the main CSS blocks)
+document.head.insertAdjacentHTML('beforeend', '<style>' +
+  /* Item cards keep the plain white Pokemon frame (.hc / .card-visual) — no
+     background/border override, so frame, hover and float match exactly. */
+  '.is-itemcard{background:#ffffff;}' +
+  /* Item icon in the upper region (leaves room for the description), a touch larger */
+  '.hc .ic-art,.card-visual .ic-art{position:absolute;top:37% !important;left:50% !important;bottom:auto !important;right:auto !important;transform:translate(-50%,-50%) !important;width:auto !important;height:auto !important;max-width:84% !important;max-height:66% !important;object-fit:contain !important;}' +
+  /* Name pill: small, single line (never wraps), top-left like a move badge */
+  '.ic-namebadge{white-space:nowrap !important;max-width:none !important;font-size:clamp(5px,0.62vw,7.5px) !important;line-height:1.1 !important;letter-spacing:0.2px !important;padding:2px 5px !important;text-align:left;}' +
+  /* Effect text at the bottom — plain text, no background fill / no border */
+  '.ic-desc{position:absolute;left:0;right:0;bottom:0;z-index:12;font-family:\'PokemonClassic\',monospace;font-size:clamp(6.5px,0.85vw,10px);line-height:1.28;color:#12203f;text-align:center;padding:4px 6px 7px;background:none;border:none;}' +
+  /* Row sized (like the encounter/cinnabar rows) so all five cards fit on ONE line */
+  '#shop-spell-row{display:flex;gap:clamp(10px,2vw,24px);flex-wrap:wrap;justify-content:center;align-items:stretch;width:100%;max-width:min(95vw,1000px);padding:6px 0;}' +
+  '@media (max-width:768px){#shop-spell-row{gap:8px !important;max-width:96vw !important;} .ic-desc{font-size:9px !important;padding:4px 5px !important;}}' +
+'</style>');
+
 function getShopItems() {
   // Offer 3 choices; the store is a free "pick one" reward, so just take 3
   // random items the player doesn't already own.
@@ -12875,8 +13245,9 @@ function startNextBattle() {
 
 <div id="shop-screen" class="hidden">
   <div id="shop-title">CELADON DEPT. STORE</div>
-  <div id="shop-subtitle">CHOOSE ONE ITEM</div>
+  <div id="shop-subtitle">CHOOSE ONE ITEM CARD FOR YOUR DECK</div>
   <div id="shop-items-grid"></div>
+  <div id="shop-spell-row"></div>
   <button id="shop-skip-btn" onclick="if(typeof SFX!='undefined') SFX.back(); shopSkip();" style="margin-top:20px;">LEAVE STORE →</button>
 </div>
 
@@ -14129,7 +14500,7 @@ function rSetupUI(){
   if(!document.getElementById('pkmn-sendout-ball')){
     document.body.insertAdjacentHTML('beforeend', `<div id="pkmn-sendout-ball">
       <!-- ball frames are drawn by JS onto #pkmn-sendout-ball-cv (created on
-           first use) from PokéRogue's pb atlas --> 
+           first use) from PokéRogue's pb atlas --> 
     </div>
     <div id="pkmn-sendout-flash"></div>`);
   }
@@ -14456,11 +14827,16 @@ playSelectedHand = async function(){
   if(!G._blockPersist) G.playerBlock = 0;
   G._blockPersist = false;
   const blockBefore = G.playerBlock || 0;
+  const weakenBefore = (G.oppStatus.weaken||0);
   const moveFx = rResolvePlayedMoves(cards, emptiedHand);
   // Our block + status (poison/burn) are applied now and STAY applied - the
   // opponent's turn below ticks the status. This is the "our status & blocks"
   // phase, shown before the opponent acts.
   renderOpponentStatusIcons();
+  // Weaken statuses (frozen/paralyzed/confused/…) render ONLY as a brief pop
+  // over the enemy; the attack reduction itself just stays on the intent badge.
+  const weakenGained = (G.oppStatus.weaken||0) - weakenBefore;
+  if(weakenGained > 0 && typeof flashOppStatus === 'function') flashOppStatus(G.oppStatus.ccLabel, weakenGained);
   const blockGained = Math.max(0, (G.playerBlock||0) - blockBefore);
 
   // A play made ENTIRELY of Block-role cards deals no meld damage.
